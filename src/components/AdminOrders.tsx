@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState, useRef } from 'react';
-import { FaShareAlt } from 'react-icons/fa';
+import { FaShareAlt, FaPrint } from 'react-icons/fa';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import Notification from './Notification';
@@ -359,6 +359,18 @@ export default function AdminOrders() {
                                                 </button>
                                             )}
                                             <button
+                                                onClick={() => {
+                                                    const printWindow = window.open(`/print/${pedido._id}`, '_blank');
+                                                    if (printWindow) {
+                                                        printWindow.focus();
+                                                    }
+                                                }}
+                                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-lg text-xs transition-colors flex items-center gap-1"
+                                            >
+                                                <FaPrint className="text-xs" />
+                                                Imprimir
+                                            </button>
+                                            <button
                                                 onClick={() => handleCompartilharPedido(pedido)}
                                                 className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded-lg text-xs transition-colors"
                                             >
@@ -421,6 +433,18 @@ export default function AdminOrders() {
                                     {updatingStatus === pedido._id ? 'Atualizando...' : 'Avançar'}
                                 </button>
                             )}
+                            <button
+                                onClick={() => {
+                                    const printWindow = window.open(`/print/${pedido._id}`, '_blank');
+                                    if (printWindow) {
+                                        printWindow.focus();
+                                    }
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition-colors flex-1"
+                            >
+                                <FaPrint className="inline mr-1" />
+                                Imprimir
+                            </button>
                             <button
                                 onClick={() => handleCompartilharPedido(pedido)}
                                 className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-3 rounded-lg text-xs transition-colors flex-1"
@@ -558,6 +582,18 @@ export default function AdminOrders() {
                                     {updatingStatus === pedidoSelecionado._id ? 'Atualizando...' : 'Avançar Status'}
                                 </button>
                             )}
+                            <button
+                                onClick={() => {
+                                    const printWindow = window.open(`/print/${pedidoSelecionado._id}`, '_blank');
+                                    if (printWindow) {
+                                        printWindow.focus();
+                                    }
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+                            >
+                                <FaPrint className="text-sm" />
+                                Imprimir
+                            </button>
                             <button
                                 onClick={() => updateOrderStatus(pedidoSelecionado._id, 'cancelado')}
                                 className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm"

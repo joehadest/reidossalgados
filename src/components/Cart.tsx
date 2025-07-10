@@ -605,6 +605,8 @@ export default function Cart({ items, onUpdateQuantity, onRemoveItem, onCheckout
                                     </div>
                                 )}
 
+
+
                                 <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-2">
                                     <button
                                         type="button"

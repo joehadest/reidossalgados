@@ -6,7 +6,7 @@ import ItemModal from './ItemModal';
 import Cart from './Cart';
 import { MenuItem } from '@/types/menu';
 import Image from 'next/image';
-import { FaExclamationCircle, FaWhatsapp, FaShare, FaShoppingCart, FaPlus } from 'react-icons/fa';
+import { FaExclamationCircle, FaWhatsapp, FaShare, FaShoppingCart, FaPlus, FaPrint } from 'react-icons/fa';
 import { useCart } from '../contexts/CartContext';
 import { CartItem } from '../types/cart';
 import PastaModal from './PastaModal';
@@ -68,6 +68,8 @@ export default function MenuDisplay() {
     const [isLoadingSettings, setIsLoadingSettings] = useState(true);
     const [categories, setCategories] = useState<{_id: string, name: string}[]>([]);
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+    const [whatsappNumber, setWhatsappNumber] = useState<string>('');
+    const [pixKey, setPixKey] = useState<string>('');
 
     const allPizzas = menuItems.filter((item: MenuItem) => item.category === 'pizzas');
 
@@ -106,6 +108,9 @@ export default function MenuDisplay() {
                 if (data.success && data.data) {
                     setBusinessHours(data.data.businessHours);
                     setDeliveryFees(data.data.deliveryFees || []);
+                    // Buscar WhatsApp e PIX do banco
+                    setWhatsappNumber(data.data.establishmentInfo?.contact?.whatsapp?.replace(/\D/g, ''));
+                    setPixKey(data.data.establishmentInfo?.pixKey || '');
                 }
             } catch (err) {
                 console.error('Erro ao carregar configurações:', err);
@@ -373,7 +378,7 @@ export default function MenuDisplay() {
             `${item.quantity}x ${item.item.name}${item.size ? ` (${item.size})` : ''}${item.observation ? ` - ${item.observation}` : ''} - R$ ${calculateItemPrice(item).toFixed(2)}`
         ).join('\n');
 
-        const message = `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* 84 99872-9126`;
+        const message = `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* ${pixKey}`;
 
         if (navigator.share) {
             navigator.share({
@@ -410,9 +415,9 @@ export default function MenuDisplay() {
             `${item.quantity}x ${item.item.name}${item.size ? ` (${item.size})` : ''}${item.observation ? ` - ${item.observation}` : ''} - R$ ${calculateItemPrice(item).toFixed(2)}`
         ).join('\n');
 
-        const message = `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* 84 99872-9126`;
+        const message = `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* ${pixKey}`;
 
-        const whatsappUrl = `https://wa.me/558498729126?text=${encodeURIComponent(message)}`;
+        const whatsappUrl = `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, '_blank');
         setShowWhatsAppModal(false);
     };
@@ -673,6 +678,7 @@ export default function MenuDisplay() {
                             onRemoveItem={removeFromCart}
                             onCheckout={handleCheckout}
                             onClose={() => setIsCartOpen(false)}
+
                         />
                     )}
                 </AnimatePresence>
@@ -720,7 +726,7 @@ export default function MenuDisplay() {
                                                 `${item.quantity}x ${item.item.name}${item.size ? ` (${item.size})` : ''}${item.observation ? ` - ${item.observation}` : ''} - R$ ${calculateItemPrice(item).toFixed(2)}`
                                             ).join('\n');
 
-                                            return `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* 84 99872-9126`;
+                                            return `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* ${pixKey}`;
                                         })()}
                                     </pre>
                                 </div>
@@ -767,16 +773,19 @@ export default function MenuDisplay() {
                                 <h2 className="text-2xl font-bold text-yellow-500 mb-4">Pedido Enviado!</h2>
                                 <p className="text-gray-300 mb-2">Anote o número do seu pedido para acompanhar em <b>Pedidos</b>:</p>
                                 <div className="text-3xl font-bold text-red-500 mb-4 break-all max-w-full" style={{ wordBreak: 'break-all' }}>{orderSuccessId}</div>
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 mt-2"
-                                    onClick={() => {
-                                        setOrderSuccessId(null);
-                                    }}
-                                >
-                                    Fechar
-                                </motion.button>
+                                
+                                <div className="flex justify-center">
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700"
+                                        onClick={() => {
+                                            setOrderSuccessId(null);
+                                        }}
+                                    >
+                                        Fechar
+                                    </motion.button>
+                                </div>
                             </motion.div>
                         </motion.div>
                     )}
