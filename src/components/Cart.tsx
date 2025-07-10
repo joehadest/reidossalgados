@@ -308,7 +308,7 @@ export default function Cart({ items, onUpdateQuantity, onRemoveItem, onCheckout
                 exit={{ opacity: 0 }}
             >
                 <motion.div
-                    className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full mx-4 text-gray-200 border border-yellow-500 relative max-h-[80vh] overflow-y-auto"
+                    className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full mx-4 text-gray-200 border border-yellow-500 relative max-h-[80vh] overflow-y-auto overflow-x-hidden"
                     initial={{ y: 100, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 100, opacity: 0 }}

@@ -2,6 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevenir scroll horizontal em dispositivos móveis */
+html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
+/* Garantir que containers não causem overflow */
+* {
+    box-sizing: border-box;
+}
+
+/* Regras específicas para dispositivos móveis */
+@media (max-width: 768px) {
+    body {
+        overflow-x: hidden;
+        width: 100vw;
+    }
+    
+    .container, .max-w-7xl {
+        overflow-x: hidden;
+        max-width: 100vw;
+    }
+    
+    /* Garantir que flex containers não causem overflow */
+    .flex {
+        min-width: 0;
+    }
+    
+    /* Garantir que textos não causem overflow */
+    .break-words {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+}
+
 @keyframes slide-up {
     from {
         transform: translateY(100%);

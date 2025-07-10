@@ -2,22 +2,7 @@
   "name": "Rei dos Salgados",
   "short_name": "Rei dos Salgados",
   "description": "Cardápio digital do Rei dos Salgados",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#facc15",
-  "orientation": "portrait",
   "icons": [
-    {
-      "src": "/favicon/favicon-16x16.png",
-      "sizes": "16x16",
-      "type": "image/png"
-    },
-    {
-      "src": "/favicon/favicon-32x32.png",
-      "sizes": "32x32",
-      "type": "image/png"
-    },
     {
       "src": "/favicon/android-chrome-192x192.png",
       "sizes": "192x192",
@@ -28,5 +13,10 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
-} 
+  ],
+  "theme_color": "#facc15",
+  "background_color": "#111827",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/"
+}

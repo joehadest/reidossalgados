@@ -2,19 +2,19 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMenu } from '@/contexts/MenuContext';
-import { FaExclamationCircle } from 'react-icons/fa';
+import { FaExclamationCircle, FaSearch } from 'react-icons/fa';
 import { useCart } from '@/contexts/CartContext';
+import { useRestaurantStatus } from '@/contexts/RestaurantStatusContext';
 import Cart from './Cart';
+import OrderTracker from './OrderTracker';
 import Image from 'next/image';
 
 export default function Header() {
-    const [isOpen, setIsOpen] = useState(false);
     const [showInfo, setShowInfo] = useState(false);
-    const [businessHours, setBusinessHours] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const diasSemana = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const [showOrderTracker, setShowOrderTracker] = useState(false);
     const { items, updateQuantity, removeFromCart } = useCart();
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const { isOpen, loading } = useRestaurantStatus();
 
     const totalItems = items.reduce((total: number, item: any) => total + item.quantity, 0);
 
@@ -22,46 +22,6 @@ export default function Header() {
         // Implementar checkout
         console.log('Checkout:', orderId);
     };
-
-    // Função para verificar se está aberto
-    const checkOpenStatus = useCallback(() => {
-        if (!businessHours) return false;
-        const now = new Date();
-        const currentDay = diasSemana[now.getDay()];
-        const currentTime = now.toLocaleTimeString('pt-BR', { hour12: false, hour: '2-digit', minute: '2-digit' });
-        const config = businessHours[currentDay];
-        if (!config) return false;
-        return config.open && currentTime >= config.start && currentTime <= config.end;
-    }, [businessHours]);
-
-    // Buscar configurações do backend
-    useEffect(() => {
-        async function fetchSettings() {
-            setLoading(true);
-            try {
-                const res = await fetch('/api/settings');
-                const data = await res.json();
-                if (data.success && data.data && data.data.businessHours) {
-                    setBusinessHours(data.data.businessHours);
-                }
-            } catch (err) {
-                setBusinessHours(null);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetchSettings();
-    }, []);
-
-    // Atualizar status a cada minuto
-    useEffect(() => {
-        if (!businessHours) return;
-        setIsOpen(checkOpenStatus());
-        const interval = setInterval(() => {
-            setIsOpen(checkOpenStatus());
-        }, 60000);
-        return () => clearInterval(interval);
-    }, [businessHours, checkOpenStatus]);
 
     return (
         <header className="bg-gray-900 border-b border-yellow-500 shadow-lg">
@@ -92,6 +52,18 @@ export default function Header() {
                     animate={{ opacity: 1, x: 0 }}
                     className="flex items-center gap-4"
                 >
+                    {/* Botão de Acompanhar Pedido */}
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowOrderTracker(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                        <FaSearch className="w-4 h-4" />
+                        <span className="hidden xs:inline sm:inline md:inline">Pedido</span>
+                        <span className="inline xs:hidden sm:hidden md:hidden">Pedido</span>
+                    </motion.button>
+
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
@@ -131,7 +103,7 @@ export default function Header() {
                                 damping: 25,
                                 stiffness: 300
                             }}
-                            className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full mx-4 text-gray-200 border border-yellow-500 relative max-h-[80vh] overflow-y-auto"
+                            className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full mx-4 text-gray-200 border border-yellow-500 relative max-h-[80vh] overflow-y-auto overflow-x-hidden"
                             onClick={e => e.stopPropagation()}
                         >
                             <motion.button
@@ -185,6 +157,11 @@ export default function Header() {
                     onCheckout={handleCheckout}
                     onClose={() => setIsCartOpen(false)} 
                 />
+            )}
+
+            {/* Modal de Acompanhamento de Pedidos */}
+            {showOrderTracker && (
+                <OrderTracker onClose={() => setShowOrderTracker(false)} />
             )}
         </header>
     );

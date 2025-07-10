@@ -36,7 +36,7 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
         onClick={onClose}
       >
         <motion.div
-          className="bg-gray-900 rounded-2xl w-full max-w-md mx-2 shadow-2xl border border-yellow-500/30 overflow-hidden max-h-[90vh] overflow-y-auto"
+          className="bg-gray-900 rounded-2xl w-full max-w-md mx-2 shadow-2xl border border-yellow-500/30 overflow-hidden max-h-[90vh] overflow-y-auto overflow-x-hidden"
           initial={{ scale: 0.9, y: 30, opacity: 0 }}
           animate={{ scale: 1, y: 0, opacity: 1 }}
           exit={{ scale: 0.9, y: 30, opacity: 0 }}

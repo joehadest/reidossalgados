@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Pedido } from '@/types';
-
-// Armazenamento temporário em memória (será perdido quando o servidor reiniciar)
-let pedidosTemp: (Pedido & { _id: string })[] = [];
-let nextId = 1;
+import { connectToDatabase } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
 export async function GET(request: Request) {
     try {
@@ -11,23 +9,25 @@ export async function GET(request: Request) {
         const id = searchParams.get('id');
         const telefone = searchParams.get('telefone');
 
+        const { db } = await connectToDatabase();
+        const collection = db.collection('pedidos');
+
         if (id) {
-            const pedido = pedidosTemp.find(p => p._id === id);
+            const pedido = await collection.findOne({ _id: new ObjectId(id) });
             if (!pedido) {
                 return NextResponse.json({ success: false, message: 'Pedido não encontrado' }, { status: 404 });
             }
             return NextResponse.json({ success: true, data: pedido });
         }
 
-        let pedidosFiltrados = pedidosTemp;
+        let query = {};
         if (telefone) {
-            pedidosFiltrados = pedidosTemp.filter(p => p.cliente?.telefone === telefone);
+            query = { 'cliente.telefone': telefone };
         }
 
-        // Ordenar por data (mais recente primeiro)
-        pedidosFiltrados.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+        const pedidos = await collection.find(query).sort({ data: -1 }).toArray();
 
-        return NextResponse.json({ success: true, data: pedidosFiltrados });
+        return NextResponse.json({ success: true, data: pedidos });
     } catch (error) {
         console.error('Erro ao buscar pedidos:', error);
         return NextResponse.json(
@@ -58,15 +58,12 @@ export async function POST(request: Request) {
             pedido.status = 'pendente';
         }
 
-        // Gerar ID único
-        const novoPedido = {
-            ...pedido,
-            _id: `temp_${nextId++}`
-        };
+        const { db } = await connectToDatabase();
+        const collection = db.collection('pedidos');
 
-        pedidosTemp.push(novoPedido);
+        const result = await collection.insertOne(pedido);
         
-        return NextResponse.json({ success: true, pedidoId: novoPedido._id });
+        return NextResponse.json({ success: true, pedidoId: result.insertedId.toString() });
     } catch (error) {
         console.error('Erro ao criar pedido:', error);
         return NextResponse.json(
@@ -89,15 +86,20 @@ export async function PATCH(request: Request) {
             );
         }
 
-        const index = pedidosTemp.findIndex(p => p._id === id);
-        if (index === -1) {
+        const { db } = await connectToDatabase();
+        const collection = db.collection('pedidos');
+
+        const result = await collection.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: updates }
+        );
+
+        if (result.matchedCount === 0) {
             return NextResponse.json(
                 { success: false, message: 'Pedido não encontrado' },
                 { status: 404 }
             );
         }
-
-        pedidosTemp[index] = { ...pedidosTemp[index], ...updates };
 
         return NextResponse.json({ success: true });
     } catch (error) {
@@ -121,15 +123,17 @@ export async function DELETE(request: Request) {
             );
         }
 
-        const index = pedidosTemp.findIndex(p => p._id === id);
-        if (index === -1) {
+        const { db } = await connectToDatabase();
+        const collection = db.collection('pedidos');
+
+        const result = await collection.deleteOne({ _id: new ObjectId(id) });
+
+        if (result.deletedCount === 0) {
             return NextResponse.json(
                 { success: false, message: 'Pedido não encontrado' },
                 { status: 404 }
             );
         }
-
-        pedidosTemp.splice(index, 1);
 
         return NextResponse.json({ success: true });
     } catch (error) {

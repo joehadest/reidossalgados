@@ -5,6 +5,12 @@ export function middleware(request: NextRequest) {
     const isAuthenticated = request.cookies.get('isAuthenticated');
     const isAdminRoute = request.nextUrl.pathname.startsWith('/admin');
     const isLoginPage = request.nextUrl.pathname === '/admin/login';
+    const isInitPage = request.nextUrl.pathname === '/admin/init';
+
+    // Permitir acesso à página de inicialização
+    if (isInitPage) {
+        return NextResponse.next();
+    }
 
     // Se não estiver autenticado e tentar acessar uma rota admin
     if (!isAuthenticated && isAdminRoute && !isLoginPage) {

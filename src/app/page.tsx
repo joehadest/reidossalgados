@@ -1,29 +1,69 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import MenuDisplay from '@/components/MenuDisplay';
-import RecentOrders from '@/components/RecentOrders';
-import { FaExclamationCircle } from 'react-icons/fa';
-import Link from 'next/link';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRestaurantStatus } from '@/contexts/RestaurantStatusContext';
+import { FaExclamationCircle, FaSearch } from 'react-icons/fa';
+import Image from 'next/image';
+import MenuDisplay from '@/components/MenuDisplay';
+import OrderTracker from '@/components/OrderTracker';
 
 export default function Home() {
-    const [activeTab, setActiveTab] = useState<'menu' | 'orders'>('menu');
-    const [hasNotification, setHasNotification] = useState(false);
+    const { isOpen, loading } = useRestaurantStatus();
     const [showInfo, setShowInfo] = useState(false);
+    const [showOrderTracker, setShowOrderTracker] = useState(false);
+    const [establishmentInfo, setEstablishmentInfo] = useState<any>(null);
+    const [infoLoading, setInfoLoading] = useState(true);
+
+    // Função para buscar informações do estabelecimento
+    const fetchEstablishmentInfo = async () => {
+        try {
+            setInfoLoading(true);
+            const response = await fetch('/api/settings');
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+                setEstablishmentInfo({
+                    ...data.data.establishmentInfo,
+                    businessHours: data.data.businessHours
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao buscar informações do estabelecimento:', error);
+        } finally {
+            setInfoLoading(false);
+        }
+    };
+
+    // Função para formatar horários de funcionamento
+    const formatBusinessHours = (hours: any) => {
+        if (!hours) return null;
+        
+        const daysOfWeek = [
+            { key: 'monday', label: 'Segunda' },
+            { key: 'tuesday', label: 'Terça' },
+            { key: 'wednesday', label: 'Quarta' },
+            { key: 'thursday', label: 'Quinta' },
+            { key: 'friday', label: 'Sexta' },
+            { key: 'saturday', label: 'Sábado' },
+            { key: 'sunday', label: 'Domingo' }
+        ];
+
+        return daysOfWeek.map(({ key, label }) => {
+            const dayHours = hours[key];
+            return {
+                day: label,
+                open: dayHours?.open || false,
+                start: dayHours?.start || '00:00',
+                end: dayHours?.end || '00:00'
+            };
+        });
+    };
 
     useEffect(() => {
-        const checkNotifications = () => {
-            const notifyOrders = JSON.parse(localStorage.getItem('notifyOrders') || '[]');
-            if (notifyOrders.length > 0) {
-                setHasNotification(true);
-            }
-        };
-
-        checkNotifications();
-        const interval = setInterval(checkNotifications, 5000);
-        return () => clearInterval(interval);
+        fetchEstablishmentInfo();
     }, []);
+
+
 
     useEffect(() => {
         if (showInfo) {
@@ -48,7 +88,7 @@ export default function Home() {
                         priority
                     />
                     {/* Logo sobreposta */}
-                    <div className="absolute left-2 sm:left-6 -bottom-20 sm:-bottom-32 flex items-center w-[95vw] max-w-[98vw] mt-3">
+                    <div className="absolute left-2 sm:left-6 -bottom-20 sm:-bottom-32 flex items-center w-full max-w-full mt-3">
                         <Image
                             src="/logo/logoreidossalgados.png"
                             alt="Logo Rei dos Salgados"
@@ -61,15 +101,29 @@ export default function Home() {
                             <div className="flex items-center gap-2 min-w-0">
                                 <span className="text-xl sm:text-4xl md:text-5xl font-bold text-white drop-shadow-lg break-words">Rei dos Salgados</span>
                                 <button
-                                    className="ml-1 bg-yellow-500 text-black p-3 rounded-full shadow hover:bg-yellow-400 transition-colors flex items-center justify-center"
+                                    className="ml-1 bg-yellow-500 text-black p-2 rounded-full shadow hover:bg-yellow-400 transition-colors flex items-center justify-center"
                                     onClick={() => setShowInfo(true)}
                                     aria-label="Informações do restaurante"
                                 >
-                                    <FaExclamationCircle className="text-lg sm:text-2xl" />
+                                    <FaExclamationCircle className="text-sm sm:text-lg" />
                                 </button>
                             </div>
                             <div className="flex items-center gap-2 sm:gap-4 mt-1 sm:mt-2 text-white/90 text-xs sm:text-sm">
-                                <span className="flex items-center gap-1 bg-white/20 px-2 py-1 rounded"><span className="w-2 h-2 bg-green-400 rounded-full mr-1"></span> Aberto</span>
+                                <span className={`flex items-center gap-1 bg-white/20 px-2 py-1 rounded ${loading ? 'opacity-50' : ''}`}>
+                                    <span className={`w-2 h-2 rounded-full mr-1 ${isOpen ? 'bg-green-400' : 'bg-red-400'}`}></span>
+                                    {loading ? 'Carregando...' : isOpen ? 'Aberto' : 'Fechado'}
+                                </span>
+                                
+                                {/* Botão de Acompanhar Pedido */}
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => setShowOrderTracker(true)}
+                                    className="bg-yellow-500 hover:bg-yellow-400 text-gray-900 px-2 py-1 rounded flex items-center gap-1 transition-colors text-xs font-medium"
+                                >
+                                    <FaSearch className="w-3 h-3" />
+                                    <span>Pedido</span>
+                                </motion.button>
                             </div>
                         </div>
                     </div>
@@ -119,7 +173,9 @@ export default function Home() {
                             </div>
                             {/* Conteúdo */}
                             <div className="p-3 sm:p-6">
-                                <h2 className="text-lg sm:text-2xl font-bold text-yellow-500 mb-4 text-center">Rei dos Salgados</h2>
+                                <h2 className="text-lg sm:text-2xl font-bold text-yellow-500 mb-4 text-center">
+                                    {establishmentInfo?.name || 'Rei dos Salgados'}
+                                </h2>
                                 <div className="space-y-3 sm:space-y-5">
                                     {/* Horário */}
                                     <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
@@ -128,14 +184,20 @@ export default function Home() {
                                             Horário de Funcionamento
                                         </h3>
                                         <div className="text-gray-300 text-xs sm:text-sm space-y-1">
-                                            <div className="flex justify-between">
-                                                <span>Quarta a Segunda:</span>
-                                                <span className="text-white font-medium">18h00 às 23h00</span>
+                                            {infoLoading ? (
+                                                <div className="text-gray-400">Carregando horários...</div>
+                                            ) : establishmentInfo?.businessHours ? (
+                                                formatBusinessHours(establishmentInfo.businessHours)?.map((day, index) => (
+                                                    <div key={index} className="flex justify-between">
+                                                        <span>{day.day}:</span>
+                                                        <span className={day.open ? 'text-white font-medium' : 'text-red-400 font-medium'}>
+                                                            {day.open ? `${day.start} às ${day.end}` : 'Fechado'}
+                                                        </span>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span>Terça:</span>
-                                                <span className="text-red-400 font-medium">Fechado</span>
-                                            </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-gray-400">Horários não disponíveis</div>
+                                            )}
                                         </div>
                                     </div>
                                     {/* Endereço */}
@@ -145,8 +207,8 @@ export default function Home() {
                                             Endereço
                                         </h3>
                                         <div className="text-gray-300 text-xs sm:text-sm">
-                                            <p className="text-white">Rua Maria Luiza Dantas</p>
-                                            <p>Alto Rodrigues - RN</p>
+                                            <p className="text-white">{establishmentInfo?.address?.street || 'Rua Maria Luiza Dantas'}</p>
+                                            <p>{establishmentInfo?.address?.city || 'Alto Rodrigues'} - {establishmentInfo?.address?.state || 'RN'}</p>
                                         </div>
                                     </div>
                                     {/* Contato */}
@@ -157,7 +219,7 @@ export default function Home() {
                                         </h3>
                                         <div className="text-gray-300 text-xs sm:text-sm">
                                             <p>Telefone/WhatsApp:</p>
-                                            <p className="text-white font-medium text-sm sm:text-base">+55 84 9872-9126</p>
+                                            <p className="text-white font-medium text-sm sm:text-base">{establishmentInfo?.contact?.phone || '+55 84 9872-9126'}</p>
                                         </div>
                                     </div>
                                     {/* Formas de Pagamento */}
@@ -167,7 +229,10 @@ export default function Home() {
                                             Formas de Pagamento
                                         </h3>
                                         <div className="text-gray-300 text-xs sm:text-sm">
-                                            <p>Aceitamos cartões de crédito/débito, PIX e dinheiro</p>
+                                            <p>{establishmentInfo?.paymentMethods?.length > 0 
+                                                ? `Aceitamos ${establishmentInfo.paymentMethods.join(', ').toLowerCase()}`
+                                                : 'Aceitamos cartões de crédito/débito, PIX e dinheiro'
+                                            }</p>
                                         </div>
                                     </div>
                                     {/* Redes Sociais */}
@@ -177,7 +242,7 @@ export default function Home() {
                                             Redes Sociais
                                         </h3>
                                         <div className="text-gray-300 text-xs sm:text-sm">
-                                            <p>Instagram: <span className="text-white font-medium">@reidossalgados</span></p>
+                                            <p>Instagram: <span className="text-white font-medium">{establishmentInfo?.socialMedia?.instagram || '@reidossalgados'}</span></p>
                                 </div>
                                 </div>
                                     {/* Sobre Nós */}
@@ -187,7 +252,7 @@ export default function Home() {
                                             Sobre Nós
                                         </h3>
                                         <div className="text-gray-300 text-xs sm:text-sm leading-relaxed">
-                                            <p>Especialistas em salgados artesanais, oferecendo qualidade e sabor em cada pedido. Nossos produtos são feitos com ingredientes frescos e selecionados.</p>
+                                            <p>{establishmentInfo?.about || 'Especialistas em salgados artesanais, oferecendo qualidade e sabor em cada pedido. Nossos produtos são feitos com ingredientes frescos e selecionados.'}</p>
                                 </div>
                                 </div>
                                 </div>
@@ -212,6 +277,13 @@ export default function Home() {
             <div className="container mx-auto px-4">
                 <MenuDisplay />
             </div>
+
+            {/* Modal de Acompanhamento de Pedidos */}
+            <AnimatePresence>
+                {showOrderTracker && (
+                    <OrderTracker onClose={() => setShowOrderTracker(false)} />
+                )}
+            </AnimatePresence>
         </div>
     );
 } 

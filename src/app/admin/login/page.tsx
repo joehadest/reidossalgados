@@ -18,17 +18,25 @@ export default function LoginPage() {
         setIsLoading(true);
         setError('');
 
-        // Simula um delay para melhor UX
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+            const res = await fetch('/api/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
 
-        // Aqui você deve implementar uma verificação de senha mais segura
-        // Este é apenas um exemplo simples
-        if (password === 'admin123') {
-            // Armazena o status de autenticação em um cookie
-            Cookies.set('isAuthenticated', 'true', { expires: 1 }); // Expira em 1 dia
-            router.push('/admin');
-        } else {
-            setError('Senha incorreta. Tente novamente.');
+            const data = await res.json();
+
+            if (data.success) {
+                // Armazena o status de autenticação em um cookie
+                Cookies.set('isAuthenticated', 'true', { expires: 1 }); // Expira em 1 dia
+                router.push('/admin');
+            } else {
+                setError(data.message || 'Erro na autenticação');
+            }
+        } catch (error) {
+            setError('Erro de conexão. Tente novamente.');
+        } finally {
             setIsLoading(false);
         }
     };

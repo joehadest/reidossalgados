@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-
-// Armazenamento temporário em memória para notificações
-let notificationsTemp: any[] = [];
-let nextNotificationId = 1;
+import { connectToDatabase } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
 // Armazenar conexões WebSocket ativas
 const clients = new Map();
@@ -16,10 +14,14 @@ export async function GET(request: Request) {
     }
 
     try {
+        const { db } = await connectToDatabase();
+        const collection = db.collection('notifications');
+
         // Buscar notificações não lidas para este cliente
-        const notifications = notificationsTemp
-            .filter(n => n.clientId === clientId && !n.read)
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const notifications = await collection
+            .find({ clientId, read: false })
+            .sort({ createdAt: -1 })
+            .toArray();
 
         return NextResponse.json({ success: true, data: notifications });
     } catch (error) {
@@ -36,7 +38,6 @@ export async function POST(request: Request) {
         const { clientId, orderId, status, message } = await request.json();
 
         const notification = {
-            _id: `temp_notif_${nextNotificationId++}`,
             clientId,
             orderId,
             status,
@@ -45,16 +46,20 @@ export async function POST(request: Request) {
             createdAt: new Date().toISOString()
         };
 
-        notificationsTemp.push(notification);
+        const { db } = await connectToDatabase();
+        const collection = db.collection('notifications');
+
+        const result = await collection.insertOne(notification);
+        const savedNotification = { ...notification, _id: result.insertedId };
 
         // Notificar todos os clientes conectados
         clients.forEach((client) => {
             if (client.clientId === clientId) {
-                client.send(JSON.stringify(notification));
+                client.send(JSON.stringify(savedNotification));
             }
         });
 
-        return NextResponse.json({ success: true, data: notification });
+        return NextResponse.json({ success: true, data: savedNotification });
     } catch (error) {
         console.error('Erro ao criar notificação:', error);
         return NextResponse.json(
@@ -68,10 +73,13 @@ export async function PATCH(request: Request) {
     try {
         const { notificationId } = await request.json();
 
-        const index = notificationsTemp.findIndex(n => n._id === notificationId);
-        if (index !== -1) {
-            notificationsTemp[index].read = true;
-        }
+        const { db } = await connectToDatabase();
+        const collection = db.collection('notifications');
+
+        await collection.updateOne(
+            { _id: new ObjectId(notificationId) },
+            { $set: { read: true } }
+        );
 
         return NextResponse.json({ success: true });
     } catch (error) {

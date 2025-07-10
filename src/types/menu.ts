@@ -10,6 +10,12 @@ export interface MenuItem {
         P?: number;
         G?: number;
         'Única'?: number;
+        '350ml'?: number;
+        '600ml'?: number;
+        '300ml'?: number;
+        '500ml'?: number;
+        'Fatia'?: number;
+        [key: string]: number | undefined;
     };
     borderOptions?: {
         [key: string]: number;

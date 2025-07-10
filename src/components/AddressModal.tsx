@@ -61,8 +61,8 @@ export default function AddressModal({ isOpen, onClose, onSave, initialAddress }
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-[#262525] rounded-xl shadow-xl p-6 max-w-md w-full relative border border-gray-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 overflow-x-hidden">
+            <div className="bg-[#262525] rounded-xl shadow-xl p-6 max-w-md w-full relative border border-gray-800 overflow-x-hidden">
                 <button
                     onClick={onClose}
                     className="absolute top-2 right-2 text-gray-400 hover:text-white"

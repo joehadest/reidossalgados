@@ -87,7 +87,7 @@ export default function ItemModal({ item, onClose, onAddToCart, allPizzas }: Ite
                 onClick={onClose}
             >
                 <motion.div
-                    className="bg-gray-900 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+                    className="bg-gray-900 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto overflow-x-hidden"
                     variants={modalVariants}
                     initial="hidden"
                     animate="visible"

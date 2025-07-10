@@ -61,7 +61,7 @@ export default function PastaModal({ item, onClose, onAddToCart }: PastaModalPro
                 onClick={onClose}
             >
                 <motion.div
-                    className="bg-[#262525] rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+                    className="bg-[#262525] rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto overflow-x-hidden"
                     variants={modalVariants}
                     initial="hidden"
                     animate="visible"

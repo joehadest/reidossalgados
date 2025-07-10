@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 import { Pedido } from '@/types';
-
-// Importar o array temporário de pedidos (será compartilhado com a rota principal)
-// Nota: Em uma implementação real, isso deveria ser um módulo separado
-let pedidosTemp: (Pedido & { _id: string })[] = [];
+import { connectToDatabase } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
 export async function GET(
     request: Request,
     { params }: { params: { id: string } }
 ) {
     try {
-        const pedido = pedidosTemp.find(p => p._id === params.id);
+        const { db } = await connectToDatabase();
+        const collection = db.collection('pedidos');
+
+        const pedido = await collection.findOne({ _id: new ObjectId(params.id) });
 
         if (!pedido) {
             return NextResponse.json(
@@ -39,18 +40,22 @@ export async function PATCH(
         // Atualiza o timestamp
         updates.updatedAt = new Date().toISOString();
 
-        const index = pedidosTemp.findIndex(p => p._id === params.id);
-        if (index === -1) {
+        const { db } = await connectToDatabase();
+        const collection = db.collection('pedidos');
+
+        const result = await collection.updateOne(
+            { _id: new ObjectId(params.id) },
+            { $set: updates }
+        );
+
+        if (result.matchedCount === 0) {
             return NextResponse.json(
                 { error: 'Pedido não encontrado' },
                 { status: 404 }
             );
         }
 
-        const statusAnterior = pedidosTemp[index].status;
-        pedidosTemp[index] = { ...pedidosTemp[index], ...updates };
-
-        // Registra mudança de status (apenas log, sem banco de dados)
+        // Registra mudança de status
         if (updates.status) {
             console.log(`Status do pedido ${params.id} alterado para: ${updates.status}`);
         }
@@ -70,17 +75,19 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
-        const index = pedidosTemp.findIndex(p => p._id === params.id);
-        if (index === -1) {
+        const { db } = await connectToDatabase();
+        const collection = db.collection('pedidos');
+
+        const result = await collection.deleteOne({ _id: new ObjectId(params.id) });
+
+        if (result.deletedCount === 0) {
             return NextResponse.json(
                 { error: 'Pedido não encontrado' },
                 { status: 404 }
             );
         }
 
-        pedidosTemp.splice(index, 1);
-
-        // Registra remoção (apenas log, sem banco de dados)
+        // Registra remoção
         console.log(`Pedido ${params.id} removido`);
 
         return NextResponse.json({ success: true });

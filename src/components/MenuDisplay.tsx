@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMenu } from '@/contexts/MenuContext';
+import { useRestaurantStatus } from '@/contexts/RestaurantStatusContext';
 import ItemModal from './ItemModal';
 import Cart from './Cart';
 import { MenuItem } from '@/types/menu';
@@ -9,7 +9,6 @@ import Image from 'next/image';
 import { FaExclamationCircle, FaWhatsapp, FaShare, FaShoppingCart, FaPlus } from 'react-icons/fa';
 import { useCart } from '../contexts/CartContext';
 import { CartItem } from '../types/cart';
-import { menuItems as staticMenuItems, categories } from '../data/menu';
 import PastaModal from './PastaModal';
 import MiniItemModal from './MiniItemModal';
 
@@ -48,8 +47,10 @@ const categoryVariants = {
 };
 
 export default function MenuDisplay() {
-    const { isOpen, toggleOpen } = useMenu();
+    const { isOpen, refreshStatus } = useRestaurantStatus();
     const { items: cartItems, addToCart, removeFromCart, updateQuantity, clearCart } = useCart();
+    const { isOpen: restaurantIsOpen } = useRestaurantStatus();
+
     const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -63,10 +64,89 @@ export default function MenuDisplay() {
     const [deliveryFees, setDeliveryFees] = useState<{ neighborhood: string; fee: number }[]>([]);
     const [selectedPasta, setSelectedPasta] = useState<MenuItem | null>(null);
     const [miniModalItem, setMiniModalItem] = useState<MenuItem | null>(null);
+    const [businessHours, setBusinessHours] = useState<any>(null);
+    const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+    const [categories, setCategories] = useState<{_id: string, name: string}[]>([]);
+    const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
 
-    const menuItems = staticMenuItems;
-    const allPizzas = menuItems.filter(item => item.category === 'pizzas');
-    const categoriesContainerRef = useRef<HTMLDivElement>(null);
+    const allPizzas = menuItems.filter((item: MenuItem) => item.category === 'pizzas');
+
+    // Função para formatar horários de funcionamento
+    const formatBusinessHours = (hours: any) => {
+        if (!hours) return null;
+        
+        const daysOfWeek = [
+            { key: 'monday', label: 'Segunda' },
+            { key: 'tuesday', label: 'Terça' },
+            { key: 'wednesday', label: 'Quarta' },
+            { key: 'thursday', label: 'Quinta' },
+            { key: 'friday', label: 'Sexta' },
+            { key: 'saturday', label: 'Sábado' },
+            { key: 'sunday', label: 'Domingo' }
+        ];
+
+        return daysOfWeek.map(({ key, label }) => {
+            const dayHours = hours[key];
+            return {
+                day: label,
+                open: dayHours?.open || false,
+                start: dayHours?.start || '00:00',
+                end: dayHours?.end || '00:00'
+            };
+        });
+    };
+
+    // Buscar configurações do banco de dados
+    useEffect(() => {
+        async function fetchSettings() {
+            try {
+                setIsLoadingSettings(true);
+                const res = await fetch('/api/settings');
+                const data = await res.json();
+                if (data.success && data.data) {
+                    setBusinessHours(data.data.businessHours);
+                    setDeliveryFees(data.data.deliveryFees || []);
+                }
+            } catch (err) {
+                console.error('Erro ao carregar configurações:', err);
+            } finally {
+                setIsLoadingSettings(false);
+            }
+        }
+        fetchSettings();
+    }, []);
+
+    // Buscar categorias do backend
+    useEffect(() => {
+        async function fetchCategories() {
+            try {
+                const res = await fetch('/api/categories');
+                const data = await res.json();
+                if (data.success && Array.isArray(data.data)) {
+                    setCategories(data.data.map((cat: any) => ({ _id: cat._id, name: cat.name })));
+                }
+            } catch (err) {
+                setCategories([]);
+            }
+        }
+        fetchCategories();
+    }, []);
+
+    // Buscar itens do cardápio do backend
+    useEffect(() => {
+        async function fetchMenuItems() {
+            try {
+                const res = await fetch('/api/menu');
+                const data = await res.json();
+                if (data.success && Array.isArray(data.data)) {
+                    setMenuItems(data.data);
+                }
+            } catch (err) {
+                setMenuItems([]);
+            }
+        }
+        fetchMenuItems();
+    }, []);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -75,50 +155,49 @@ export default function MenuDisplay() {
                     if (entry.isIntersecting) {
                         const category = entry.target.id.replace('category-', '');
                         setSelectedCategory(category);
-
-                        // Scroll horizontal para a categoria selecionada
-                        if (categoriesContainerRef.current) {
-                            const categoryButton = categoriesContainerRef.current.querySelector(`[data-category="${category}"]`);
-                            if (categoryButton) {
-                                const container = categoriesContainerRef.current;
-                                const button = categoryButton as HTMLElement;
-                                const containerWidth = container.offsetWidth;
-                                const buttonLeft = button.offsetLeft;
-                                const buttonWidth = button.offsetWidth;
-
-                                // Centraliza o botão no container
-                                const scrollLeft = buttonLeft - (containerWidth / 2) + (buttonWidth / 2);
-                                container.scrollTo({
-                                    left: scrollLeft,
-                                    behavior: 'smooth'
-                                });
-                            }
-                        }
                     }
                 });
             },
             {
-                rootMargin: '-100px 0px -50% 0px',
-                threshold: 0
+                rootMargin: '-120px 0px -40% 0px',
+                threshold: 0.2
             }
         );
 
-        categories.forEach(category => {
-            const element = document.getElementById(`category-${category}`);
-            if (element) {
-                observer.observe(element);
-            }
-        });
+        setTimeout(() => {
+            (categories || []).forEach(category => {
+                const element = document.getElementById(`category-${category._id}`);
+                if (element) {
+                    observer.observe(element);
+                }
+            });
+        }, 500);
 
         return () => {
-            categories.forEach(category => {
-                const element = document.getElementById(`category-${category}`);
+            (categories || []).forEach(category => {
+                const element = document.getElementById(`category-${category._id}`);
                 if (element) {
                     observer.unobserve(element);
                 }
             });
         };
     }, [categories]);
+
+    // Definir categoria inicial
+    useEffect(() => {
+        if ((categories || []).length > 0 && !selectedCategory) {
+            setSelectedCategory((categories || [])[0]._id);
+        }
+    }, [categories, selectedCategory]);
+
+    // Scroll horizontal automático da barra de categorias
+    useEffect(() => {
+        if (!selectedCategory) return;
+        const btn = document.querySelector(`button[data-category='${selectedCategory}']`);
+        if (btn && btn.scrollIntoView) {
+            btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+    }, [selectedCategory]);
 
     const handleCategoryClick = (category: string | null) => {
         setSelectedCategory(category);
@@ -146,25 +225,8 @@ export default function MenuDisplay() {
                     localStorage.setItem(`notifyStatus_${orderId}`, pedido.status);
                 } catch (e) { /* ignorar erros */ }
             }
-        }, 5000); // 5 segundos
+        }, 5000);
         return () => clearInterval(interval);
-    }, []);
-
-    useEffect(() => {
-        // Buscar taxas de entrega do banco
-        async function fetchDeliveryFees() {
-            try {
-                const res = await fetch('/api/settings');
-                const data = await res.json();
-                if (data.success && data.data) {
-                    console.log('Taxas de entrega carregadas:', data.data.deliveryFees);
-                    setDeliveryFees(data.data.deliveryFees || []);
-                }
-            } catch (err) {
-                console.error('Erro ao carregar taxas de entrega:', err);
-            }
-        }
-        fetchDeliveryFees();
     }, []);
 
     const calculateDeliveryFee = (neighborhood: string, tipoEntrega: string) => {
@@ -178,7 +240,6 @@ export default function MenuDisplay() {
         if (item.category === 'pizzas' && size && item.sizes) {
             const sizeKey = size as keyof typeof item.sizes;
 
-            // Se for pizza meio a meio, pega o preço mais alto dos dois sabores
             if (observation && observation.includes('Meio a meio:')) {
                 const [sabor1, sabor2] = observation.split('Meio a meio:')[1].split('/').map(s => s.trim());
                 const pizzas = menuItems.filter((p: MenuItem) => p.category === 'pizzas');
@@ -237,18 +298,16 @@ export default function MenuDisplay() {
         setOrderDetails(cartItems);
         setShowWhatsAppModal(true);
     };
+
     const calculateItemPrice = (item: CartItem) => {
         let price = item.item.price;
 
-        // Se o item tem tamanhos (sizes) e um tamanho foi selecionado, usa o preço do tamanho
         if (item.size && item.item.sizes) {
-            // Garante que o tamanho existe nas opções
             if (item.item.sizes[item.size as keyof typeof item.item.sizes]) {
                 price = item.item.sizes[item.size as keyof typeof item.item.sizes] ?? price;
             }
         }
 
-        // Lógica especial para pizzas meio a meio
         if (
             item.item.category === 'pizzas' &&
             item.size &&
@@ -271,7 +330,6 @@ export default function MenuDisplay() {
             }
         }
 
-        // Borda e extras (apenas para pizzas)
         if (item.item.category === 'pizzas' && item.size && item.item.sizes) {
             const sizeKey = item.size as keyof typeof item.item.sizes;
             if (item.border && item.item.borderOptions) {
@@ -385,100 +443,203 @@ export default function MenuDisplay() {
         }
     };
 
-    if (!isOpen) {
+    if (!restaurantIsOpen) {
         return (
-            <div className="text-center py-8">
-                <h2 className="text-2xl font-bold text-red-600 mb-4">Estabelecimento Fechado</h2>
-                <p className="text-gray-400 mb-4">Desculpe, estamos fechados no momento.</p>
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={toggleOpen}
-                    className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700"
-                >
-                    Abrir para Pedidos
-                </motion.button>
+            <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+                <div className="text-center max-w-md mx-auto">
+                    <div className="bg-gray-800 rounded-2xl shadow-2xl border border-yellow-500/30 p-8">
+                        {isLoadingSettings ? (
+                            <div className="mb-6">
+                                <div className="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                                    <svg className="w-8 h-8 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-2xl font-bold text-yellow-500 mb-3">Rei dos Salgados</h2>
+                                <p className="text-gray-300 text-lg">Verificando horário de funcionamento...</p>
+                            </div>
+                        ) : (
+                            <div className="mb-6">
+                                <div className="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-8 h-8 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-2xl font-bold text-yellow-500 mb-3">Estabelecimento Fechado</h2>
+                                <p className="text-gray-300 text-lg">Desculpe, estamos fechados no momento.</p>
+                            </div>
+                        )}
+                        
+                        <div className="space-y-4">
+                            <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                                <h3 className="text-yellow-400 font-semibold mb-2">Horário de Funcionamento</h3>
+                                <div className="text-gray-300 text-sm space-y-1">
+                                    {isLoadingSettings ? (
+                                        <div className="flex items-center justify-center py-4">
+                                            <svg className="animate-spin h-6 w-6 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            <span className="ml-2 text-gray-400">Carregando horários...</span>
+                                        </div>
+                                    ) : businessHours ? (
+                                        formatBusinessHours(businessHours)?.map((day, index) => (
+                                            <div key={index} className="flex justify-between">
+                                                <span>{day.day}:</span>
+                                                {day.open ? (
+                                                    <span className="text-white font-medium">
+                                                        {day.start.slice(0, 2)}h{day.start.slice(3, 5)} às {day.end.slice(0, 2)}h{day.end.slice(3, 5)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-red-400 font-medium">Fechado</span>
+                                                )}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-gray-400">Não encontramos horários disponíveis.</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (isLoadingSettings) {
+        return (
+            <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="mb-6">
+                        <div className="w-20 h-20 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                            <svg className="w-10 h-10 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-yellow-500 mb-2">Rei dos Salgados</h2>
+                        <p className="text-gray-400">Carregando cardápio...</p>
+                    </div>
+                    <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-500"></div>
+                        <span className="text-gray-400">Preparando tudo para você</span>
+                    </div>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-900 p-4">
-            <div className="max-w-7xl mx-auto px-4 py-4">
-                <div className="sticky top-0 z-20 w-full bg-gray-900 border-b border-yellow-500 shadow-sm">
-                    <div className="flex justify-center gap-8 py-2 overflow-x-auto">
-                        {categories.map(category => (
-                            <button
-                                key={category}
-                                onClick={() => handleCategoryClick(category)}
-                                className={`
-                                    text-base md:text-lg font-bold uppercase tracking-wide px-2 md:px-4 transition-colors
-                                    ${selectedCategory === category
-                                        ? 'text-yellow-400 border-b-2 border-yellow-400'
-                                        : 'text-white hover:text-yellow-400 border-b-2 border-transparent'}
-                                `}
-                                style={{ background: 'none', outline: 'none' }}
-                            >
-                                {category === 'salgados' ? 'Salgados' : 'Porções'}
-                            </button>
-                        ))}
+        <div className="min-h-screen bg-gray-900 overflow-x-hidden">
+            <div className="max-w-7xl mx-auto">
+                {/* Barra de Navegação Responsiva */}
+                <div className="sticky top-0 z-30 w-full bg-gray-900 border-b border-yellow-500/50 shadow-lg overflow-hidden">
+                    <div className="px-2 py-3 md:py-4">
+                        <div className="flex justify-start items-center gap-2 md:gap-8 overflow-x-auto scrollbar-hide w-full max-w-full">
+                            {(categories || []).map(cat => (
+                                <button
+                                    key={cat._id}
+                                    data-category={cat._id}
+                                    onClick={() => handleCategoryClick(cat._id)}
+                                    className={`
+                                        whitespace-nowrap min-w-max text-sm md:text-base lg:text-lg font-bold uppercase tracking-wide 
+                                        px-3 md:px-4 py-2 rounded-lg transition-all duration-200 flex-shrink-0
+                                        ${selectedCategory === cat._id
+                                            ? 'text-yellow-400 bg-yellow-500/10 border-2 border-yellow-400 shadow-lg'
+                                            : 'text-white hover:text-yellow-400 hover:bg-gray-800/50 border-2 border-transparent'}
+                                    `}
+                                    style={{ background: 'none', outline: 'none' }}
+                                >
+                                    {cat.name}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="space-y-8"
-                >
-                    {categories.map(category => (
-                        <div key={category} id={`category-${category}`} className="space-y-4">
-                            <h2 className="text-lg font-semibold text-white capitalize mb-4 mt-8 pl-4 tracking-wide">
-                                {category}
-                            </h2>
-                            <div className="flex flex-col gap-4">
-                                {menuItems
-                                    .filter(item => item.category === category)
-                                    .map((item) => (
-                                        <motion.div
-                                            key={item._id}
-                                            variants={itemVariants}
-                                            initial="hidden"
-                                            animate="visible"
-                                            onClick={() => setMiniModalItem(item)}
-                                            className="flex items-center bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 border border-yellow-500 p-2 md:p-4 cursor-pointer hover:bg-gray-750"
-                                        >
-                                            <div className="flex-shrink-0 w-20 h-20 md:w-28 md:h-28 rounded-lg overflow-hidden bg-gray-900">
-                                                <Image
-                                                    src={item.image || '/placeholder.jpg'}
-                                                    alt={item.name}
-                                                    width={112}
-                                                    height={112}
-                                                    className="object-cover w-full h-full"
-                                                />
-                                            </div>
-                                            <div className="flex-1 min-w-0 px-3 md:px-6">
-                                                <h3 className="text-base md:text-lg font-semibold text-white mb-1 break-words">{item.name}</h3>
-                                                <p className="text-gray-400 text-xs md:text-sm mb-2 line-clamp-2">{item.description}</p>
-                                                <span className="text-yellow-500 font-bold text-base md:text-lg">R$ {item.price.toFixed(2)}</span>
-                                            </div>
-                                            <motion.button
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setMiniModalItem(item);
-                                                }}
-                                                className="bg-yellow-500 text-gray-900 p-3 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-200 ml-2 relative z-10"
-                                            >
-                                                <FaPlus />
-                                            </motion.button>
-                                        </motion.div>
-                                    ))}
-                            </div>
+                {/* Conteúdo Principal */}
+                <div className="p-4">
+                    {(categories || []).length === 0 ? (
+                        <div className="text-center text-gray-400 py-16 text-lg font-semibold">
+                            Sem itens e categorias adicionadas
                         </div>
-                    ))}
-                </motion.div>
+                    ) : (
+                        <motion.div
+                            variants={containerVariants}
+                            initial="hidden"
+                            animate="visible"
+                            className="space-y-8"
+                        >
+                            {(categories || []).map(cat => {
+                                const itemsInCategory = menuItems.filter((item: MenuItem) => item.category === cat._id);
+                                return (
+                                <div key={cat._id} id={`category-${cat._id}`} className="space-y-4">
+                                    <h2 className="text-lg font-semibold text-white capitalize mb-4 mt-8 pl-4 tracking-wide">
+                                        {cat.name}
+                                    </h2>
+                                    <div className="flex flex-col gap-4">
+                                        {itemsInCategory.length === 0 ? (
+                                            <div className="text-gray-500 text-sm italic px-4 py-6">Nenhum item nesta categoria</div>
+                                        ) : (
+                                            itemsInCategory.map((item: MenuItem) => (
+                                                <motion.div
+                                                    key={item._id}
+                                                    variants={itemVariants}
+                                                    initial="hidden"
+                                                    animate="visible"
+                                                    onClick={() => setMiniModalItem(item)}
+                                                    className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 border border-yellow-500 cursor-pointer hover:bg-gray-750 hover:border-yellow-400"
+                                                >
+                                                        <div className="flex flex-col sm:flex-row w-full">
+                                                            {/* Imagem */}
+                                                            <div className="flex-shrink-0 w-full sm:w-24 md:w-28 h-32 sm:h-24 md:h-28 bg-gray-900">
+                                                                <Image
+                                                                    src={item.image || '/placeholder.jpg'}
+                                                                    alt={item.name}
+                                                                    width={112}
+                                                                    height={112}
+                                                                    className="object-cover w-full h-full"
+                                                                />
+                                                            </div>
+                                                            
+                                                            {/* Conteúdo */}
+                                                            <div className="flex-1 p-3 md:p-4 flex flex-col justify-between min-h-0 w-full">
+                                                                <div className="flex-1">
+                                                                    <h3 className="text-base md:text-lg font-semibold text-white mb-2 break-words line-clamp-2 leading-tight" title={item.name}>
+                                                                        {item.name}
+                                                                    </h3>
+                                                                    <p className="text-gray-400 text-xs md:text-sm mb-3 line-clamp-2 sm:line-clamp-3 break-words leading-relaxed" title={item.description}>
+                                                                        {item.description}
+                                                                    </p>
+                                                                </div>
+                                                                
+                                                                {/* Preço e Botão */}
+                                                                <div className="flex items-center justify-between mt-auto w-full">
+                                                                    <span className="text-yellow-500 font-bold text-lg md:text-xl">R$ {item.price.toFixed(2)}</span>
+                                                                    <motion.button
+                                                                        whileHover={{ scale: 1.05 }}
+                                                                        whileTap={{ scale: 0.95 }}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setMiniModalItem(item);
+                                                                        }}
+                                                                        className="bg-yellow-500 text-gray-900 p-2 md:p-3 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-200 flex-shrink-0"
+                                                                    >
+                                                                        <FaPlus className="text-sm md:text-base" />
+                                                                    </motion.button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                ))
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                            })}
+                        </motion.div>
+                    )}
+                </div>
 
                 <AnimatePresence>
                     {selectedItem && (
@@ -614,7 +775,7 @@ export default function MenuDisplay() {
                                         setOrderSuccessId(null);
                                     }}
                                 >
-                                    OK
+                                    Fechar
                                 </motion.button>
                             </motion.div>
                         </motion.div>
