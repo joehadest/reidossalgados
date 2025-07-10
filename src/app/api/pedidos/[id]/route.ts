@@ -8,19 +8,31 @@ export async function GET(
     { params }: { params: { id: string } }
 ) {
     try {
+        console.log('API: Buscando pedido com ID:', params.id);
+        
         const { db } = await connectToDatabase();
         const collection = db.collection('pedidos');
 
         const pedido = await collection.findOne({ _id: new ObjectId(params.id) });
 
+        console.log('API: Pedido encontrado:', pedido);
+
         if (!pedido) {
+            console.log('API: Pedido não encontrado');
             return NextResponse.json(
                 { error: 'Pedido não encontrado' },
                 { status: 404 }
             );
         }
 
-        return NextResponse.json(pedido);
+        // Converter ObjectId para string
+        const pedidoResponse = {
+            ...pedido,
+            _id: pedido._id.toString()
+        };
+
+        console.log('API: Retornando pedido:', pedidoResponse);
+        return NextResponse.json(pedidoResponse);
     } catch (error) {
         console.error('Erro ao buscar pedido:', error);
         return NextResponse.json(

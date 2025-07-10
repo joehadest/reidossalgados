@@ -36,6 +36,7 @@ interface Order {
     troco?: string;
     data: string;
     status: string;
+    observacoes?: string;
 }
 
 export default function PrintOrder() {
@@ -44,9 +45,12 @@ export default function PrintOrder() {
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [debugInfo, setDebugInfo] = useState<string>('');
 
     useEffect(() => {
-        console.log('useEffect executado, params:', params);
+        console.log('=== DEBUG: Iniciando página de impressão ===');
+        console.log('Params:', params);
+        console.log('OrderId:', orderId);
         
         const fetchOrder = async () => {
             try {
@@ -61,75 +65,132 @@ export default function PrintOrder() {
                 if (!response.ok) {
                     throw new Error('Pedido não encontrado');
                 }
+                
                 const data = await response.json();
-                console.log('Dados do pedido recebidos:', data);
-                setOrder(data.data || data);
-                console.log('Pedido definido no estado');
+                console.log('Dados brutos recebidos:', data);
+                
+                // Normalizar os dados para garantir compatibilidade
+                const normalizedOrder = normalizeOrderData(data);
+                console.log('Pedido normalizado:', normalizedOrder);
+                
+                setOrder(normalizedOrder);
+                setDebugInfo(`Pedido carregado: ${normalizedOrder._id}`);
             } catch (err) {
                 console.error('Erro na busca:', err);
                 setError('Erro ao carregar pedido');
+                setDebugInfo(`Erro: ${err}`);
             } finally {
                 setLoading(false);
-                console.log('Loading finalizado');
             }
         };
 
         if (params?.orderId) {
-            console.log('Iniciando busca do pedido');
             fetchOrder();
         } else {
-            console.log('Params ou orderId não encontrado');
+            setError('ID do pedido não fornecido');
+            setLoading(false);
         }
     }, [params?.orderId]);
 
-    useEffect(() => {
-        // Auto-print quando a página carrega
-        if (order && !loading) {
-            setTimeout(() => {
-                window.print();
-            }, 500);
+    // Função para normalizar os dados do pedido
+    const normalizeOrderData = (data: any): Order => {
+        console.log('=== NORMALIZAÇÃO DE DADOS ===');
+        console.log('Dados de entrada:', data);
+        
+        // Se os dados já estão no formato correto, retornar diretamente
+        if (data._id && data.cliente && data.itens) {
+            console.log('Dados já estão no formato correto');
+            return {
+                _id: data._id.toString(),
+                cliente: {
+                    nome: data.cliente.nome || 'N/A',
+                    telefone: data.cliente.telefone || 'N/A'
+                },
+                endereco: data.endereco,
+                itens: data.itens || [],
+                total: data.total || 0,
+                formaPagamento: data.formaPagamento || 'dinheiro',
+                tipoEntrega: data.tipoEntrega || 'retirada',
+                troco: data.troco || '',
+                data: data.data || new Date().toISOString(),
+                status: data.status || 'pendente',
+                observacoes: data.observacoes || ''
+            };
         }
-    }, [order, loading]);
 
-    const calculateItemPrice = (item: OrderItem) => {
-        let price = item.preco || 0;
-
-        // Adicionar preço da borda se houver
-        if (item.border && item.size) {
-            const borderPrice = item.size === 'G' ? 8.00 : 4.00;
-            price += borderPrice;
+        // Se não, tentar normalizar
+        const order = data.data || data;
+        console.log('Dados para normalizar:', order);
+        
+        if (!order) {
+            throw new Error('Dados do pedido inválidos');
         }
 
-        // Adicionar preços dos extras se houver
-        if (item.extras && item.extras.length > 0) {
-            // Aqui você precisaria ter acesso aos preços dos extras
-            // Por simplicidade, vou assumir um valor fixo
-            price += item.extras.length * 2.00; // R$ 2,00 por extra
-        }
+        const normalizedOrder: Order = {
+            _id: order._id?.toString() || 'N/A',
+            cliente: {
+                nome: order.cliente?.nome || 'N/A',
+                telefone: order.cliente?.telefone || 'N/A'
+            },
+            endereco: order.endereco,
+            itens: Array.isArray(order.itens) ? order.itens : [],
+            total: order.total || 0,
+            formaPagamento: order.formaPagamento || 'dinheiro',
+            tipoEntrega: order.tipoEntrega || 'retirada',
+            troco: order.troco || '',
+            data: order.data || new Date().toISOString(),
+            status: order.status || 'pendente',
+            observacoes: order.observacoes || ''
+        };
 
-        return price * (item.quantidade || 1);
+        console.log('Pedido normalizado final:', normalizedOrder);
+        return normalizedOrder;
     };
 
     const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                return 'Data inválida';
+            }
+            return date.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        } catch (error) {
+            console.error('Erro ao formatar data:', error);
+            return 'Data inválida';
+        }
     };
 
     const formatPhone = (phone: string) => {
-        if (!phone) return 'N/A';
-        return phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+        if (!phone || phone === 'N/A') return 'N/A';
+        const cleanPhone = phone.replace(/\D/g, '');
+        if (cleanPhone.length === 11) {
+            return cleanPhone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+        }
+        return phone;
+    };
+
+    const formatText = (text: string) => {
+        if (!text) return '';
+        // Decodificar caracteres especiais
+        try {
+            return decodeURIComponent(escape(text));
+        } catch {
+            return text;
+        }
     };
 
     if (loading) {
         return (
             <div className="print-container">
                 <div className="loading">Carregando pedido...</div>
+                <div className="debug-info">{debugInfo}</div>
             </div>
         );
     }
@@ -138,17 +199,23 @@ export default function PrintOrder() {
         return (
             <div className="print-container">
                 <div className="error">Erro: {error || 'Pedido não encontrado'}</div>
+                <div className="debug-info">{debugInfo}</div>
             </div>
         );
     }
 
-    // Log para debugar a estrutura do pedido
-    console.log('Estrutura completa do pedido:', order);
+    console.log('=== RENDERIZANDO PEDIDO ===');
+    console.log('Order ID:', order._id);
     console.log('Cliente:', order.cliente);
     console.log('Itens:', order.itens);
 
     return (
         <div className="print-container">
+            {/* Debug Info (visível apenas na tela) */}
+            <div className="debug-info" style={{ display: 'none' }}>
+                Debug: {debugInfo} | Order ID: {order._id}
+            </div>
+
             {/* Cabeçalho */}
             <div className="header">
                 <div className="logo">
@@ -164,30 +231,24 @@ export default function PrintOrder() {
             <div className="customer-info">
                 <div className="section-title">CLIENTE</div>
                 <div className="customer-details">
-                    <div><strong>Nome:</strong> {order.cliente?.nome || (order as any).customerName || 'N/A'}</div>
-                    <div><strong>Telefone:</strong> {formatPhone(order.cliente?.telefone || (order as any).customerPhone || '')}</div>
+                    <div><strong>Nome:</strong> {formatText(order.cliente?.nome || 'N/A')}</div>
+                    <div><strong>Telefone:</strong> {formatPhone(order.cliente?.telefone || '')}</div>
                 </div>
             </div>
 
             {/* Endereço (se for entrega) */}
-            {((order.tipoEntrega === 'entrega') || (order as any).deliveryType === 'entrega') && (order.endereco || (order as any).customerAddress) && (
+            {order.tipoEntrega === 'entrega' && order.endereco && (
                 <div className="address-info">
-                    <div className="section-title">ENTREGA</div>
+                    <div className="section-title">ENDEREÇO DE ENTREGA</div>
                     <div className="address-details">
-                        {order.endereco ? (
-                            <>
-                                <div>{order.endereco.address.street}, {order.endereco.address.number}</div>
-                                {order.endereco.address.complement && <div>Complemento: {order.endereco.address.complement}</div>}
-                                <div>Bairro: {order.endereco.address.neighborhood}</div>
-                                {order.endereco.address.referencePoint && <div>Referência: {order.endereco.address.referencePoint}</div>}
-                            </>
-                        ) : (
-                            <>
-                                <div>{(order as any).customerAddress}</div>
-                                {(order as any).customerComplement && <div>Complemento: {(order as any).customerComplement}</div>}
-                                <div>Bairro: {(order as any).customerNeighborhood}</div>
-                                {(order as any).customerReferencePoint && <div>Referência: {(order as any).customerReferencePoint}</div>}
-                            </>
+                        <div>{formatText(order.endereco.address.street)}, {order.endereco.address.number}</div>
+                        {order.endereco.address.complement && <div>Complemento: {formatText(order.endereco.address.complement)}</div>}
+                        <div>Bairro: {formatText(order.endereco.address.neighborhood)}</div>
+                        {order.endereco.address.referencePoint && <div>Referência: {formatText(order.endereco.address.referencePoint)}</div>}
+                        {order.endereco.deliveryFee > 0 && (
+                            <div className="delivery-fee">
+                                <strong>Taxa de entrega: R$ {order.endereco.deliveryFee.toFixed(2)}</strong>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -195,26 +256,26 @@ export default function PrintOrder() {
 
             {/* Itens do Pedido */}
             <div className="order-items">
-                <div className="section-title">ITENS</div>
+                <div className="section-title">ITENS DO PEDIDO</div>
                 {order.itens && Array.isArray(order.itens) && order.itens.length > 0 ? (
                     order.itens.map((item: OrderItem, index: number) => (
                         <div key={index} className="item">
                             <div className="item-header">
                                 <span className="item-quantity">{item.quantidade}x</span>
-                                <span className="item-name">{item.nome}</span>
-                                <span className="item-price">R$ {calculateItemPrice(item).toFixed(2)}</span>
+                                <span className="item-name">{formatText(item.nome)}</span>
+                                <span className="item-price">R$ {(item.preco * item.quantidade).toFixed(2)}</span>
                             </div>
                             {item.size && (
-                                <div className="item-detail">Tamanho: {item.size}</div>
+                                <div className="item-detail">Tamanho: {formatText(item.size)}</div>
                             )}
                             {item.observacao && (
-                                <div className="item-detail">Obs: {item.observacao}</div>
+                                <div className="item-detail">Obs: {formatText(item.observacao)}</div>
                             )}
                             {item.border && (
-                                <div className="item-detail">Borda: {item.border}</div>
+                                <div className="item-detail">Borda: {formatText(item.border)}</div>
                             )}
                             {item.extras && item.extras.length > 0 && (
-                                <div className="item-detail">Extras: {item.extras.join(', ')}</div>
+                                <div className="item-detail">Extras: {item.extras.map(formatText).join(', ')}</div>
                             )}
                         </div>
                     ))
@@ -223,33 +284,41 @@ export default function PrintOrder() {
                 )}
             </div>
 
+            {/* Observações */}
+            {order.observacoes && (
+                <div className="observations">
+                    <div className="section-title">OBSERVAÇÕES</div>
+                    <div className="observations-text">{formatText(order.observacoes)}</div>
+                </div>
+            )}
+
             {/* Resumo Financeiro */}
             <div className="financial-summary">
                 <div className="section-title">RESUMO</div>
                 <div className="summary-line">
                     <span>Subtotal:</span>
-                    <span>R$ {((order.total || 0) - (order.endereco?.deliveryFee || (order as any).deliveryFee || 0)).toFixed(2)}</span>
+                    <span>R$ {order.itens.reduce((total, item) => total + (item.preco * item.quantidade), 0).toFixed(2)}</span>
                 </div>
-                {(order.endereco?.deliveryFee || (order as any).deliveryFee || 0) > 0 && (
+                {order.endereco?.deliveryFee && order.endereco.deliveryFee > 0 && (
                     <div className="summary-line">
                         <span>Taxa de Entrega:</span>
-                        <span>R$ {(order.endereco?.deliveryFee || (order as any).deliveryFee || 0).toFixed(2)}</span>
+                        <span>R$ {order.endereco.deliveryFee.toFixed(2)}</span>
                     </div>
                 )}
                 <div className="summary-line total">
                     <span>TOTAL:</span>
-                    <span>R$ {(order.total || 0).toFixed(2)}</span>
+                    <span>R$ {order.total.toFixed(2)}</span>
                 </div>
             </div>
 
             {/* Informações de Pagamento */}
             <div className="payment-info">
-                <div className="section-title">PAGAMENTO</div>
+                <div className="section-title">FORMA DE PAGAMENTO</div>
                 <div className="payment-details">
-                    <div><strong>Forma:</strong> {(order.formaPagamento || (order as any).paymentMethod || 'N/A').toUpperCase()}</div>
-                    <div><strong>Tipo:</strong> {(order.tipoEntrega || (order as any).deliveryType || 'N/A').toUpperCase()}</div>
-                    {(order.troco || (order as any).troco) && (
-                        <div><strong>Troco para:</strong> R$ {order.troco || (order as any).troco}</div>
+                    <div><strong>Forma:</strong> {(order.formaPagamento || 'N/A').toUpperCase()}</div>
+                    <div><strong>Tipo:</strong> {(order.tipoEntrega || 'N/A').toUpperCase()}</div>
+                    {order.troco && (
+                        <div><strong>Troco para:</strong> R$ {order.troco}</div>
                     )}
                 </div>
             </div>
@@ -293,6 +362,14 @@ export default function PrintOrder() {
                     color: black;
                 }
 
+                .debug-info {
+                    background: yellow;
+                    padding: 10px;
+                    margin: 10px 0;
+                    font-size: 10px;
+                    border: 1px solid red;
+                }
+
                 .header {
                     text-align: center;
                     margin-bottom: 10px;
@@ -329,13 +406,24 @@ export default function PrintOrder() {
                     font-size: 11px;
                 }
 
-                .customer-info, .address-info, .order-items, .financial-summary, .payment-info, .order-status {
+                .customer-info, .address-info, .order-items, .observations, .financial-summary, .payment-info, .order-status {
                     margin-bottom: 10px;
                 }
 
                 .customer-details, .address-details, .payment-details {
                     font-size: 11px;
                     line-height: 1.3;
+                }
+
+                .delivery-fee {
+                    margin-top: 5px;
+                    color: #000;
+                }
+
+                .observations-text {
+                    font-size: 11px;
+                    line-height: 1.3;
+                    font-style: italic;
                 }
 
                 .item {
@@ -457,27 +545,34 @@ export default function PrintOrder() {
                     color: red;
                 }
 
-                /* Estilos para impressão */
                 @media print {
-                    .print-button-container {
+                    .print-button-container, .debug-info {
                         display: none;
                     }
-
+                    
                     .print-container {
-                        width: 80mm;
-                        max-width: 80mm;
+                        width: 100%;
+                        max-width: none;
                         margin: 0;
                         padding: 0;
+                    }
+
+                    /* Remover cabeçalho e rodapé do navegador na impressão */
+                    @page {
+                        margin: 0;
+                        size: 80mm auto;
                     }
 
                     body {
                         margin: 0;
                         padding: 0;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
 
-                    @page {
-                        size: 80mm auto;
-                        margin: 0;
+                    /* Ocultar elementos do navegador */
+                    header, footer, nav, aside {
+                        display: none !important;
                     }
                 }
             `}</style>

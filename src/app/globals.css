@@ -100,3 +100,44 @@ body {
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: #eab308;
 }
+
+/* Estilos específicos para impressão */
+@media print {
+    /* Remover todos os elementos de navegação e cabeçalho */
+    header, footer, nav, aside, .print-button-container {
+        display: none !important;
+    }
+    
+    /* Configurar página para impressão térmica */
+    @page {
+        margin: 0;
+        size: 80mm auto;
+    }
+    
+    /* Resetar estilos do body para impressão */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        color: black !important;
+        font-family: 'Courier New', monospace !important;
+        line-height: 1.2 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    /* Garantir que o container de impressão ocupe toda a largura */
+    .print-container {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 5mm !important;
+        background: white !important;
+        color: black !important;
+    }
+    
+    /* Ocultar elementos desnecessários */
+    .debug-info, .loading, .error {
+        display: none !important;
+    }
+}
