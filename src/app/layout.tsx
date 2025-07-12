@@ -54,7 +54,7 @@ export default function RootLayout({
                 <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
                 <meta name="theme-color" content="#facc15" />
             </head>
-            <body className="bg-gray-900 min-h-screen overflow-x-hidden">
+            <body className="bg-gray-900 min-h-screen">
                 <RestaurantStatusProvider>
                 <CartProvider>
                     <MenuProvider>

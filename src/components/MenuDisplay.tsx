@@ -6,7 +6,7 @@ import ItemModal from './ItemModal';
 import Cart from './Cart';
 import { MenuItem } from '@/types/menu';
 import Image from 'next/image';
-import { FaExclamationCircle, FaWhatsapp, FaShare, FaShoppingCart, FaPlus, FaPrint } from 'react-icons/fa';
+import { FaExclamationCircle, FaWhatsapp, FaShare, FaShoppingCart, FaPlus, FaPrint, FaBars, FaTimes, FaUtensils, FaIceCream, FaCoffee, FaGlassWhiskey, FaWineGlass } from 'react-icons/fa';
 import { useCart } from '../contexts/CartContext';
 import { CartItem } from '../types/cart';
 import PastaModal from './PastaModal';
@@ -70,8 +70,23 @@ export default function MenuDisplay() {
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [whatsappNumber, setWhatsappNumber] = useState<string>('');
     const [pixKey, setPixKey] = useState<string>('');
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [touchStart, setTouchStart] = useState<number | null>(null);
+    const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
+    // Filtro para itens de pizza (se existirem no banco)
     const allPizzas = menuItems.filter((item: MenuItem) => item.category === 'pizzas');
+
+    // Função para obter ícone da categoria
+    const getCategoryIcon = (categoryName: string) => {
+        const name = categoryName.toLowerCase();
+        if (name.includes('salgado') || name.includes('salgados')) return FaUtensils;
+        if (name.includes('bebida') || name.includes('drink')) return FaGlassWhiskey;
+        if (name.includes('sobremesa') || name.includes('dessert')) return FaIceCream;
+        if (name.includes('café') || name.includes('coffee')) return FaCoffee;
+        if (name.includes('vinho') || name.includes('wine')) return FaWineGlass;
+        return FaUtensils; // Ícone padrão para salgados
+    };
 
     // Função para formatar horários de funcionamento
     const formatBusinessHours = (hours: any) => {
@@ -195,6 +210,55 @@ export default function MenuDisplay() {
         }
     }, [categories, selectedCategory]);
 
+    // Fechar menu com tecla Escape e swipe
+    useEffect(() => {
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setIsMenuOpen(false);
+            }
+        };
+
+        const handleTouchStart = (e: TouchEvent) => {
+            setTouchStart(e.targetTouches[0].clientX);
+        };
+
+        const handleTouchMove = (e: TouchEvent) => {
+            setTouchEnd(e.targetTouches[0].clientX);
+        };
+
+        const handleTouchEnd = () => {
+            if (!touchStart || !touchEnd) return;
+            
+            const distance = touchStart - touchEnd;
+            const isLeftSwipe = distance > 50;
+            
+            if (isLeftSwipe && isMenuOpen) {
+                setIsMenuOpen(false);
+            }
+            
+            setTouchStart(null);
+            setTouchEnd(null);
+        };
+
+        if (isMenuOpen) {
+            document.addEventListener('keydown', handleEscape);
+            document.addEventListener('touchstart', handleTouchStart);
+            document.addEventListener('touchmove', handleTouchMove);
+            document.addEventListener('touchend', handleTouchEnd);
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleEscape);
+            document.removeEventListener('touchstart', handleTouchStart);
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleTouchEnd);
+            document.body.style.overflow = 'unset';
+        };
+    }, [isMenuOpen, touchStart, touchEnd]);
+
     // Scroll horizontal automático da barra de categorias
     useEffect(() => {
         if (!selectedCategory) return;
@@ -206,6 +270,7 @@ export default function MenuDisplay() {
 
     const handleCategoryClick = (category: string | null) => {
         setSelectedCategory(category);
+        setIsMenuOpen(false); // Fecha o menu ao selecionar uma categoria
         if (category) {
             const element = document.getElementById(`category-${category}`);
             if (element) {
@@ -535,35 +600,170 @@ export default function MenuDisplay() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-900 overflow-x-hidden">
-            <div className="max-w-7xl mx-auto">
-                {/* Barra de Navegação Responsiva */}
-                <div className="sticky top-0 z-30 w-full bg-gray-900 border-b border-yellow-500/50 shadow-lg overflow-hidden">
-                    <div className="px-2 py-3 md:py-4">
-                        <div className="flex justify-start items-center gap-2 md:gap-8 overflow-x-auto scrollbar-hide w-full max-w-full">
-                            {(categories || []).map(cat => (
-                                <button
-                                    key={cat._id}
-                                    data-category={cat._id}
-                                    onClick={() => handleCategoryClick(cat._id)}
-                                    className={`
-                                        whitespace-nowrap min-w-max text-sm md:text-base lg:text-lg font-bold uppercase tracking-wide 
-                                        px-3 md:px-4 py-2 rounded-lg transition-all duration-200 flex-shrink-0
-                                        ${selectedCategory === cat._id
-                                            ? 'text-yellow-400 bg-yellow-500/10 border-2 border-yellow-400 shadow-lg'
-                                            : 'text-white hover:text-yellow-400 hover:bg-gray-800/50 border-2 border-transparent'}
-                                    `}
-                                    style={{ background: 'none', outline: 'none' }}
-                                >
-                                    {cat.name}
-                                </button>
-                            ))}
+        <div className="min-h-screen bg-gray-900">
+            <div className="max-w-7xl mx-auto px-4">
+                {/* Barra de Navegação com Menu Hambúrguer */}
+                <div className="sticky top-0 z-30 w-full bg-gray-900 border-b border-yellow-500/50 shadow-lg -mx-4">
+                    <div className="px-4 py-3 md:py-4 flex items-center justify-between">
+                        {/* Botão Hambúrguer */}
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            className="flex items-center gap-2 text-white hover:text-yellow-400 transition-colors duration-200 relative"
+                            disabled={categories.length === 0}
+                        >
+                            <div className="relative">
+                                <motion.div
+                                    animate={isMenuOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="w-6 h-0.5 bg-current mb-1.5"
+                                />
+                                <motion.div
+                                    animate={isMenuOpen ? { opacity: 0 } : { opacity: 1 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="w-6 h-0.5 bg-current mb-1.5"
+                                />
+                                <motion.div
+                                    animate={isMenuOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="w-6 h-0.5 bg-current"
+                                />
+                            </div>
+                            <span className="hidden sm:inline font-semibold text-sm">Categorias</span>
+                            
+                            {/* Indicador de categorias disponíveis */}
+                            {categories.length > 0 && (
+                                <motion.div
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full"
+                                />
+                            )}
+                        </motion.button>
+
+                        {/* Categoria Atual */}
+                        <div className="flex-1 text-center">
+                            <span className="text-yellow-400 font-bold text-lg capitalize">
+                                {categories.find(cat => cat._id === selectedCategory)?.name || 'Cardápio'}
+                            </span>
                         </div>
+
+                        {/* Espaçador para manter o título centralizado */}
+                        <div className="w-20 sm:w-24"></div>
                     </div>
                 </div>
 
+                {/* Menu Lateral de Categorias */}
+                <AnimatePresence>
+                    {isMenuOpen && (
+                        <>
+                            {/* Overlay */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                                onClick={() => setIsMenuOpen(false)}
+                            />
+                            
+                            {/* Menu Lateral */}
+                            <motion.div
+                                initial={{ x: -300, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                exit={{ x: -300, opacity: 0 }}
+                                transition={{ 
+                                    type: "spring", 
+                                    damping: 25, 
+                                    stiffness: 300,
+                                    opacity: { duration: 0.2 }
+                                }}
+                                className="fixed left-0 top-0 h-full w-80 max-w-[85vw] bg-gray-900 border-r border-yellow-500/50 shadow-2xl z-50 overflow-y-auto backdrop-blur-sm"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(17, 24, 39, 0.98) 100%)'
+                                }}
+                            >
+                                <div className="p-8 md:p-6">
+                                    {/* Header do Menu */}
+                                    <div className="flex items-center justify-between mb-8 md:mb-6">
+                                        <h2 className="text-xl font-bold text-yellow-400">Categorias</h2>
+                                        <motion.button
+                                            whileHover={{ scale: 1.1 }}
+                                            whileTap={{ scale: 0.9 }}
+                                            onClick={() => setIsMenuOpen(false)}
+                                            className="text-gray-400 hover:text-white transition-colors"
+                                        >
+                                            <FaTimes className="w-5 h-5" />
+                                        </motion.button>
+                                    </div>
+
+                                    {/* Lista de Categorias */}
+                                    <div className="space-y-3 md:space-y-2">
+                                                                                {(categories || []).map((cat, index) => {
+                                            const itemCount = menuItems.filter((item: MenuItem) => item.category === cat._id).length;
+                                            const CategoryIcon = getCategoryIcon(cat.name);
+                                            return (
+                                                <motion.button
+                                                    key={cat._id}
+                                                    initial={{ opacity: 0, x: -20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: index * 0.05 }}
+                                                    onClick={() => handleCategoryClick(cat._id)}
+                                                    className={`
+                                                        w-full text-left p-5 md:p-4 rounded-lg transition-all duration-300 group
+                                                        ${selectedCategory === cat._id
+                                                            ? 'bg-yellow-500/20 text-yellow-400 border-l-4 border-yellow-400 shadow-lg'
+                                                            : 'text-white hover:bg-gray-800/80 hover:text-yellow-400 border-l-4 border-transparent hover:border-l-yellow-400/50 hover:shadow-md'
+                                                        }
+                                                    `}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-4 md:gap-3">
+                                                            <div className={`
+                                                                p-3 md:p-2 rounded-lg transition-all duration-300
+                                                                ${selectedCategory === cat._id
+                                                                    ? 'bg-yellow-500/30 text-yellow-400'
+                                                                    : 'bg-gray-800/50 text-gray-400 group-hover:bg-yellow-500/20 group-hover:text-yellow-400'
+                                                                }
+                                                            `}>
+                                                                <CategoryIcon className="w-5 h-5 md:w-4 md:h-4" />
+                                                            </div>
+                                                            <div className="flex flex-col items-start">
+                                                                <span className="font-semibold capitalize text-base md:text-sm">{cat.name}</span>
+                                                                <span className="text-sm md:text-xs text-gray-400 mt-1">
+                                                                    {itemCount} {itemCount === 1 ? 'item' : 'itens'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        {selectedCategory === cat._id && (
+                                                            <motion.div
+                                                                initial={{ scale: 0 }}
+                                                                animate={{ scale: 1 }}
+                                                                className="w-2 h-2 bg-yellow-400 rounded-full"
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </motion.button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Footer do Menu */}
+                                    <div className="mt-12 md:mt-8 pt-8 md:pt-6 border-t border-gray-700">
+                                        <div className="text-center text-gray-400 text-base md:text-sm">
+                                            <p>Rei dos Salgados</p>
+                                            <p className="mt-1">Cardápio Digital</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
+
                 {/* Conteúdo Principal */}
-                <div className="p-4">
+                <div className="py-4">
                     {(categories || []).length === 0 ? (
                         <div className="text-center text-gray-400 py-16 text-lg font-semibold">
                             Sem itens e categorias adicionadas
@@ -693,7 +893,7 @@ export default function MenuDisplay() {
                             exit={{ opacity: 0 }}
                         >
                             <motion.div
-                                className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full mx-4 text-center max-h-[90vh] overflow-y-auto"
+                                className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full mx-4 text-center max-h-[90vh] overflow-y-auto overflow-x-hidden"
                                 initial={{ scale: 0.8 }}
                                 animate={{ scale: 1 }}
                                 exit={{ scale: 0.8 }}
@@ -765,7 +965,7 @@ export default function MenuDisplay() {
                             exit={{ opacity: 0 }}
                         >
                             <motion.div
-                                className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full mx-4 text-center"
+                                className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full mx-4 text-center overflow-x-hidden"
                                 initial={{ scale: 0.8 }}
                                 animate={{ scale: 1 }}
                                 exit={{ scale: 0.8 }}

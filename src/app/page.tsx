@@ -78,7 +78,7 @@ export default function Home() {
         <div className="min-h-screen bg-gray-900">
             {/* Banner + Logo + Info */}
             <div className="relative w-full flex justify-center mb-28 pb-4">
-                <div className="w-full max-w-6xl relative">
+                <div className="w-full relative">
                     <Image
                         src="/banner/banner.png"
                         alt="Banner Rei dos Salgados"
@@ -88,18 +88,18 @@ export default function Home() {
                         priority
                     />
                     {/* Logo sobreposta */}
-                    <div className="absolute left-2 sm:left-6 -bottom-20 sm:-bottom-32 flex items-center w-full max-w-full mt-3">
+                    <div className="absolute left-0 right-0 -bottom-20 sm:-bottom-32 flex items-center w-full max-w-6xl mx-auto mt-3 px-4">
                         <Image
                             src="/logo/logoreidossalgados.png"
                             alt="Logo Rei dos Salgados"
                             width={80}
                             height={80}
-                            className="rounded-xl border-4 border-white shadow-lg bg-white sm:w-[130px] sm:h-[130px] w-[80px] h-[80px]"
+                            className="rounded-xl border-4 border-white shadow-lg bg-white sm:w-[130px] sm:h-[130px] w-[80px] h-[80px] flex-shrink-0"
                         />
                         {/* Nome e ícones */}
-                        <div className="ml-3 sm:ml-6 flex flex-col justify-center min-w-0 mt-3">
+                        <div className="ml-3 sm:ml-6 flex flex-col justify-center min-w-0 mt-3 flex-1">
                             <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-xl sm:text-4xl md:text-5xl font-bold text-white drop-shadow-lg break-words">Rei dos Salgados</span>
+                                <span className="text-xl sm:text-4xl md:text-5xl font-bold text-white drop-shadow-lg break-words flex-1">Rei dos Salgados</span>
                                 <button
                                     className="ml-1 bg-yellow-500 text-black p-2 rounded-full shadow hover:bg-yellow-400 transition-colors flex items-center justify-center"
                                     onClick={() => setShowInfo(true)}
