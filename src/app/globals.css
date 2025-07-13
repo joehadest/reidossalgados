@@ -77,6 +77,50 @@ body {
     .category-title:hover::after {
         @apply scale-x-100;
     }
+
+    .brand-name {
+        word-break: keep-all;
+        overflow-wrap: break-word;
+        hyphens: auto;
+    }
+
+    /* Para dispositivos muito pequenos (abaixo de 320px) */
+    @media (max-width: 320px) {
+        .brand-name {
+            word-break: break-word;
+            overflow-wrap: break-word;
+            hyphens: manual;
+            line-height: 1.1;
+            white-space: normal;
+            word-spacing: 0.1em;
+        }
+    }
+
+    /* Para dispositivos extremamente pequenos (abaixo de 280px) */
+    @media (max-width: 280px) {
+        .brand-name {
+            font-size: 1rem !important;
+            line-height: 1.2;
+        }
+    }
+
+    /* Controle específico para evitar quebra inadequada */
+    @media (max-width: 320px) {
+        .brand-name {
+            display: inline-block;
+            max-width: 100%;
+        }
+    }
+
+    /* Ajustes para dispositivos muito pequenos */
+    @media (max-width: 320px) {
+        .brand-name {
+            font-size: 0.9rem !important;
+            line-height: 1.3;
+            word-break: break-all;
+            overflow-wrap: break-word;
+        }
+    }
 }
 
 /* Estilização da scrollbar */
