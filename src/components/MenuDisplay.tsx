@@ -66,7 +66,7 @@ export default function MenuDisplay() {
     const [miniModalItem, setMiniModalItem] = useState<MenuItem | null>(null);
     const [businessHours, setBusinessHours] = useState<any>(null);
     const [isLoadingSettings, setIsLoadingSettings] = useState(true);
-    const [categories, setCategories] = useState<{_id: string, name: string}[]>([]);
+    const [categories, setCategories] = useState<{ _id: string, name: string }[]>([]);
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [whatsappNumber, setWhatsappNumber] = useState<string>('');
     const [pixKey, setPixKey] = useState<string>('');
@@ -91,7 +91,7 @@ export default function MenuDisplay() {
     // Função para formatar horários de funcionamento
     const formatBusinessHours = (hours: any) => {
         if (!hours) return null;
-        
+
         const daysOfWeek = [
             { key: 'monday', label: 'Segunda' },
             { key: 'tuesday', label: 'Terça' },
@@ -206,7 +206,8 @@ export default function MenuDisplay() {
     // Definir categoria inicial
     useEffect(() => {
         if ((categories || []).length > 0 && !selectedCategory) {
-            setSelectedCategory((categories || [])[0]._id);
+            const salgadosCategory = categories.find(cat => cat.name.toLowerCase().includes('salgado'));
+            setSelectedCategory(salgadosCategory ? salgadosCategory._id : categories[0]._id);
         }
     }, [categories, selectedCategory]);
 
@@ -361,7 +362,7 @@ export default function MenuDisplay() {
         const addressInfo = tipoEntrega === 'entrega' ? `\nEndereço: ${customerAddress}, ${customerNumber}${customerComplement ? `, ${customerComplement}` : ''}\nBairro: ${customerNeighborhood}\nPonto de Referência: ${customerReferencePoint}` : '';
         const paymentInfo = formaPagamento === 'pix' ? '\nForma de Pagamento: PIX\n' :
             formaPagamento === 'dinheiro' ? `\nForma de Pagamento: Dinheiro${troco ? `\nTroco para: R$ ${troco}` : ''}\n` :
-            formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
+                formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
 
         const message = `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${cartItems.map(item => `${item.quantity}x ${item.item.name}${item.size ? ` (${item.size})` : ''}${item.observation ? ` - ${item.observation}` : ''} - R$ ${calculateItemPrice(item).toFixed(2)}`).join('\n')}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*${formaPagamento === 'pix' ? '\n\n*Chave PIX para pagamento:* 84 99872-9126' : ''}`;
 
@@ -437,9 +438,9 @@ export default function MenuDisplay() {
         const addressInfo = tipoEntrega === 'entrega' ? `\nEndereço: ${customerAddress}, ${customerNumber}${customerComplement ? `, ${customerComplement}` : ''}\nBairro: ${customerNeighborhood}\nPonto de Referência: ${customerReferencePoint}` : '';
         const paymentInfo = formaPagamento === 'pix' ? '\nForma de Pagamento: PIX\n' :
             formaPagamento === 'dinheiro' ? `\nForma de Pagamento: Dinheiro${troco ? `\nTroco para: R$ ${troco}` : ''}\n` :
-            formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
+                formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
 
-        const itemsInfo = cartItems.map(item => 
+        const itemsInfo = cartItems.map(item =>
             `${item.quantity}x ${item.item.name}${item.size ? ` (${item.size})` : ''}${item.observation ? ` - ${item.observation}` : ''} - R$ ${calculateItemPrice(item).toFixed(2)}`
         ).join('\n');
 
@@ -474,9 +475,9 @@ export default function MenuDisplay() {
         const addressInfo = tipoEntrega === 'entrega' ? `\nEndereço: ${customerAddress}, ${customerNumber}${customerComplement ? `, ${customerComplement}` : ''}\nBairro: ${customerNeighborhood}\nPonto de Referência: ${customerReferencePoint}` : '';
         const paymentInfo = formaPagamento === 'pix' ? '\nForma de Pagamento: PIX\n' :
             formaPagamento === 'dinheiro' ? `\nForma de Pagamento: Dinheiro${troco ? `\nTroco para: R$ ${troco}` : ''}\n` :
-            formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
+                formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
 
-        const itemsInfo = cartItems.map(item => 
+        const itemsInfo = cartItems.map(item =>
             `${item.quantity}x ${item.item.name}${item.size ? ` (${item.size})` : ''}${item.observation ? ` - ${item.observation}` : ''} - R$ ${calculateItemPrice(item).toFixed(2)}`
         ).join('\n');
 
@@ -513,6 +514,21 @@ export default function MenuDisplay() {
         }
     };
 
+    // Forçar seleção da primeira categoria ao rolar para o topo
+    useEffect(() => {
+        const handleScroll = () => {
+            if (window.scrollY < 30 && categories.length > 0) {
+                const salgadosCategory = categories.find(cat => cat.name.toLowerCase().includes('salgado'));
+                const firstCategoryId = salgadosCategory ? salgadosCategory._id : categories[0]._id;
+                if (selectedCategory !== firstCategoryId) {
+                    setSelectedCategory(firstCategoryId);
+                }
+            }
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [categories, selectedCategory]);
+
     if (!restaurantIsOpen) {
         return (
             <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
@@ -539,7 +555,7 @@ export default function MenuDisplay() {
                                 <p className="text-gray-300 text-lg">Desculpe, estamos fechados no momento.</p>
                             </div>
                         )}
-                        
+
                         <div className="space-y-4">
                             <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
                                 <h3 className="text-yellow-400 font-semibold mb-2">Horário de Funcionamento</h3>
@@ -778,23 +794,23 @@ export default function MenuDisplay() {
                             {(categories || []).map(cat => {
                                 const itemsInCategory = menuItems.filter((item: MenuItem) => item.category === cat._id);
                                 return (
-                                <div key={cat._id} id={`category-${cat._id}`} className="space-y-4">
-                                    <h2 className="text-lg font-semibold text-white capitalize mb-4 mt-8 pl-4 tracking-wide">
-                                        {cat.name}
-                                    </h2>
-                                    <div className="flex flex-col gap-4">
-                                        {itemsInCategory.length === 0 ? (
-                                            <div className="text-gray-500 text-sm italic px-4 py-6">Nenhum item nesta categoria</div>
-                                        ) : (
-                                            itemsInCategory.map((item: MenuItem) => (
-                                                <motion.div
-                                                    key={item._id}
-                                                    variants={itemVariants}
-                                                    initial="hidden"
-                                                    animate="visible"
-                                                    onClick={() => setMiniModalItem(item)}
-                                                    className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 border border-yellow-500 cursor-pointer hover:bg-gray-750 hover:border-yellow-400"
-                                                >
+                                    <div key={cat._id} id={`category-${cat._id}`} className="space-y-4">
+                                        <h2 className="text-lg font-semibold text-white capitalize mb-4 mt-8 pl-4 tracking-wide">
+                                            {cat.name}
+                                        </h2>
+                                        <div className="flex flex-col gap-4">
+                                            {itemsInCategory.length === 0 ? (
+                                                <div className="text-gray-500 text-sm italic px-4 py-6">Nenhum item nesta categoria</div>
+                                            ) : (
+                                                itemsInCategory.map((item: MenuItem) => (
+                                                    <motion.div
+                                                        key={item._id}
+                                                        variants={itemVariants}
+                                                        initial="hidden"
+                                                        animate="visible"
+                                                        onClick={() => setMiniModalItem(item)}
+                                                        className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 border border-yellow-500 cursor-pointer hover:bg-gray-750 hover:border-yellow-400"
+                                                    >
                                                         <div className="flex flex-col sm:flex-row w-full">
                                                             {/* Imagem */}
                                                             <div className="flex-shrink-0 w-full sm:w-24 md:w-28 h-32 sm:h-24 md:h-28 bg-gray-900">
@@ -806,7 +822,7 @@ export default function MenuDisplay() {
                                                                     className="object-cover w-full h-full"
                                                                 />
                                                             </div>
-                                                            
+
                                                             {/* Conteúdo */}
                                                             <div className="flex-1 p-3 md:p-4 flex flex-col justify-between min-h-0 w-full">
                                                                 <div className="flex-1">
@@ -817,7 +833,7 @@ export default function MenuDisplay() {
                                                                         {item.description}
                                                                     </p>
                                                                 </div>
-                                                                
+
                                                                 {/* Preço e Botão */}
                                                                 <div className="flex items-center justify-between mt-auto w-full">
                                                                     <span className="text-yellow-500 font-bold text-lg md:text-xl">R$ {item.price.toFixed(2)}</span>
@@ -837,10 +853,10 @@ export default function MenuDisplay() {
                                                         </div>
                                                     </motion.div>
                                                 ))
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            );
+                                );
                             })}
                         </motion.div>
                     )}
@@ -920,7 +936,7 @@ export default function MenuDisplay() {
                                             const addressInfo = tipoEntrega === 'entrega' ? `\nEndereço: ${customerAddress}, ${customerNumber}${customerComplement ? `, ${customerComplement}` : ''}\nBairro: ${customerNeighborhood}\nPonto de Referência: ${customerReferencePoint}` : '';
                                             const paymentInfo = formaPagamento === 'pix' ? '\nForma de Pagamento: PIX\n' :
                                                 formaPagamento === 'dinheiro' ? `\nForma de Pagamento: Dinheiro${troco ? `\nTroco para: R$ ${troco}` : ''}\n` :
-                                                formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
+                                                    formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
 
                                             const itemsInfo = cartItems.map(item =>
                                                 `${item.quantity}x ${item.item.name}${item.size ? ` (${item.size})` : ''}${item.observation ? ` - ${item.observation}` : ''} - R$ ${calculateItemPrice(item).toFixed(2)}`
@@ -973,7 +989,7 @@ export default function MenuDisplay() {
                                 <h2 className="text-2xl font-bold text-yellow-500 mb-4">Pedido Enviado!</h2>
                                 <p className="text-gray-300 mb-2">Anote o número do seu pedido para acompanhar em <b>Pedidos</b>:</p>
                                 <div className="text-3xl font-bold text-red-500 mb-4 break-all max-w-full" style={{ wordBreak: 'break-all' }}>{orderSuccessId}</div>
-                                
+
                                 <div className="flex justify-center">
                                     <motion.button
                                         whileHover={{ scale: 1.05 }}
@@ -1028,4 +1044,4 @@ export default function MenuDisplay() {
             </div>
         </div>
     );
-} 
+}

@@ -6,7 +6,22 @@ export async function GET() {
   try {
     const { db } = await connectToDatabase();
     const collection = db.collection('categories');
-    const categories = await collection.find({}).toArray();
+    let categories = await collection.find({}).toArray();
+    // Ordenação fixa desejada
+    const order = [
+      'Salgados',
+      'Bebidas',
+      'Sobremesas',
+      'Mini salgados para eventos'
+    ];
+    categories.sort((a, b) => {
+      const ia = order.findIndex(o => a.name.toLowerCase() === o.toLowerCase());
+      const ib = order.findIndex(o => b.name.toLowerCase() === o.toLowerCase());
+      if (ia === -1 && ib === -1) return 0;
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
     return NextResponse.json({ success: true, data: categories });
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Erro ao buscar categorias' }, { status: 500 });
@@ -73,4 +88,4 @@ export async function PUT(request: Request) {
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Erro ao editar categoria' }, { status: 500 });
   }
-} 
+}
