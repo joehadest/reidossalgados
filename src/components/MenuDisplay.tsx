@@ -619,14 +619,14 @@ export default function MenuDisplay() {
         <div className="min-h-screen bg-gray-900">
             <div className="max-w-7xl mx-auto px-4">
                 {/* Barra de Navegação com Menu Hambúrguer */}
-                <div className="sticky top-0 z-30 w-full bg-gray-900 border-b border-yellow-500/50 shadow-lg -mx-4">
-                    <div className="px-4 py-3 md:py-4 flex items-center justify-between">
+                <div className="sticky top-0 z-30 w-full bg-gray-900 shadow-lg">
+                    <div className="w-full border-b border-yellow-500/50 flex items-center h-14">
                         {/* Botão Hambúrguer */}
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="flex items-center gap-2 text-white hover:text-yellow-400 transition-colors duration-200 relative"
+                            className="px-4 h-full flex items-center gap-2 text-white hover:text-yellow-400 transition-colors duration-200 relative"
                             disabled={categories.length === 0}
                         >
                             <div className="relative">
@@ -647,15 +647,6 @@ export default function MenuDisplay() {
                                 />
                             </div>
                             <span className="hidden sm:inline font-semibold text-sm">Categorias</span>
-                            
-                            {/* Indicador de categorias disponíveis */}
-                            {categories.length > 0 && (
-                                <motion.div
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full"
-                                />
-                            )}
                         </motion.button>
 
                         {/* Categoria Atual */}
