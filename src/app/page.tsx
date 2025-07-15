@@ -98,12 +98,12 @@ export default function Home() {
                         />
                         {/* Nome e ícones */}
                         <div className="ml-3 sm:ml-6 flex flex-col justify-center min-w-0 mt-3 flex-1">
-                            <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-lg sm:text-4xl md:text-5xl font-bold text-white drop-shadow-lg flex-1 brand-name whitespace-nowrap truncate" style={{minWidth:0}}>
+                            <div className="flex items-center min-w-0 justify-start">
+                                <span className="text-lg sm:text-4xl md:text-5xl font-bold text-white drop-shadow-lg brand-name whitespace-nowrap leading-normal flex-shrink-0">
                                     Rei dos Salgados
                                 </span>
                                 <button
-                                    className="ml-1 bg-yellow-500 text-black p-2 rounded-full shadow hover:bg-yellow-400 transition-colors flex items-center justify-center"
+                                    className="bg-yellow-500 text-black p-1.5 rounded-full shadow hover:bg-yellow-400 transition-colors flex items-center justify-center ml-2 self-center"
                                     onClick={() => setShowInfo(true)}
                                     aria-label="Informações do restaurante"
                                 >
