@@ -19,6 +19,13 @@ export default function AdminAddItem() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editItem, setEditItem] = useState<Partial<MenuItem>>({});
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Filtra os itens baseado no termo de busca
+  const filteredItens = itens.filter(item => 
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   useEffect(() => {
     async function fetchCategorias() {
@@ -263,13 +270,42 @@ export default function AdminAddItem() {
 
       <div className="mt-6 sm:mt-8">
         <h3 className="text-base sm:text-lg font-semibold text-yellow-400 mb-2">Itens cadastrados</h3>
+        
+        <div className="mb-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Buscar itens por nome ou descrição..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full p-2 pl-8 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500"
+            />
+            <svg
+              className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           {itens.length === 0 ? (
             <div className="text-gray-400 text-sm">Nenhum item cadastrado ainda.</div>
+          ) : filteredItens.length === 0 ? (
+            <div className="text-gray-400 text-sm">Nenhum item encontrado para "{searchTerm}"</div>
           ) : (
             <div className="space-y-6">
               {categorias.map((categoria) => {
-                const itensCategoria = itens.filter(item => item.category === categoria._id);
+                const itensCategoria = filteredItens.filter(item => item.category === categoria._id);
                 if (itensCategoria.length === 0) return null;
                 
                 return (
