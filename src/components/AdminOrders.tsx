@@ -60,6 +60,11 @@ export default function AdminOrders() {
                         notifyOrders.push(novosPedidos[0]._id);
                         localStorage.setItem('notifyOrders', JSON.stringify(notifyOrders));
                     }
+                    // Abrir automaticamente a página de impressão do novo pedido apenas se não foi aberta nesta sessão
+                    if (!sessionStorage.getItem(`printed_${novosPedidos[0]._id}`)) {
+                        window.open(`/print/${novosPedidos[0]._id}`, '_blank');
+                        sessionStorage.setItem(`printed_${novosPedidos[0]._id}`, 'true');
+                    }
                 }
 
                 setPedidos(data.data);
@@ -465,16 +470,18 @@ export default function AdminOrders() {
             {pedidoSelecionado && (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-2 sm:p-4"
+            style={{ overscrollBehavior: 'contain' }}
             onClick={() => setPedidoSelecionado(null)}
         >
             <div
-              className="bg-gray-900 rounded-xl shadow-xl p-4 sm:p-8 w-full max-w-md mx-auto text-gray-200 border border-yellow-500 relative max-h-[90vh] overflow-y-auto"
+              className="bg-gray-900 rounded-xl shadow-xl p-2 xs:p-4 sm:p-8 w-full max-w-md mx-auto text-gray-200 border border-yellow-500 relative max-h-[90vh] overflow-y-auto"
+              style={{ width: '100%', maxWidth: '95vw', minHeight: 'auto', boxSizing: 'border-box' }}
               onClick={e => e.stopPropagation()}
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg sm:text-xl font-bold text-yellow-500">Pedido #{pedidoSelecionado._id}</h3>
+                <h3 className="text-base xs:text-lg sm:text-xl font-bold text-yellow-500 break-all">Pedido #{pedidoSelecionado._id}</h3>
                 <button
-                    className="text-gray-400 hover:text-white text-xl sm:text-2xl focus:outline-none"
+                    className="text-gray-400 hover:text-white text-xl sm:text-2xl focus:outline-none px-2"
                     onClick={() => setPedidoSelecionado(null)}
                     aria-label="Fechar modal de pedido"
                 >
@@ -523,7 +530,7 @@ export default function AdminOrders() {
                       <div className="space-y-3">
                           {pedidoSelecionado.itens.map((item, index) => (
                               <div key={index} className="border-b border-gray-700 pb-2 last:border-b-0">
-                                  <div className="flex justify-between items-start">
+                                  <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-2">
                                       <div className="flex-1">
                                           <p className="text-white font-medium text-sm sm:text-base">
                                               {item.quantidade}x {item.nome}
@@ -537,7 +544,7 @@ export default function AdminOrders() {
                                               <p className="text-gray-400 text-xs sm:text-sm italic">Obs: {item.observacao}</p>
                                           )}
                                       </div>
-                                      <p className="text-yellow-500 font-semibold ml-2 text-sm sm:text-base">
+                                      <p className="text-yellow-500 font-semibold ml-2 text-sm sm:text-base min-w-max">
                                           R$ {(item.preco * item.quantidade).toFixed(2)}
                                       </p>
                                   </div>

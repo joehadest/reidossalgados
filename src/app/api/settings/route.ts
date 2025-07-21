@@ -92,7 +92,8 @@ export async function GET() {
                     socialMedia: {
                         instagram: '@reidossalgados'
                     },
-                    about: 'Especialistas em salgados artesanais, oferecendo qualidade e sabor em cada pedido. Nossos produtos são feitos com ingredientes frescos e selecionados.'
+                    about: 'Especialistas em salgados artesanais, oferecendo qualidade e sabor em cada pedido. Nossos produtos são feitos com ingredientes frescos e selecionados.',
+                    pixKey: '' // Adiciona campo pixKey
                 },
     lastUpdated: new Date().toISOString()
 };

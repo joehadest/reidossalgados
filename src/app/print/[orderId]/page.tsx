@@ -554,7 +554,8 @@ export default function PrintOrder() {
                         width: 100%;
                         max-width: none;
                         margin: 0;
-                        padding: 0;
+                        padding: 0mm !important;
+                        box-sizing: border-box;
                     }
 
                     /* Remover cabeçalho e rodapé do navegador na impressão */

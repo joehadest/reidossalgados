@@ -41,6 +41,7 @@ interface EstablishmentInfo {
         instagram: string;
     };
     about: string;
+    pixKey?: string; // Added pixKey to the interface
 }
 
 export default function AdminSettings() {
@@ -589,6 +590,17 @@ export default function AdminSettings() {
                             onChange={(e) => setEstablishmentInfo(prev => ({ ...prev, about: e.target.value }))}
                             rows={4}
                             className="w-full p-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none text-sm"
+                        />
+                    </div>
+
+                    {/* Chave PIX */}
+                    <div>
+                        <label className="block text-white font-medium mb-2 text-sm sm:text-base">Chave PIX</label>
+                        <input
+                            type="text"
+                            value={establishmentInfo.pixKey || ''}
+                            onChange={(e) => setEstablishmentInfo(prev => ({ ...prev, pixKey: e.target.value }))}
+                            className="w-full p-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
                         />
                     </div>
                 </div>
