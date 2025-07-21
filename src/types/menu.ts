@@ -6,6 +6,7 @@ export interface MenuItem {
     category: string;
     image: string;
     destaque: boolean;
+    available: boolean;
     sizes?: {
         P?: number;
         G?: number;

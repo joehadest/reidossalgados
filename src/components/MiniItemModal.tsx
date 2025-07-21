@@ -26,6 +26,74 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
 
   const totalPrice = item.price * quantity;
 
+  if (!item.available) {
+    // Only show header with image and description if item is unavailable
+    return (
+      <AnimatePresence>
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
+          <motion.div
+            className="bg-gray-900 rounded-2xl w-full max-w-md mx-2 shadow-2xl border border-red-500/30 overflow-hidden max-h-[90vh] overflow-y-auto overflow-x-hidden"
+            initial={{ scale: 0.9, y: 30, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.9, y: 30, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="relative h-32 sm:h-48 bg-gradient-to-br from-red-500/20 to-red-600/20">
+              {item.image && (
+                <Image
+                  src={item.image}
+                  alt={item.name}
+                  fill
+                  className="object-cover opacity-50"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/50 to-transparent"></div>
+              
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={onClose}
+                className="absolute top-3 right-3 w-8 h-8 bg-gray-900/80 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-gray-800 transition-colors"
+              >
+                <FaTimes />
+              </motion.button>
+
+              <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4">
+                <h2 className="text-lg sm:text-2xl font-bold text-white mb-1 drop-shadow-lg">{item.name}</h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-red-400 text-base sm:text-lg">Item Indisponível</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 sm:p-6">
+              {item.description && (
+                <div className="mb-4">
+                  <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">{item.description}</p>
+                </div>
+              )}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={onClose}
+                className="w-full py-2.5 sm:py-3 px-3 sm:px-4 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium text-sm sm:text-base"
+              >
+                Fechar
+              </motion.button>
+            </div>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
   return (
     <AnimatePresence>
       <motion.div
@@ -179,20 +247,22 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-              type="button"
-              onClick={onClose}
+                  type="button"
+                  onClick={onClose}
                   className="flex-1 py-2.5 sm:py-3 px-3 sm:px-4 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium text-sm sm:text-base"
-            >
-              Cancelar
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-              type="submit"
-                  className="flex-1 py-2.5 sm:py-3 px-3 sm:px-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-gray-900 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition-all font-bold shadow-lg text-sm sm:text-base"
                 >
-                  Adicionar ao Carrinho
+                  {!item.available ? 'Fechar' : 'Cancelar'}
                 </motion.button>
+                {item.available && (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="submit"
+                    className="flex-1 py-2.5 sm:py-3 px-3 sm:px-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-gray-900 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition-all font-bold shadow-lg text-sm sm:text-base"
+                  >
+                    Adicionar ao Carrinho
+                  </motion.button>
+                )}
               </div>
             </form>
           </div>

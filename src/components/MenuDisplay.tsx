@@ -817,9 +817,16 @@ export default function MenuDisplay() {
                                                             {/* Conteúdo */}
                                                             <div className="flex-1 p-3 md:p-4 flex flex-col justify-between min-h-0 w-full">
                                                                 <div className="flex-1">
-                                                                    <h3 className="text-base md:text-lg font-semibold text-white mb-2 break-words line-clamp-2 leading-tight" title={item.name}>
-                                                                        {item.name}
-                                                                    </h3>
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        <h3 className="text-base md:text-lg font-semibold text-white break-words line-clamp-2 leading-tight" title={item.name}>
+                                                                            {item.name}
+                                                                        </h3>
+                                                                        {item.available === false && (
+                                                                            <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded whitespace-nowrap">
+                                                                                Indisponível
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                     <p className="text-gray-400 text-xs md:text-sm mb-3 line-clamp-2 sm:line-clamp-3 break-words leading-relaxed" title={item.description}>
                                                                         {item.description}
                                                                     </p>
@@ -828,17 +835,23 @@ export default function MenuDisplay() {
                                                                 {/* Preço e Botão */}
                                                                 <div className="flex items-center justify-between mt-auto w-full">
                                                                     <span className="text-yellow-500 font-bold text-lg md:text-xl">R$ {item.price.toFixed(2)}</span>
-                                                                    <motion.button
-                                                                        whileHover={{ scale: 1.05 }}
-                                                                        whileTap={{ scale: 0.95 }}
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setMiniModalItem(item);
-                                                                        }}
-                                                                        className="bg-yellow-500 text-gray-900 p-2 md:p-3 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-200 flex-shrink-0"
-                                                                    >
-                                                                        <FaPlus className="text-sm md:text-base" />
-                                                                    </motion.button>
+                                                                    {item.available === false ? (
+                                                                        <span className="text-sm text-red-400 font-medium">
+                                                                            Item indisponível
+                                                                        </span>
+                                                                    ) : (
+                                                                        <motion.button
+                                                                            whileHover={{ scale: 1.05 }}
+                                                                            whileTap={{ scale: 0.95 }}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setMiniModalItem(item);
+                                                                            }}
+                                                                            className="bg-yellow-500 text-gray-900 p-2 md:p-3 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-200 flex-shrink-0"
+                                                                        >
+                                                                            <FaPlus className="text-sm md:text-base" />
+                                                                        </motion.button>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
