@@ -11,6 +11,7 @@ export default function AdminAddItem() {
     category: '',
     image: '',
     destaque: false,
+    available: true, // Por padrão, novos itens são marcados como disponíveis
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -94,6 +95,7 @@ export default function AdminAddItem() {
         category: form.category,
         image: form.image,
         destaque: form.destaque,
+        available: form.available,
         borderOptions: {},
         extraOptions: {},
         ingredients: [],
@@ -106,7 +108,7 @@ export default function AdminAddItem() {
       const data = await res.json();
       if (data.success) {
         setSuccess('Item adicionado com sucesso!');
-        setForm({ name: '', description: '', price: '', category: categorias.length > 0 ? categorias[0]._id : '', image: '', destaque: false });
+        setForm({ name: '', description: '', price: '', category: categorias.length > 0 ? categorias[0]._id : '', image: '', destaque: false, available: true });
         fetchItens();
       } else {
         setError(data.message || 'Erro ao adicionar item.');
@@ -141,7 +143,11 @@ export default function AdminAddItem() {
 
   const handleEdit = (item: MenuItem) => {
     setEditId(item._id);
-    setEditItem({ ...item });
+    // Garantir que available seja true quando não definido
+    setEditItem({ 
+      ...item,
+      available: item.available !== false
+    });
   };
 
   const handleEditSave = async (id: string) => {
@@ -160,6 +166,7 @@ export default function AdminAddItem() {
           description: editItem.description,
           image: editItem.image,
           destaque: editItem.destaque,
+          available: editItem.available !== false, // Garante que available seja true quando não definido
         })
       });
       const data = await res.json();
@@ -248,15 +255,28 @@ export default function AdminAddItem() {
             className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500"
           />
         </div>
-        <div className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            name="destaque"
-            checked={form.destaque}
-            onChange={handleChange}
-            className="h-4 w-4 text-yellow-500 focus:ring-yellow-400 border-gray-700 rounded"
-          />
-          <label className="text-gray-200 text-sm">Destaque</label>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              name="destaque"
+              checked={form.destaque}
+              onChange={handleChange}
+              className="h-4 w-4 text-yellow-500 focus:ring-yellow-400 border-gray-700 rounded"
+            />
+            <label className="text-gray-200 text-sm">Destaque</label>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              name="available"
+              checked={form.available}
+              onChange={handleChange}
+              className="h-4 w-4 text-green-500 focus:ring-green-400 border-gray-700 rounded"
+            />
+            <label className="text-gray-200 text-sm">Disponível</label>
+          </div>
         </div>
 
         <button
@@ -377,6 +397,26 @@ export default function AdminAddItem() {
                                   placeholder="https://exemplo.com/imagem.jpg"
                                 />
                               </div>
+                              <div className="flex items-center gap-6 pt-2">
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={editItem.destaque || false}
+                                    onChange={e => setEditItem({ ...editItem, destaque: e.target.checked })}
+                                    className="h-4 w-4 text-yellow-500 focus:ring-yellow-400 border-gray-700 rounded"
+                                  />
+                                  <label className="text-gray-300 text-sm">Destaque</label>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={editItem.available}
+                                    onChange={e => setEditItem({ ...editItem, available: e.target.checked })}
+                                    className="h-4 w-4 text-green-500 focus:ring-green-400 border-gray-700 rounded"
+                                  />
+                                  <label className="text-gray-300 text-sm">Disponível</label>
+                                </div>
+                              </div>
                               <div className="flex gap-2 pt-2">
                                 <button 
                                   onClick={() => handleEditSave(item._id!)} 
@@ -397,7 +437,18 @@ export default function AdminAddItem() {
                           ) : (
                             <>
                               <div className="flex-1">
-                                <span className="font-bold text-yellow-400 block">{item.name}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-yellow-400">{item.name}</span>
+                                  {!item.available ? (
+                                    <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">
+                                      Indisponível
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">
+                                      Disponível
+                                    </span>
+                                  )}
+                                </div>
                                 <span className="text-xs text-gray-400 block">{item.description}</span>
                                 <span className="text-xs text-gray-400 block">Preço: R$ {item.price?.toFixed(2)}</span>
                               </div>
