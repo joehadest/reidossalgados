@@ -66,13 +66,15 @@ export default function MenuDisplay() {
     const [miniModalItem, setMiniModalItem] = useState<MenuItem | null>(null);
     const [businessHours, setBusinessHours] = useState<any>(null);
     const [isLoadingSettings, setIsLoadingSettings] = useState(true);
-    const [categories, setCategories] = useState<{ _id: string, name: string }[]>([]);
+    const [categories, setCategories] = useState<{ _id: string, name: string, emoji?: string }[]>([]);
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [whatsappNumber, setWhatsappNumber] = useState<string>('');
     const [pixKey, setPixKey] = useState<string>('');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
+    const [menuTitle, setMenuTitle] = useState<string>('Cardápio Digital');
+    const [showLogo, setShowLogo] = useState<boolean>(true);
 
     // Filtro para itens de pizza (se existirem no banco)
     const allPizzas = menuItems.filter((item: MenuItem) => item.category === 'pizzas');
@@ -126,6 +128,14 @@ export default function MenuDisplay() {
                     // Buscar WhatsApp e PIX do banco
                     setWhatsappNumber(data.data.establishmentInfo?.contact?.whatsapp?.replace(/\D/g, ''));
                     setPixKey(data.data.establishmentInfo?.pixKey || '');
+
+                    // Configurações de apresentação do cardápio
+                    if (data.data.establishmentInfo?.menuTitle !== undefined) {
+                        setMenuTitle(data.data.establishmentInfo.menuTitle);
+                    }
+                    if (data.data.establishmentInfo?.showLogo !== undefined) {
+                        setShowLogo(data.data.establishmentInfo.showLogo);
+                    }
                 }
             } catch (err) {
                 console.error('Erro ao carregar configurações:', err);
@@ -143,7 +153,11 @@ export default function MenuDisplay() {
                 const res = await fetch('/api/categories');
                 const data = await res.json();
                 if (data.success && Array.isArray(data.data)) {
-                    setCategories(data.data.map((cat: any) => ({ _id: cat._id, name: cat.name })));
+                    setCategories(data.data.map((cat: any) => ({
+                        _id: cat._id,
+                        name: cat.name,
+                        emoji: cat.emoji || '🍽️' // Emoji padrão se não tiver
+                    })));
                 }
             } catch (err) {
                 setCategories([]);
@@ -168,15 +182,21 @@ export default function MenuDisplay() {
         fetchMenuItems();
     }, []);
 
+    // Estado para controlar se o scroll está sendo feito por clique ou por rolagem normal
+    const [isManualScrolling, setIsManualScrolling] = useState(false);
+
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        const category = entry.target.id.replace('category-', '');
-                        setSelectedCategory(category);
-                    }
-                });
+                // Só atualizar categoria automaticamente se NÃO estiver em rolagem manual
+                if (!isManualScrolling) {
+                    entries.forEach((entry) => {
+                        if (entry.isIntersecting) {
+                            const category = entry.target.id.replace('category-', '');
+                            setSelectedCategory(category);
+                        }
+                    });
+                }
             },
             {
                 rootMargin: '-120px 0px -40% 0px',
@@ -203,15 +223,55 @@ export default function MenuDisplay() {
         };
     }, [categories]);
 
-    // Definir categoria inicial
+    // Definir categoria inicial e garantir visualização correta
     useEffect(() => {
         if ((categories || []).length > 0 && !selectedCategory) {
             const salgadosCategory = categories.find(cat => cat.name.toLowerCase().includes('salgado'));
-            setSelectedCategory(salgadosCategory ? salgadosCategory._id : categories[0]._id);
-        }
-    }, [categories, selectedCategory]);
+            const categoryId = salgadosCategory ? salgadosCategory._id : categories[0]._id;
+            setSelectedCategory(categoryId);
 
-    // Fechar menu com tecla Escape e swipe
+            // Pequeno atraso para garantir que os elementos do DOM foram renderizados
+            setTimeout(() => {
+                // Detectar tamanho da tela
+                const isMobile = window.innerWidth < 640;
+
+                // Garantir que a primeira categoria esteja visível na barra de categorias
+                const categoryBtn = document.querySelector(`button[data-category="${categoryId}"]`);
+                if (categoryBtn) {
+                    // Em mobile, alinhamos à esquerda sem usar scrollIntoView
+                    if (isMobile) {
+                        const scrollContainer = categoryBtn.closest('.scrollbar-hide');
+                        if (scrollContainer) {
+                            scrollContainer.scrollLeft = 0; // Forçar scroll para o início em mobile
+                        }
+                    } else {
+                        // Em desktop, centralizamos normalmente
+                        categoryBtn.scrollIntoView({
+                            behavior: 'auto',
+                            inline: 'center',
+                            block: 'nearest'
+                        });
+                    }
+                }
+
+                // Garantir que a seção da categoria esteja visível
+                const categorySection = document.getElementById(`category-${categoryId}`);
+                if (categorySection) {
+                    const headerHeight = isMobile ? 100 : 120;
+
+                    categorySection.scrollIntoView({
+                        behavior: 'auto',
+                        block: 'start'
+                    });
+
+                    window.scrollBy({
+                        top: -headerHeight,
+                        behavior: 'auto'
+                    });
+                }
+            }, 300);
+        }
+    }, [categories, selectedCategory]);    // Fechar menu com tecla Escape e swipe
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
@@ -229,14 +289,14 @@ export default function MenuDisplay() {
 
         const handleTouchEnd = () => {
             if (!touchStart || !touchEnd) return;
-            
+
             const distance = touchStart - touchEnd;
             const isLeftSwipe = distance > 50;
-            
+
             if (isLeftSwipe && isMenuOpen) {
                 setIsMenuOpen(false);
             }
-            
+
             setTouchStart(null);
             setTouchEnd(null);
         };
@@ -260,29 +320,99 @@ export default function MenuDisplay() {
         };
     }, [isMenuOpen, touchStart, touchEnd]);
 
-    // Scroll horizontal automático da barra de categorias
+    // Scroll horizontal automático da barra de categorias - centralizado apenas no desktop
     useEffect(() => {
         if (!selectedCategory) return;
+
         const btn = document.querySelector(`button[data-category='${selectedCategory}']`);
-        if (btn && btn.scrollIntoView) {
-            btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        if (!btn) return;
+
+        // Detectar se estamos em modo mobile
+        const isMobile = window.innerWidth < 640;
+
+        // Centralizar a categoria selecionada na barra de navegação (apenas no desktop)
+        const scrollContainer = btn.closest('.scrollbar-hide');
+        if (scrollContainer) {
+            const btnRect = btn.getBoundingClientRect();
+            const containerRect = scrollContainer.getBoundingClientRect();
+
+            // Calcular a posição de scroll de acordo com o dispositivo
+            let targetScrollLeft = 0;
+            if (btn instanceof HTMLElement) {
+                if (isMobile) {
+                    // No mobile, garantir que o botão esteja visível mas não necessariamente centralizado
+                    const isButtonVisible =
+                        btn.offsetLeft >= scrollContainer.scrollLeft &&
+                        btn.offsetLeft + btnRect.width <= scrollContainer.scrollLeft + containerRect.width;
+
+                    if (!isButtonVisible) {
+                        targetScrollLeft = btn.offsetLeft - 16; // Adicionar pequeno padding à esquerda
+                    } else {
+                        // Se já estiver visível, não mudar o scroll
+                        targetScrollLeft = scrollContainer.scrollLeft;
+                    }
+                } else {
+                    // No desktop, centralizar o botão
+                    targetScrollLeft = btn.offsetLeft - (containerRect.width / 2) + (btnRect.width / 2);
+                }
+
+                // Adicionar verificação para evitar rolagem além dos limites
+                const maxScroll = scrollContainer.scrollWidth - containerRect.width;
+                targetScrollLeft = Math.max(0, Math.min(targetScrollLeft, maxScroll));
+            }
+
+            // Aplicar rolagem suave
+            scrollContainer.scrollTo({
+                left: targetScrollLeft,
+                behavior: 'smooth'
+            });
+        } else {
+            // Fallback para o método padrão se não encontrar o container
+            btn.scrollIntoView({
+                behavior: 'smooth',
+                inline: 'center',
+                block: 'nearest'
+            });
         }
     }, [selectedCategory]);
 
     const handleCategoryClick = (category: string | null) => {
         setSelectedCategory(category);
-        setIsMenuOpen(false); // Fecha o menu ao selecionar uma categoria
+
         if (category) {
             const element = document.getElementById(`category-${category}`);
             if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Ativar o modo de rolagem manual para evitar que o observer mude a categoria
+                setIsManualScrolling(true);
+
+                // Detectar tamanho da tela para ajustar offset
+                const isMobile = window.innerWidth < 640;
+                const headerHeight = isMobile ? 100 : 120;
+
+                // Calcular a posição do elemento
+                const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+
+                // Rolagem em uma única etapa, sem setTimeout aninhados
+                window.scrollTo({
+                    top: elementPosition - headerHeight,
+                    behavior: 'smooth'
+                });
+
+                // Desativar o modo de rolagem manual após concluir a animação
+                setTimeout(() => {
+                    setIsManualScrolling(false);
+                }, 800); // Tempo suficiente para a animação de rolagem concluir
+
+                // Efeito visual de feedback para indicar a mudança de categoria
+                element.classList.add('bg-yellow-500/10');
+                setTimeout(() => {
+                    element.classList.remove('bg-yellow-500/10');
+                }, 500);
             }
         } else {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
-    };
-
-    useEffect(() => {
+    }; useEffect(() => {
         const interval = setInterval(async () => {
             const notifyOrders = JSON.parse(localStorage.getItem('notifyOrders') || '[]');
             if (notifyOrders.length === 0) return;
@@ -515,9 +645,11 @@ export default function MenuDisplay() {
     };
 
     // Forçar seleção da primeira categoria ao rolar para o topo
+    // Mas apenas quando não estiver em rolagem manual
     useEffect(() => {
         const handleScroll = () => {
-            if (window.scrollY < 30 && categories.length > 0) {
+            // Só realizar esta ação se não estiver em rolagem manual
+            if (!isManualScrolling && window.scrollY < 30 && categories.length > 0) {
                 const salgadosCategory = categories.find(cat => cat.name.toLowerCase().includes('salgado'));
                 const firstCategoryId = salgadosCategory ? salgadosCategory._id : categories[0]._id;
                 if (selectedCategory !== firstCategoryId) {
@@ -527,7 +659,7 @@ export default function MenuDisplay() {
         };
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [categories, selectedCategory]);
+    }, [categories, selectedCategory, isManualScrolling]);
 
     if (!restaurantIsOpen) {
         return (
@@ -618,156 +750,73 @@ export default function MenuDisplay() {
     return (
         <div className="min-h-screen bg-gray-900">
             <div className="max-w-7xl mx-auto px-4">
-                {/* Barra de Navegação com Menu Hambúrguer */}
-                <div className="sticky top-0 z-30 w-full bg-gray-900 shadow-lg">
-                    <div className="w-full border-b border-yellow-500/50 flex items-center h-14">
-                        {/* Botão Hambúrguer */}
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="px-4 h-full flex items-center gap-2 text-white hover:text-yellow-400 transition-colors duration-200 relative"
-                            disabled={categories.length === 0}
-                        >
-                            <div className="relative">
-                                <motion.div
-                                    animate={isMenuOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="w-6 h-0.5 bg-current mb-1.5"
-                                />
-                                <motion.div
-                                    animate={isMenuOpen ? { opacity: 0 } : { opacity: 1 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="w-6 h-0.5 bg-current mb-1.5"
-                                />
-                                <motion.div
-                                    animate={isMenuOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="w-6 h-0.5 bg-current"
-                                />
+                {/* Barra de Navegação com Categorias - Versão otimizada para mobile */}
+                <div className="sticky top-0 z-30 w-full bg-gray-900 shadow-lg border-b border-yellow-500/30">
+                    <div className="w-full flex flex-col">
+
+                        {/* Barra de Categorias Scrollável - Otimizada para mobile */}
+                        <div className="relative pt-3 pb-1">
+                            {/* Indicadores de mais categorias com animação de pulse */}
+                            <div className="absolute right-0 top-0 bottom-0 w-6 sm:w-10 pointer-events-none bg-gradient-to-l from-gray-900 to-transparent z-10 flex items-center justify-end pr-1">
+                                <div className="h-3 w-3 rounded-full bg-yellow-500/20 animate-pulse"></div>
                             </div>
-                            <span className="hidden sm:inline font-semibold text-sm">Categorias</span>
-                        </motion.button>
+                            <div className="absolute left-0 top-0 bottom-0 w-6 sm:w-10 pointer-events-none bg-gradient-to-r from-gray-900 to-transparent z-10 flex items-center pl-1">
+                                <div className="h-3 w-3 rounded-full bg-yellow-500/20 animate-pulse"></div>
+                            </div>
 
-                        {/* Categoria Atual */}
-                        <div className="flex-1 text-center">
-                            <span className="text-yellow-400 font-bold text-lg capitalize">
-                                {categories.find(cat => cat._id === selectedCategory)?.name || 'Cardápio'}
-                            </span>
-                        </div>
-
-                        {/* Espaçador para manter o título centralizado */}
-                        <div className="w-20 sm:w-24"></div>
-                    </div>
-                </div>
-
-                {/* Menu Lateral de Categorias */}
-                <AnimatePresence>
-                    {isMenuOpen && (
-                        <>
-                            {/* Overlay */}
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="fixed inset-0 bg-black bg-opacity-50 z-40"
-                                onClick={() => setIsMenuOpen(false)}
-                            />
-                            
-                            {/* Menu Lateral */}
-                            <motion.div
-                                initial={{ x: -300, opacity: 0 }}
-                                animate={{ x: 0, opacity: 1 }}
-                                exit={{ x: -300, opacity: 0 }}
-                                transition={{ 
-                                    type: "spring", 
-                                    damping: 25, 
-                                    stiffness: 300,
-                                    opacity: { duration: 0.2 }
-                                }}
-                                className="fixed left-0 top-0 h-full w-80 max-w-[85vw] bg-gray-900 border-r border-yellow-500/50 shadow-2xl z-50 overflow-y-auto backdrop-blur-sm"
-                                style={{
-                                    background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(17, 24, 39, 0.98) 100%)'
-                                }}
-                            >
-                                <div className="p-8 md:p-6">
-                                    {/* Header do Menu */}
-                                    <div className="flex items-center justify-between mb-8 md:mb-6">
-                                        <h2 className="text-xl font-bold text-yellow-400">Categorias</h2>
-                                        <motion.button
-                                            whileHover={{ scale: 1.1 }}
-                                            whileTap={{ scale: 0.9 }}
-                                            onClick={() => setIsMenuOpen(false)}
-                                            className="text-gray-400 hover:text-white transition-colors"
-                                        >
-                                            <FaTimes className="w-5 h-5" />
-                                        </motion.button>
-                                    </div>
-
-                                    {/* Lista de Categorias */}
-                                    <div className="space-y-3 md:space-y-2">
-                                                                                {(categories || []).map((cat, index) => {
-                                            const itemCount = menuItems.filter((item: MenuItem) => item.category === cat._id).length;
-                                            const CategoryIcon = getCategoryIcon(cat.name);
-                                            return (
-                                                <motion.button
-                                                    key={cat._id}
-                                                    initial={{ opacity: 0, x: -20 }}
-                                                    animate={{ opacity: 1, x: 0 }}
-                                                    transition={{ delay: index * 0.05 }}
-                                                    onClick={() => handleCategoryClick(cat._id)}
-                                                    className={`
-                                                        w-full text-left p-5 md:p-4 rounded-lg transition-all duration-300 group
-                                                        ${selectedCategory === cat._id
-                                                            ? 'bg-yellow-500/20 text-yellow-400 border-l-4 border-yellow-400 shadow-lg'
-                                                            : 'text-white hover:bg-gray-800/80 hover:text-yellow-400 border-l-4 border-transparent hover:border-l-yellow-400/50 hover:shadow-md'
-                                                        }
-                                                    `}
+                            <div className="w-full overflow-x-auto scrollbar-hide category-bar-container py-1">
+                                <div className="flex justify-start sm:justify-center space-x-2 sm:space-x-3 min-w-min px-4 sm:px-6 mx-auto">
+                                    {categories.map((cat) => {
+                                        // Usar o emoji da categoria em vez do ícone, se estiver disponível
+                                        const itemCount = menuItems.filter((item) => item.category === cat._id).length;
+                                        return (
+                                            <motion.button
+                                                key={cat._id}
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={() => handleCategoryClick(cat._id)}
+                                                data-category={cat._id}
+                                                aria-selected={selectedCategory === cat._id}
+                                                className={`
+                                                    relative flex items-center gap-1.5 sm:gap-2
+                                                    px-2.5 sm:px-4 py-1.5 sm:py-2.5
+                                                    rounded-lg transition-all duration-200
+                                                    ${selectedCategory === cat._id
+                                                        ? 'bg-yellow-500 text-gray-900 font-medium shadow-lg active'
+                                                        : 'bg-gray-800/80 text-gray-300 hover:bg-yellow-500/20 hover:text-yellow-400 border border-gray-700'}
+                                                `}
+                                            >
+                                                <span
+                                                    className={`text-base sm:text-lg ${selectedCategory === cat._id ? 'text-gray-900' : ''} transition-transform duration-200 ${selectedCategory === cat._id ? 'scale-110' : ''}`}
+                                                    role="img"
+                                                    aria-label={`Emoji para ${cat.name}`}
                                                 >
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-4 md:gap-3">
-                                                            <div className={`
-                                                                p-3 md:p-2 rounded-lg transition-all duration-300
-                                                                ${selectedCategory === cat._id
-                                                                    ? 'bg-yellow-500/30 text-yellow-400'
-                                                                    : 'bg-gray-800/50 text-gray-400 group-hover:bg-yellow-500/20 group-hover:text-yellow-400'
-                                                                }
-                                                            `}>
-                                                                <CategoryIcon className="w-5 h-5 md:w-4 md:h-4" />
-                                                            </div>
-                                                            <div className="flex flex-col items-start">
-                                                                <span className="font-semibold capitalize text-base md:text-sm">{cat.name}</span>
-                                                                <span className="text-sm md:text-xs text-gray-400 mt-1">
-                                                                    {itemCount} {itemCount === 1 ? 'item' : 'itens'}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        {selectedCategory === cat._id && (
-                                                            <motion.div
-                                                                initial={{ scale: 0 }}
-                                                                animate={{ scale: 1 }}
-                                                                className="w-2 h-2 bg-yellow-400 rounded-full"
-                                                            />
-                                                        )}
-                                                    </div>
-                                                </motion.button>
-                                            );
-                                        })}
-                                    </div>
-
-                                    {/* Footer do Menu */}
-                                    <div className="mt-12 md:mt-8 pt-8 md:pt-6 border-t border-gray-700">
-                                        <div className="text-center text-gray-400 text-base md:text-sm">
-                                            <p>Rei dos Salgados</p>
-                                            <p className="mt-1">Cardápio Digital</p>
-                                        </div>
-                                    </div>
+                                                    {cat.emoji || '🍽️'}
+                                                </span>
+                                                {/* Texto completo sem truncamento */}
+                                                <div className="flex flex-col items-start min-w-0 max-w-none">
+                                                    <span className="text-2xs sm:text-xs font-medium whitespace-normal break-normal leading-tight">{cat.name}</span>
+                                                    <span className="text-[9px] sm:text-[10px] opacity-75 whitespace-normal">{itemCount} {itemCount === 1 ? 'item' : 'itens'}</span>
+                                                </div>
+                                                {/* Efeito de toque para feedback tátil em mobile */}
+                                                <div className="absolute inset-0 bg-white/10 opacity-0 rounded-lg touch-ripple-effect"></div>
+                                                {selectedCategory === cat._id && (
+                                                    <motion.div
+                                                        layoutId="categoryIndicator"
+                                                        className="absolute -bottom-1 left-0 w-full h-0.5 bg-yellow-300"
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        transition={{ duration: 0.2 }}
+                                                    />
+                                                )}
+                                            </motion.button>
+                                        );
+                                    })}
                                 </div>
-                            </motion.div>
-                        </>
-                    )}
-                </AnimatePresence>
+                            </div>
+                        </div>
+                    </div>
+                </div>                {/* Menu lateral removido - todas as categorias agora aparecem na barra horizontal acima */}
 
                 {/* Conteúdo Principal */}
                 <div className="py-4">
@@ -785,8 +834,9 @@ export default function MenuDisplay() {
                             {(categories || []).map(cat => {
                                 const itemsInCategory = menuItems.filter((item: MenuItem) => item.category === cat._id);
                                 return (
-                                    <div key={cat._id} id={`category-${cat._id}`} className="space-y-4">
-                                        <h2 className="text-lg font-semibold text-white capitalize mb-4 mt-8 pl-4 tracking-wide">
+                                    <div key={cat._id} id={`category-${cat._id}`} className="space-y-3 transition-colors duration-300 ease-in-out">
+                                        <h2 className="text-base sm:text-lg font-semibold text-white capitalize mb-2 sm:mb-4 mt-6 sm:mt-8 pl-3 sm:pl-4 tracking-wide flex items-center">
+                                            <span className="w-1.5 h-6 bg-yellow-500 rounded-r-md mr-2.5 opacity-70"></span>
                                             {cat.name}
                                         </h2>
                                         <div className="flex flex-col gap-4">
@@ -819,8 +869,8 @@ export default function MenuDisplay() {
                                                                 <div className="flex-1">
                                                                     <div className="flex items-center gap-2 mb-2">
                                                                         <h3 className="text-base md:text-lg font-semibold text-white break-words line-clamp-2 leading-tight" title={item.name}>
-                                                                        {item.name}
-                                                                    </h3>
+                                                                            {item.name}
+                                                                        </h3>
                                                                         {item.available === false && (
                                                                             <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded whitespace-nowrap">
                                                                                 Indisponível
@@ -840,17 +890,17 @@ export default function MenuDisplay() {
                                                                             Item indisponível
                                                                         </span>
                                                                     ) : (
-                                                                    <motion.button
-                                                                        whileHover={{ scale: 1.05 }}
-                                                                        whileTap={{ scale: 0.95 }}
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setMiniModalItem(item);
-                                                                        }}
-                                                                        className="bg-yellow-500 text-gray-900 p-2 md:p-3 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-200 flex-shrink-0"
-                                                                    >
-                                                                        <FaPlus className="text-sm md:text-base" />
-                                                                    </motion.button>
+                                                                        <motion.button
+                                                                            whileHover={{ scale: 1.05 }}
+                                                                            whileTap={{ scale: 0.95 }}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setMiniModalItem(item);
+                                                                            }}
+                                                                            className="bg-yellow-500 text-gray-900 p-2 md:p-3 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-200 flex-shrink-0"
+                                                                        >
+                                                                            <FaPlus className="text-sm md:text-base" />
+                                                                        </motion.button>
                                                                     )}
                                                                 </div>
                                                             </div>

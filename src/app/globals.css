@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 /* Configurações básicas */
-html, body {
+html,
+body {
     max-width: 100vw;
 }
 
@@ -12,26 +13,135 @@ html, body {
     box-sizing: border-box;
 }
 
+/* Classe para esconder a barra de rolagem mantendo a funcionalidade */
+@layer utilities {
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        /* IE e Edge */
+        scrollbar-width: none;
+        /* Firefox */
+    }
+
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+        /* Chrome, Safari e Opera */
+    }
+}
+
+/* Efeito de toque para feedback em dispositivos móveis */
+.touch-ripple-effect {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0;
+    transition: opacity 300ms;
+}
+
+@media (hover: none) {
+
+    /* Apenas para dispositivos touch */
+    button:active .touch-ripple-effect {
+        opacity: 0.2;
+    }
+}
+
+/* Estilos para os cards de categoria na barra horizontal */
+button[data-category] {
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: relative;
+    min-width: max-content;
+    max-width: none;
+    word-break: normal;
+}
+
+button[data-category]:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Estilo especial para categoria selecionada centralizada */
+button[data-category].active,
+button[data-category][aria-selected="true"] {
+    box-shadow: 0 4px 15px rgba(250, 204, 21, 0.4);
+    z-index: 5;
+    transform: translateY(-1px);
+    outline: 2px solid rgba(250, 204, 21, 0.5);
+    outline-offset: 1px;
+}
+
+/* Garantir espaçamento consistente para a barra de categorias */
+.category-bar-container {
+    padding: 0.5rem 0.25rem;
+    position: relative;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 1rem;
+}
+
+/* Mais espaço para a primeira categoria em mobile */
+@media (max-width: 639px) {
+    .category-bar-container {
+        padding-left: 1rem;
+    }
+}
+
+/* Mais espaço para centralização em desktop */
+@media (min-width: 640px) {
+    .category-bar-container {
+        padding-left: 2rem;
+    }
+}
+
+/* Linha indicadora para a categoria centralizada - apenas no desktop */
+@media (min-width: 640px) {
+    .category-bar-container::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        height: 3px;
+        width: 40px;
+        transform: translateX(-50%);
+        background: linear-gradient(90deg, transparent, rgba(250, 204, 21, 0.3) 50%, transparent);
+        border-radius: 2px;
+        pointer-events: none;
+    }
+}
+
 /* Regras específicas para dispositivos móveis */
 @media (max-width: 768px) {
     body {
         width: 100vw;
     }
-    
-    .container, .max-w-7xl {
+
+    .container,
+    .max-w-7xl {
         max-width: 100vw;
     }
-    
+
     /* Garantir que flex containers não causem overflow */
     .flex {
         min-width: 0;
     }
-    
+
     /* Garantir que textos não causem overflow */
     .break-words {
         word-wrap: break-word;
         overflow-wrap: break-word;
     }
+}
+
+/* Estilos específicos para os cards de categoria */
+button[data-category] {
+    min-width: max-content;
+    /* Garante que o card tenha pelo menos o tamanho do seu conteúdo */
+    max-width: none;
+    /* Remove qualquer limitação de largura máxima */
+    word-break: normal;
+    /* Evita quebra de palavras inadequada */
 }
 
 @keyframes slide-up {
@@ -147,17 +257,22 @@ body {
 
 /* Estilos específicos para impressão */
 @media print {
+
     /* Remover todos os elementos de navegação e cabeçalho */
-    header, footer, nav, aside, .print-button-container {
+    header,
+    footer,
+    nav,
+    aside,
+    .print-button-container {
         display: none !important;
     }
-    
+
     /* Configurar página para impressão térmica */
     @page {
         margin: 0;
         size: 80mm auto;
     }
-    
+
     /* Resetar estilos do body para impressão */
     body {
         margin: 0 !important;
@@ -169,7 +284,7 @@ body {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
-    
+
     /* Garantir que o container de impressão ocupe toda a largura */
     .print-container {
         width: 100% !important;
@@ -179,9 +294,11 @@ body {
         background: white !important;
         color: black !important;
     }
-    
+
     /* Ocultar elementos desnecessários */
-    .debug-info, .loading, .error {
+    .debug-info,
+    .loading,
+    .error {
         display: none !important;
     }
 }
