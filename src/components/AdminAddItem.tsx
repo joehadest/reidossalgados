@@ -3,7 +3,7 @@ import { MenuItem } from '../types/menu';
 import { FaTrash, FaEdit, FaCheck, FaTimes } from 'react-icons/fa';
 
 export default function AdminAddItem() {
-  const [categorias, setCategorias] = useState<{_id: string, name: string}[]>([]);
+  const [categorias, setCategorias] = useState<{ _id: string, name: string, emoji?: string }[]>([]);
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -23,7 +23,7 @@ export default function AdminAddItem() {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Filtra os itens baseado no termo de busca
-  const filteredItens = itens.filter(item => 
+  const filteredItens = itens.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
@@ -34,9 +34,13 @@ export default function AdminAddItem() {
         const res = await fetch('/api/categories');
         const data = await res.json();
         if (data.success && Array.isArray(data.data)) {
-          const categoriasData = data.data.map((cat: any) => ({ _id: cat._id, name: cat.name }));
+          const categoriasData = data.data.map((cat: any) => ({
+            _id: cat._id,
+            name: cat.name,
+            emoji: cat.emoji || '🍽️' // Emoji padrão se não tiver
+          }));
           setCategorias(categoriasData);
-          
+
           // Definir a primeira categoria como padrão se não houver categoria selecionada
           if (categoriasData.length > 0 && !form.category) {
             setForm(prev => ({ ...prev, category: categoriasData[0]._id }));
@@ -144,7 +148,7 @@ export default function AdminAddItem() {
   const handleEdit = (item: MenuItem) => {
     setEditId(item._id);
     // Garantir que available seja true quando não definido
-    setEditItem({ 
+    setEditItem({
       ...item,
       available: item.available !== false
     });
@@ -239,7 +243,7 @@ export default function AdminAddItem() {
                 <option value="">Nenhuma categoria</option>
               ) : (
                 categorias.map(cat => (
-                  <option key={cat._id} value={cat._id}>{cat.name}</option>
+                  <option key={cat._id} value={cat._id}>{cat.emoji || '🍽️'} {cat.name}</option>
                 ))
               )}
             </select>
@@ -266,7 +270,7 @@ export default function AdminAddItem() {
             />
             <label className="text-gray-200 text-sm">Destaque</label>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
@@ -290,7 +294,7 @@ export default function AdminAddItem() {
 
       <div className="mt-6 sm:mt-8">
         <h3 className="text-base sm:text-lg font-semibold text-yellow-400 mb-2">Itens cadastrados</h3>
-        
+
         <div className="mb-4">
           <div className="relative">
             <input
@@ -327,7 +331,7 @@ export default function AdminAddItem() {
               {categorias.map((categoria) => {
                 const itensCategoria = filteredItens.filter(item => item.category === categoria._id);
                 if (itensCategoria.length === 0) return null;
-                
+
                 return (
                   <div key={categoria._id} className="bg-gray-900/50 rounded-lg p-4">
                     <h4 className="text-yellow-500 font-medium mb-3 border-b border-yellow-500/30 pb-2">{categoria.name}</h4>
@@ -418,15 +422,15 @@ export default function AdminAddItem() {
                                 </div>
                               </div>
                               <div className="flex gap-2 pt-2">
-                                <button 
-                                  onClick={() => handleEditSave(item._id!)} 
+                                <button
+                                  onClick={() => handleEditSave(item._id!)}
                                   className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
                                 >
                                   <FaCheck className="inline mr-1" />
                                   Salvar
                                 </button>
-                                <button 
-                                  onClick={() => { setEditId(null); setEditItem({}); }} 
+                                <button
+                                  onClick={() => { setEditId(null); setEditItem({}); }}
                                   className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
                                 >
                                   <FaTimes className="inline mr-1" />
@@ -453,16 +457,16 @@ export default function AdminAddItem() {
                                 <span className="text-xs text-gray-400 block">Preço: R$ {item.price?.toFixed(2)}</span>
                               </div>
                               <div className="flex gap-2 mt-2 sm:mt-0">
-                                <button 
-                                  onClick={() => handleEdit(item)} 
+                                <button
+                                  onClick={() => handleEdit(item)}
                                   className="text-yellow-400 hover:text-yellow-300 transition-colors"
                                   title="Editar item"
                                 >
                                   <FaEdit />
                                 </button>
-                                <button 
-                                  onClick={() => handleRemove(item._id!)} 
-                                  className={`text-red-500 hover:text-red-400 transition-colors ${removingId === item._id ? 'opacity-50 pointer-events-none' : ''}`} 
+                                <button
+                                  onClick={() => handleRemove(item._id!)}
+                                  className={`text-red-500 hover:text-red-400 transition-colors ${removingId === item._id ? 'opacity-50 pointer-events-none' : ''}`}
                                   disabled={removingId === item._id}
                                   title="Remover item"
                                 >

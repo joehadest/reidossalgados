@@ -1,3 +1,9 @@
+export interface Category {
+    _id: string;
+    name: string;
+    emoji?: string;
+}
+
 export interface MenuItem {
     _id: string;
     name: string;

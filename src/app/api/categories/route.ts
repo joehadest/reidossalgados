@@ -30,7 +30,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { name } = await request.json();
+    const { name, emoji } = await request.json();
     if (!name || typeof name !== 'string') {
       return NextResponse.json({ success: false, message: 'Nome da categoria obrigatório' }, { status: 400 });
     }
@@ -41,8 +41,12 @@ export async function POST(request: Request) {
     if (exists) {
       return NextResponse.json({ success: false, message: 'Categoria já existe' }, { status: 400 });
     }
-    const result = await collection.insertOne({ name });
-    return NextResponse.json({ success: true, data: { _id: result.insertedId, name } });
+    // Inserir com emoji, se fornecido
+    const result = await collection.insertOne({
+      name,
+      emoji: emoji || '🍽️' // Emoji padrão se não for fornecido
+    });
+    return NextResponse.json({ success: true, data: { _id: result.insertedId, name, emoji: emoji || '🍽️' } });
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Erro ao adicionar categoria' }, { status: 500 });
   }
@@ -71,15 +75,24 @@ export async function PUT(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const { name } = await request.json();
+    const { name, emoji } = await request.json();
     if (!id || !name) {
       return NextResponse.json({ success: false, message: 'ID e nome obrigatórios' }, { status: 400 });
     }
     const { db } = await connectToDatabase();
     const collection = db.collection('categories');
+
+    // Objeto para atualização
+    const updateData: { name: string; emoji?: string } = { name };
+
+    // Adicionar emoji apenas se estiver definido
+    if (emoji !== undefined) {
+      updateData.emoji = emoji;
+    }
+
     const result = await collection.updateOne(
       { _id: new ObjectId(id) },
-      { $set: { name } }
+      { $set: updateData }
     );
     if (result.matchedCount === 0) {
       return NextResponse.json({ success: false, message: 'Categoria não encontrada' }, { status: 404 });

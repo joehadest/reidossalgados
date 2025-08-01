@@ -27,6 +27,8 @@ interface BusinessHoursConfig {
 
 interface EstablishmentInfo {
     name: string;
+    menuTitle?: string; // Título personalizado do cardápio
+    showLogo?: boolean; // Opção para mostrar ou esconder o logo
     address: {
         street: string;
         city: string;
@@ -61,6 +63,8 @@ export default function AdminSettings() {
     });
     const [establishmentInfo, setEstablishmentInfo] = useState<EstablishmentInfo>({
         name: 'Rei dos Salgados',
+        menuTitle: 'Cardápio Digital',
+        showLogo: true,
         address: {
             street: 'Rua Maria Luiza Dantas',
             city: 'Alto Rodrigues',
@@ -157,10 +161,10 @@ export default function AdminSettings() {
             const res = await fetch('/api/settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    deliveryFees, 
-                    businessHours, 
-                    establishmentInfo 
+                body: JSON.stringify({
+                    deliveryFees,
+                    businessHours,
+                    establishmentInfo
                 })
             });
             const data = await res.json();
@@ -184,7 +188,7 @@ export default function AdminSettings() {
             ...businessHours,
             [day]: { ...businessHours[day], [field]: value }
         };
-        
+
         setBusinessHours(updatedBusinessHours);
         setIsSavingHours(true);
 
@@ -193,13 +197,13 @@ export default function AdminSettings() {
             const res = await fetch('/api/settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    deliveryFees, 
-                    businessHours: updatedBusinessHours, 
-                    establishmentInfo 
+                body: JSON.stringify({
+                    deliveryFees,
+                    businessHours: updatedBusinessHours,
+                    establishmentInfo
                 })
             });
-            
+
             if (res.ok) {
                 // Atualizar o status do restaurante
                 await refreshStatus();
@@ -308,7 +312,7 @@ export default function AdminSettings() {
                         {showPasswordChange ? 'Cancelar' : 'Alterar Senha'}
                     </button>
                 </div>
-                
+
                 {showPasswordChange && (
                     <div className="space-y-4 sm:space-y-6">
                         <div>
@@ -326,7 +330,7 @@ export default function AdminSettings() {
                                 </span>
                             </div>
                         </div>
-                        
+
                         <div>
                             <label className="block text-white font-medium mb-2 text-sm sm:text-base">Nova Senha</label>
                             <div className="relative">
@@ -342,7 +346,7 @@ export default function AdminSettings() {
                                 </span>
                             </div>
                         </div>
-                        
+
                         <div>
                             <label className="block text-white font-medium mb-2 text-sm sm:text-base">Confirmar Nova Senha</label>
                             <div className="relative">
@@ -358,7 +362,7 @@ export default function AdminSettings() {
                                 </span>
                             </div>
                         </div>
-                        
+
                         {passwordMessage && (
                             <div className="text-sm">
                                 <span className={passwordMessage.includes('sucesso') ? 'text-green-500' : 'text-red-500'}>
@@ -366,7 +370,7 @@ export default function AdminSettings() {
                                 </span>
                             </div>
                         )}
-                        
+
                         <button
                             onClick={handleChangePassword}
                             disabled={isChangingPassword}
@@ -418,7 +422,7 @@ export default function AdminSettings() {
                     ))}
                 </div>
             </div>
-            
+
             {/* Taxas de Entrega */}
             <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-md">
                 <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">Taxas de Entrega por Bairro</h2>
@@ -467,6 +471,32 @@ export default function AdminSettings() {
                         />
                     </div>
 
+                    {/* Título do Cardápio */}
+                    <div>
+                        <label className="block text-white font-medium mb-2 text-sm sm:text-base">Título do Cardápio</label>
+                        <input
+                            type="text"
+                            value={establishmentInfo.menuTitle || ''}
+                            onChange={(e) => setEstablishmentInfo(prev => ({ ...prev, menuTitle: e.target.value }))}
+                            className="w-full p-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
+                            placeholder="Ex: Cardápio Digital, Menu, etc."
+                        />
+                        <p className="text-gray-400 text-xs mt-1">Este título aparecerá no topo do cardápio</p>
+                    </div>
+
+                    {/* Mostrar Logo */}
+                    <div>
+                        <label className="flex items-center space-x-3">
+                            <input
+                                type="checkbox"
+                                checked={establishmentInfo.showLogo ?? true}
+                                onChange={(e) => setEstablishmentInfo(prev => ({ ...prev, showLogo: e.target.checked }))}
+                                className="form-checkbox h-5 w-5 text-yellow-500 rounded focus:ring-yellow-500"
+                            />
+                            <span className="text-white font-medium text-sm sm:text-base">Mostrar logo no topo do cardápio</span>
+                        </label>
+                    </div>
+
                     {/* Endereço */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                         <div className="sm:col-span-2 lg:col-span-1">
@@ -474,8 +504,8 @@ export default function AdminSettings() {
                             <input
                                 type="text"
                                 value={establishmentInfo.address.street}
-                                onChange={(e) => setEstablishmentInfo(prev => ({ 
-                                    ...prev, 
+                                onChange={(e) => setEstablishmentInfo(prev => ({
+                                    ...prev,
                                     address: { ...prev.address, street: e.target.value }
                                 }))}
                                 className="w-full p-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
@@ -486,8 +516,8 @@ export default function AdminSettings() {
                             <input
                                 type="text"
                                 value={establishmentInfo.address.city}
-                                onChange={(e) => setEstablishmentInfo(prev => ({ 
-                                    ...prev, 
+                                onChange={(e) => setEstablishmentInfo(prev => ({
+                                    ...prev,
                                     address: { ...prev.address, city: e.target.value }
                                 }))}
                                 className="w-full p-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
@@ -498,8 +528,8 @@ export default function AdminSettings() {
                             <input
                                 type="text"
                                 value={establishmentInfo.address.state}
-                                onChange={(e) => setEstablishmentInfo(prev => ({ 
-                                    ...prev, 
+                                onChange={(e) => setEstablishmentInfo(prev => ({
+                                    ...prev,
                                     address: { ...prev.address, state: e.target.value }
                                 }))}
                                 className="w-full p-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
@@ -514,8 +544,8 @@ export default function AdminSettings() {
                             <input
                                 type="text"
                                 value={establishmentInfo.contact.phone}
-                                onChange={(e) => setEstablishmentInfo(prev => ({ 
-                                    ...prev, 
+                                onChange={(e) => setEstablishmentInfo(prev => ({
+                                    ...prev,
                                     contact: { ...prev.contact, phone: e.target.value }
                                 }))}
                                 className="w-full p-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
@@ -526,8 +556,8 @@ export default function AdminSettings() {
                             <input
                                 type="text"
                                 value={establishmentInfo.contact.whatsapp}
-                                onChange={(e) => setEstablishmentInfo(prev => ({ 
-                                    ...prev, 
+                                onChange={(e) => setEstablishmentInfo(prev => ({
+                                    ...prev,
                                     contact: { ...prev.contact, whatsapp: e.target.value }
                                 }))}
                                 className="w-full p-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
@@ -542,8 +572,8 @@ export default function AdminSettings() {
                             {establishmentInfo.paymentMethods.map((method, index) => (
                                 <div key={index} className="flex items-center justify-between bg-gray-700 p-3 rounded-lg">
                                     <span className="text-white text-sm sm:text-base truncate flex-1 mr-2">{method}</span>
-                                    <button 
-                                        onClick={() => handleRemovePaymentMethod(index)} 
+                                    <button
+                                        onClick={() => handleRemovePaymentMethod(index)}
                                         className="text-red-500 hover:text-red-400 text-lg sm:text-xl flex-shrink-0"
                                     >
                                         &times;
@@ -559,8 +589,8 @@ export default function AdminSettings() {
                                 onChange={(e) => setNewPaymentMethod(e.target.value)}
                                 className="flex-grow p-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
                             />
-                            <button 
-                                onClick={handleAddPaymentMethod} 
+                            <button
+                                onClick={handleAddPaymentMethod}
                                 className="bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-400 transition-colors text-sm sm:text-base"
                             >
                                 Adicionar
@@ -574,8 +604,8 @@ export default function AdminSettings() {
                         <input
                             type="text"
                             value={establishmentInfo.socialMedia.instagram}
-                            onChange={(e) => setEstablishmentInfo(prev => ({ 
-                                ...prev, 
+                            onChange={(e) => setEstablishmentInfo(prev => ({
+                                ...prev,
                                 socialMedia: { ...prev.socialMedia, instagram: e.target.value }
                             }))}
                             className="w-full p-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"

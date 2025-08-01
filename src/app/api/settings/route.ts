@@ -31,7 +31,7 @@ function isCurrentlyOpen(businessHours: any): boolean {
 
         const isOpen = currentTime >= todayHours.start && currentTime <= todayHours.end;
         console.log(`⏰ Verificando horário: ${currentTime} >= ${todayHours.start} && ${currentTime} <= ${todayHours.end} = ${isOpen}`);
-        
+
         return isOpen;
     } catch (error) {
         console.error('❌ Erro ao verificar horários:', error);
@@ -42,10 +42,10 @@ function isCurrentlyOpen(businessHours: any): boolean {
 export async function GET() {
     try {
         console.log('🚀 Iniciando busca de configurações...');
-        
+
         const { db } = await connectToDatabase();
         console.log('✅ Conexão com banco estabelecida');
-        
+
         const collection = db.collection('settings');
         console.log('✅ Coleção settings acessada');
 
@@ -57,23 +57,25 @@ export async function GET() {
         if (!settings) {
             console.log('📝 Criando configurações padrão...');
             const defaultSettings = {
-    isOpen: false,
-    businessHours: {
-        monday: { open: false, start: '08:00', end: '18:00' },
-        tuesday: { open: false, start: '08:00', end: '18:00' },
-        wednesday: { open: false, start: '08:00', end: '18:00' },
-        thursday: { open: false, start: '08:00', end: '18:00' },
-        friday: { open: false, start: '08:00', end: '18:00' },
-        saturday: { open: false, start: '08:00', end: '18:00' },
-        sunday: { open: false, start: '08:00', end: '18:00' }
-    },
-    deliveryFees: [
-        { neighborhood: 'Centro', fee: 5.00 },
-        { neighborhood: 'Bairro', fee: 8.00 }
-    ],
+                isOpen: false,
+                businessHours: {
+                    monday: { open: false, start: '08:00', end: '18:00' },
+                    tuesday: { open: false, start: '08:00', end: '18:00' },
+                    wednesday: { open: false, start: '08:00', end: '18:00' },
+                    thursday: { open: false, start: '08:00', end: '18:00' },
+                    friday: { open: false, start: '08:00', end: '18:00' },
+                    saturday: { open: false, start: '08:00', end: '18:00' },
+                    sunday: { open: false, start: '08:00', end: '18:00' }
+                },
+                deliveryFees: [
+                    { neighborhood: 'Centro', fee: 5.00 },
+                    { neighborhood: 'Bairro', fee: 8.00 }
+                ],
                 // Informações do estabelecimento
                 establishmentInfo: {
                     name: 'Rei dos Salgados',
+                    menuTitle: 'Cardápio Digital', // Título personalizado do cardápio
+                    showLogo: true, // Opção para mostrar ou esconder o logo
                     address: {
                         street: 'Rua Maria Luiza Dantas',
                         city: 'Alto Rodrigues',
@@ -85,7 +87,7 @@ export async function GET() {
                     },
                     paymentMethods: [
                         'Cartão de Crédito',
-                        'Cartão de Débito', 
+                        'Cartão de Débito',
                         'PIX',
                         'Dinheiro'
                     ],
@@ -95,18 +97,18 @@ export async function GET() {
                     about: 'Especialistas em salgados artesanais, oferecendo qualidade e sabor em cada pedido. Nossos produtos são feitos com ingredientes frescos e selecionados.',
                     pixKey: '' // Adiciona campo pixKey
                 },
-    lastUpdated: new Date().toISOString()
-};
+                lastUpdated: new Date().toISOString()
+            };
 
             await collection.insertOne(defaultSettings);
             settings = defaultSettings as any;
             console.log('✅ Configurações padrão criadas');
-}
+        }
 
         // Verifica se está aberto baseado no horário
         const isOpen = isCurrentlyOpen(settings!.businessHours);
         console.log('🔍 Status calculado:', isOpen);
-        
+
         const currentSettings = { ...settings, isOpen };
         console.log('✅ Configurações retornadas com sucesso');
 
@@ -123,13 +125,13 @@ export async function GET() {
 export async function PUT(request: Request) {
     try {
         console.log('🚀 Iniciando atualização de configurações...');
-        
+
         const { isOpen, deliveryFees, businessHours, establishmentInfo } = await request.json();
         console.log('📝 Recebendo dados para atualização:', { isOpen, deliveryFees, businessHours, establishmentInfo });
 
         const { db } = await connectToDatabase();
         console.log('✅ Conexão com banco estabelecida');
-        
+
         const collection = db.collection('settings');
         console.log('✅ Coleção settings acessada');
 
