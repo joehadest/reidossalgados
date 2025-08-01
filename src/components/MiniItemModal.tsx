@@ -55,7 +55,7 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
                 />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/50 to-transparent"></div>
-              
+
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
@@ -122,7 +122,7 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/50 to-transparent"></div>
-            
+
             {/* Botão fechar */}
             <motion.button
               whileHover={{ scale: 1.1 }}
@@ -179,45 +179,47 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
                 </label>
                 <div className="flex items-center justify-center gap-3 sm:gap-4">
                   <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                type="button"
-                onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-800 text-yellow-500 hover:bg-gray-700 border-2 border-gray-700 hover:border-yellow-500 transition-all duration-200 flex items-center justify-center"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ duration: 0.1 }}
+                    type="button"
+                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-800 text-yellow-500 hover:bg-gray-700 border-2 border-gray-700 hover:border-yellow-500 transition-all duration-150 flex items-center justify-center"
                   >
                     <FaMinus className="text-sm sm:text-base" />
                   </motion.button>
-                  
+
                   <div className="text-center">
-              <input
-                type="number"
-                min={1}
-                value={quantity}
+                    <input
+                      type="number"
+                      min={1}
+                      value={quantity}
                       onChange={e => setQuantity(Math.max(1, Number(e.target.value)))}
                       className="w-14 sm:w-16 text-center bg-gray-800 text-white text-lg sm:text-xl font-bold border-2 border-gray-700 rounded-lg focus:outline-none focus:border-yellow-500 transition-colors"
                     />
                   </div>
-                  
+
                   <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                type="button"
-                onClick={() => setQuantity(q => q + 1)}
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-800 text-yellow-500 hover:bg-gray-700 border-2 border-gray-700 hover:border-yellow-500 transition-all duration-200 flex items-center justify-center"
-              >
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ duration: 0.1 }}
+                    type="button"
+                    onClick={() => setQuantity(q => q + 1)}
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-800 text-yellow-500 hover:bg-gray-700 border-2 border-gray-700 hover:border-yellow-500 transition-all duration-150 flex items-center justify-center"
+                  >
                     <FaPlus className="text-sm sm:text-base" />
                   </motion.button>
-            </div>
-          </div>
+                </div>
+              </div>
 
               {/* Observações */}
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                   Observações (opcional)
                 </label>
-          <textarea
-            value={observation}
-            onChange={e => setObservation(e.target.value)}
+                <textarea
+                  value={observation}
+                  onChange={e => setObservation(e.target.value)}
                   className="w-full bg-gray-800 text-white border-2 border-gray-700 rounded-lg p-2 sm:p-3 focus:outline-none focus:border-yellow-500 transition-colors resize-none text-xs sm:text-sm"
                   rows={2}
                   placeholder="Ex: Sem cebola, mais queijo, bem passado..."

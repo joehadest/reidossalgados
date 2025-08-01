@@ -2,6 +2,7 @@ export interface Category {
     _id: string;
     name: string;
     emoji?: string;
+    orderIndex?: number; // Índice para controlar a ordem das categorias
 }
 
 export interface MenuItem {

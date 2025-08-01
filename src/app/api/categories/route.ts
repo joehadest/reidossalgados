@@ -6,22 +6,22 @@ export async function GET() {
   try {
     const { db } = await connectToDatabase();
     const collection = db.collection('categories');
-    let categories = await collection.find({}).toArray();
-    // Ordenação fixa desejada
-    const order = [
-      'Salgados',
-      'Bebidas',
-      'Sobremesas',
-      'Mini salgados para eventos'
-    ];
-    categories.sort((a, b) => {
-      const ia = order.findIndex(o => a.name.toLowerCase() === o.toLowerCase());
-      const ib = order.findIndex(o => b.name.toLowerCase() === o.toLowerCase());
-      if (ia === -1 && ib === -1) return 0;
-      if (ia === -1) return 1;
-      if (ib === -1) return -1;
-      return ia - ib;
-    });
+    // Buscar categorias ordenadas por orderIndex (menor para maior)
+    let categories = await collection.find({}).sort({ orderIndex: 1 }).toArray();
+
+    // Se não houver orderIndex definido, inicializar com base na ordem atual
+    if (categories.some(cat => cat.orderIndex === undefined)) {
+      const categoriesWithoutOrder = categories.filter(cat => cat.orderIndex === undefined);
+      for (let i = 0; i < categoriesWithoutOrder.length; i++) {
+        await collection.updateOne(
+          { _id: categoriesWithoutOrder[i]._id },
+          { $set: { orderIndex: categories.length + i } }
+        );
+      }
+      // Buscar novamente após inicializar
+      categories = await collection.find({}).sort({ orderIndex: 1 }).toArray();
+    }
+
     return NextResponse.json({ success: true, data: categories });
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Erro ao buscar categorias' }, { status: 500 });
@@ -41,12 +41,17 @@ export async function POST(request: Request) {
     if (exists) {
       return NextResponse.json({ success: false, message: 'Categoria já existe' }, { status: 400 });
     }
-    // Inserir com emoji, se fornecido
+
+    // Obter o próximo orderIndex
+    const categoriesCount = await collection.countDocuments();
+
+    // Inserir com emoji e orderIndex
     const result = await collection.insertOne({
       name,
-      emoji: emoji || '🍽️' // Emoji padrão se não for fornecido
+      emoji: emoji || '🍽️', // Emoji padrão se não for fornecido
+      orderIndex: categoriesCount // Adicionar ao final
     });
-    return NextResponse.json({ success: true, data: { _id: result.insertedId, name, emoji: emoji || '🍽️' } });
+    return NextResponse.json({ success: true, data: { _id: result.insertedId, name, emoji: emoji || '🍽️', orderIndex: categoriesCount } });
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Erro ao adicionar categoria' }, { status: 500 });
   }
@@ -100,5 +105,34 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Erro ao editar categoria' }, { status: 500 });
+  }
+}
+
+// Nova função PATCH para reordenar categorias
+export async function PATCH(request: Request) {
+  try {
+    const { categories } = await request.json();
+
+    if (!Array.isArray(categories)) {
+      return NextResponse.json({ success: false, message: 'Lista de categorias inválida' }, { status: 400 });
+    }
+
+    const { db } = await connectToDatabase();
+    const collection = db.collection('categories');
+
+    // Atualizar o orderIndex de cada categoria
+    const updatePromises = categories.map((category, index) => {
+      return collection.updateOne(
+        { _id: new ObjectId(category._id) },
+        { $set: { orderIndex: index } }
+      );
+    });
+
+    await Promise.all(updatePromises);
+
+    return NextResponse.json({ success: true, message: 'Ordem das categorias atualizada com sucesso' });
+  } catch (error) {
+    console.error('Erro ao reordenar categorias:', error);
+    return NextResponse.json({ success: false, message: 'Erro ao reordenar categorias' }, { status: 500 });
   }
 }

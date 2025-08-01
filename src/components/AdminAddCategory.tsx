@@ -1,5 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { FaTrash, FaEdit, FaCheck, FaTimes, FaSmile } from 'react-icons/fa';
+import { FaTrash, FaEdit, FaCheck, FaTimes, FaSmile, FaGripVertical } from 'react-icons/fa';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // Lista de emojis comuns para alimentos
 const foodEmojis = [
@@ -10,19 +29,154 @@ const foodEmojis = [
   '🧉', '🥂', '🥃', '🍴', '🍽️', '🥄', '🥢', '🧆', '🥟', '🥠', '🥡',
 ];
 
+// Componente para item arrastável
+function SortableItem({
+  category,
+  editId,
+  editValue,
+  editEmoji,
+  showEditEmojiPicker,
+  removingId,
+  onEdit,
+  onEditSave,
+  onEditCancel,
+  onRemove,
+  onEditValueChange,
+  onToggleEmojiPicker,
+  onEmojiSelect,
+  foodEmojis
+}: {
+  category: { _id: string, name: string, emoji?: string, orderIndex?: number };
+  editId: string | null;
+  editValue: string;
+  editEmoji: string;
+  showEditEmojiPicker: boolean;
+  removingId: string | null;
+  onEdit: (cat: { _id: string, name: string, emoji?: string }) => void;
+  onEditSave: (id: string) => void;
+  onEditCancel: () => void;
+  onRemove: (id: string) => void;
+  onEditValueChange: (value: string) => void;
+  onToggleEmojiPicker: () => void;
+  onEmojiSelect: (emoji: string) => void;
+  foodEmojis: string[];
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: category._id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`bg-gray-900 rounded px-3 py-2 text-white border border-gray-700 flex items-center justify-between gap-2 transition-all ${isDragging ? 'shadow-lg bg-gray-800 scale-105 border-yellow-500' : ''
+        }`}
+    >
+      {editId === category._id ? (
+        <div className="w-full flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={editValue}
+              onChange={e => onEditValueChange(e.target.value)}
+              className="bg-gray-800 border border-yellow-500 rounded px-2 py-1 text-white flex-grow"
+              autoFocus
+            />
+            <button onClick={() => onEditSave(category._id)} className="text-green-400 hover:text-green-300"><FaCheck /></button>
+            <button onClick={onEditCancel} className="text-red-400 hover:text-red-300"><FaTimes /></button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div
+              className="w-8 h-8 flex items-center justify-center bg-gray-800 border border-yellow-500 rounded text-xl cursor-pointer"
+              onClick={onToggleEmojiPicker}
+            >
+              {editEmoji}
+            </div>
+            <button
+              type="button"
+              className="text-xs p-1 bg-blue-600 hover:bg-blue-500 rounded text-white flex items-center"
+              onClick={onToggleEmojiPicker}
+            >
+              <FaSmile className="mr-1" /> Trocar Emoji
+            </button>
+          </div>
+
+          {showEditEmojiPicker && (
+            <div className="p-1 bg-gray-800 border border-gray-600 rounded max-h-32 overflow-y-auto">
+              <div className="grid grid-cols-6 gap-1">
+                {foodEmojis.map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    className={`w-7 h-7 text-lg flex items-center justify-center rounded hover:bg-gray-700 ${editEmoji === e ? 'bg-yellow-500/30' : ''}`}
+                    onClick={() => onEmojiSelect(e)}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-2">
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-yellow-400 p-1"
+            >
+              <FaGripVertical />
+            </div>
+            <span className="text-xl" role="img" aria-label={`Emoji para ${category.name}`}>
+              {category.emoji || '🍽️'}
+            </span>
+            <span>{category.name}</span>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => onEdit(category)} className="text-yellow-400 hover:text-yellow-300"><FaEdit /></button>
+            <button onClick={() => onRemove(category._id)} className={`text-red-500 hover:text-red-400 ${removingId === category._id ? 'opacity-50 pointer-events-none' : ''}`} disabled={removingId === category._id}><FaTrash /></button>
+          </div>
+        </>
+      )}
+    </li>
+  );
+}
+
 export default function AdminAddCategory() {
   const [category, setCategory] = useState('');
   const [emoji, setEmoji] = useState('🍽️'); // Emoji padrão
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [categorias, setCategorias] = useState<{ _id: string, name: string, emoji?: string }[]>([]);
+  const [categorias, setCategorias] = useState<{ _id: string, name: string, emoji?: string, orderIndex?: number }[]>([]);
   const [editId, setEditId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [editEmoji, setEditEmoji] = useState('');
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
+
+  // Configurar sensores para drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Buscar categorias do backend
   const fetchCategorias = async () => {
@@ -30,11 +184,17 @@ export default function AdminAddCategory() {
       const res = await fetch('/api/categories');
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
-        setCategorias(data.data.map((cat: any) => ({
-          _id: cat._id,
-          name: cat.name,
-          emoji: cat.emoji || '🍽️' // Usar emoji padrão se não estiver definido
-        })));
+        // Ordenar categorias pelo orderIndex
+        const sortedCategories = data.data
+          .map((cat: any) => ({
+            _id: cat._id,
+            name: cat.name,
+            emoji: cat.emoji || '🍽️', // Usar emoji padrão se não estiver definido
+            orderIndex: cat.orderIndex || 0
+          }))
+          .sort((a: { orderIndex: number }, b: { orderIndex: number }) => a.orderIndex - b.orderIndex);
+
+        setCategorias(sortedCategories);
       }
     } catch (err) {
       setCategorias([]);
@@ -50,21 +210,20 @@ export default function AdminAddCategory() {
     setSuccess('');
     setError('');
     setLoading(true);
+
     try {
       const res = await fetch('/api/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: category.trim(),
-          emoji: emoji
-        })
+        body: JSON.stringify({ name: category, emoji })
       });
+
       const data = await res.json();
       if (data.success) {
-        setSuccess('Categoria adicionada com sucesso!');
         setCategory('');
-        setEmoji('🍽️'); // Resetar para o emoji padrão
-        fetchCategorias(); // Atualiza lista
+        setEmoji('🍽️');
+        setSuccess('Categoria adicionada com sucesso!');
+        fetchCategorias();
       } else {
         setError(data.message || 'Erro ao adicionar categoria.');
       }
@@ -75,27 +234,6 @@ export default function AdminAddCategory() {
     }
   };
 
-  const handleRemove = async (id: string) => {
-    if (!window.confirm('Tem certeza que deseja remover esta categoria?')) return;
-    setRemovingId(id);
-    setSuccess('');
-    setError('');
-    try {
-      const res = await fetch(`/api/categories?id=${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        setSuccess('Categoria removida com sucesso!');
-        fetchCategorias();
-      } else {
-        setError(data.message || 'Erro ao remover categoria.');
-      }
-    } catch (err) {
-      setError('Erro ao conectar com o servidor.');
-    } finally {
-      setRemovingId(null);
-    }
-  };
-
   const handleEdit = (cat: { _id: string, name: string, emoji?: string }) => {
     setEditId(cat._id);
     setEditValue(cat.name);
@@ -103,44 +241,120 @@ export default function AdminAddCategory() {
   };
 
   const handleEditSave = async (id: string) => {
-    if (!editValue.trim()) return;
-    setLoading(true);
-    setSuccess('');
-    setError('');
     try {
       const res = await fetch(`/api/categories?id=${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editValue.trim(),
-          emoji: editEmoji
-        })
+        body: JSON.stringify({ name: editValue, emoji: editEmoji })
       });
+
       const data = await res.json();
       if (data.success) {
-        setSuccess('Categoria editada com sucesso!');
         setEditId(null);
         setEditValue('');
         setEditEmoji('');
         setShowEditEmojiPicker(false);
+        setSuccess('Categoria editada com sucesso!');
+        setTimeout(() => setSuccess(''), 3000);
         fetchCategorias();
       } else {
         setError(data.message || 'Erro ao editar categoria.');
+        setTimeout(() => setError(''), 3000);
       }
     } catch (err) {
       setError('Erro ao conectar com o servidor.');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleRemove = async (id: string) => {
+    setRemovingId(id);
+    try {
+      const res = await fetch(`/api/categories?id=${id}`, {
+        method: 'DELETE'
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setSuccess('Categoria removida com sucesso!');
+        setTimeout(() => setSuccess(''), 3000);
+        fetchCategorias();
+      } else {
+        setError(data.message || 'Erro ao remover categoria.');
+        setTimeout(() => setError(''), 3000);
+      }
+    } catch (err) {
+      setError('Erro ao conectar com o servidor.');
+      setTimeout(() => setError(''), 3000);
     } finally {
-      setLoading(false);
+      setRemovingId(null);
+    }
+  };
+
+  // Função para lidar com o drag and drop
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = categorias.findIndex(cat => cat._id === active.id);
+    const newIndex = categorias.findIndex(cat => cat._id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Reordenar array localmente
+    const reorderedCategories = arrayMove(categorias, oldIndex, newIndex);
+
+    // Atualizar estado local imediatamente para feedback visual
+    setCategorias(reorderedCategories);
+
+    // Atualizar no backend
+    setIsReordering(true);
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categories: reorderedCategories })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setSuccess('Ordem das categorias atualizada com sucesso!');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(data.message || 'Erro ao reordenar categorias.');
+        setTimeout(() => setError(''), 3000);
+        // Reverter mudanças em caso de erro
+        fetchCategorias();
+      }
+    } catch (err) {
+      setError('Erro ao conectar com o servidor.');
+      setTimeout(() => setError(''), 3000);
+      // Reverter mudanças em caso de erro
+      fetchCategorias();
+    } finally {
+      setIsReordering(false);
     }
   };
 
   return (
     <div className="max-w-xl w-full mx-auto bg-gray-800 rounded-xl p-3 sm:p-6 shadow-lg border border-yellow-500/30">
-      <h2 className="text-xl sm:text-2xl font-bold text-yellow-500 mb-4 sm:mb-6 text-center">Adicionar Nova Categoria</h2>
-      <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-        {success && <div className="bg-green-700/20 text-green-400 rounded p-2 text-center">{success}</div>}
-        {error && <div className="bg-red-700/20 text-red-400 rounded p-2 text-center">{error}</div>}
-        <div>
+      <h2 className="text-lg sm:text-xl font-bold text-yellow-500 mb-3 sm:mb-4">Gerenciar Categorias</h2>
+
+      {success && (
+        <div className="bg-green-500/20 border border-green-500 rounded p-2 mb-3 text-green-400 text-sm">
+          {success}
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-500/20 border border-red-500 rounded p-2 mb-3 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        <div className="mb-3">
           <label className="block text-sm font-medium text-gray-200 mb-1">Nome da Categoria</label>
           <input
             type="text"
@@ -199,87 +413,64 @@ export default function AdminAddCategory() {
           {loading ? 'Adicionando...' : 'Adicionar Categoria'}
         </button>
       </form>
+
       <div className="mt-6 sm:mt-8">
-        <h3 className="text-base sm:text-lg font-semibold text-yellow-400 mb-2">Categorias cadastradas</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base sm:text-lg font-semibold text-yellow-400">Categorias cadastradas</h3>
+          {isReordering && (
+            <div className="text-sm text-yellow-400 flex items-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400 mr-2"></div>
+              Salvando ordem...
+            </div>
+          )}
+        </div>
+        <div className="text-xs text-gray-400 mb-3">
+          📌 Arraste as categorias para alterar sua ordem no cardápio
+        </div>
         <div className="overflow-x-auto">
-          <ul className="space-y-1 min-w-[220px]">
-            {categorias.length === 0 ? (
-              <div className="text-gray-400 text-sm">Nenhuma categoria cadastrada ainda.</div>
-            ) : (
-              <ul className="space-y-1">
-                {categorias.map((cat) => (
-                  <li key={cat._id} className="bg-gray-900 rounded px-3 py-2 text-white border border-gray-700 flex items-center justify-between gap-2">
-                    {editId === cat._id ? (
-                      <div className="w-full flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={editValue}
-                            onChange={e => setEditValue(e.target.value)}
-                            className="bg-gray-800 border border-yellow-500 rounded px-2 py-1 text-white flex-grow"
-                            autoFocus
-                          />
-                          <button onClick={() => handleEditSave(cat._id)} className="text-green-400 hover:text-green-300"><FaCheck /></button>
-                          <button onClick={() => { setEditId(null); setEditValue(''); setEditEmoji(''); setShowEditEmojiPicker(false); }} className="text-red-400 hover:text-red-300"><FaTimes /></button>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-8 h-8 flex items-center justify-center bg-gray-800 border border-yellow-500 rounded text-xl cursor-pointer"
-                            onClick={() => setShowEditEmojiPicker(!showEditEmojiPicker)}
-                          >
-                            {editEmoji}
-                          </div>
-                          <button
-                            type="button"
-                            className="text-xs p-1 bg-blue-600 hover:bg-blue-500 rounded text-white flex items-center"
-                            onClick={() => setShowEditEmojiPicker(!showEditEmojiPicker)}
-                          >
-                            <FaSmile className="mr-1" /> Trocar Emoji
-                          </button>
-                        </div>
-
-                        {showEditEmojiPicker && (
-                          <div className="p-1 bg-gray-800 border border-gray-600 rounded max-h-32 overflow-y-auto">
-                            <div className="grid grid-cols-6 gap-1">
-                              {foodEmojis.map((e) => (
-                                <button
-                                  key={e}
-                                  type="button"
-                                  className={`w-7 h-7 text-lg flex items-center justify-center rounded hover:bg-gray-700 ${editEmoji === e ? 'bg-yellow-500/30' : ''}`}
-                                  onClick={() => {
-                                    setEditEmoji(e);
-                                    setShowEditEmojiPicker(false);
-                                  }}
-                                >
-                                  {e}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl" role="img" aria-label={`Emoji para ${cat.name}`}>
-                            {cat.emoji || '🍽️'}
-                          </span>
-                          <span>{cat.name}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => handleEdit(cat)} className="text-yellow-400 hover:text-yellow-300"><FaEdit /></button>
-                          <button onClick={() => handleRemove(cat._id)} className={`text-red-500 hover:text-red-400 ${removingId === cat._id ? 'opacity-50 pointer-events-none' : ''}`} disabled={removingId === cat._id}><FaTrash /></button>
-                        </div>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </ul>
+          {categorias.length === 0 ? (
+            <div className="text-gray-400 text-sm">Nenhuma categoria cadastrada ainda.</div>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={categorias.map(cat => cat._id)} strategy={verticalListSortingStrategy}>
+                <ul className="space-y-1 min-w-[220px]">
+                  {categorias.map((cat) => (
+                    <SortableItem
+                      key={cat._id}
+                      category={cat}
+                      editId={editId}
+                      editValue={editValue}
+                      editEmoji={editEmoji}
+                      showEditEmojiPicker={showEditEmojiPicker}
+                      removingId={removingId}
+                      onEdit={handleEdit}
+                      onEditSave={handleEditSave}
+                      onEditCancel={() => {
+                        setEditId(null);
+                        setEditValue('');
+                        setEditEmoji('');
+                        setShowEditEmojiPicker(false);
+                      }}
+                      onRemove={handleRemove}
+                      onEditValueChange={setEditValue}
+                      onToggleEmojiPicker={() => setShowEditEmojiPicker(!showEditEmojiPicker)}
+                      onEmojiSelect={(emoji) => {
+                        setEditEmoji(emoji);
+                        setShowEditEmojiPicker(false);
+                      }}
+                      foodEmojis={foodEmojis}
+                    />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
+          )}
         </div>
       </div>
     </div>
   );
-} 
+}

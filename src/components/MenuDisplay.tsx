@@ -17,7 +17,8 @@ const containerVariants = {
     visible: {
         opacity: 1,
         transition: {
-            staggerChildren: 0.1
+            staggerChildren: 0.03, // Reduzido de 0.1 para 0.03
+            duration: 0.2 // Adicionado duração mais rápida
         }
     }
 };
@@ -29,7 +30,9 @@ const itemVariants = {
         y: 0,
         transition: {
             type: "spring",
-            stiffness: 100
+            stiffness: 200, // Aumentado de 100 para 200
+            damping: 20, // Adicionado damping para reduzir oscilação
+            duration: 0.3 // Duração mais rápida
         }
     }
 };
@@ -41,7 +44,9 @@ const categoryVariants = {
         x: 0,
         transition: {
             type: "spring",
-            stiffness: 100
+            stiffness: 200, // Aumentado de 100 para 200
+            damping: 20, // Adicionado damping
+            duration: 0.25 // Duração mais rápida
         }
     }
 };
@@ -66,7 +71,7 @@ export default function MenuDisplay() {
     const [miniModalItem, setMiniModalItem] = useState<MenuItem | null>(null);
     const [businessHours, setBusinessHours] = useState<any>(null);
     const [isLoadingSettings, setIsLoadingSettings] = useState(true);
-    const [categories, setCategories] = useState<{ _id: string, name: string, emoji?: string }[]>([]);
+    const [categories, setCategories] = useState<{ _id: string, name: string, emoji?: string, orderIndex?: number }[]>([]);
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [whatsappNumber, setWhatsappNumber] = useState<string>('');
     const [pixKey, setPixKey] = useState<string>('');
@@ -153,11 +158,17 @@ export default function MenuDisplay() {
                 const res = await fetch('/api/categories');
                 const data = await res.json();
                 if (data.success && Array.isArray(data.data)) {
-                    setCategories(data.data.map((cat: any) => ({
-                        _id: cat._id,
-                        name: cat.name,
-                        emoji: cat.emoji || '🍽️' // Emoji padrão se não tiver
-                    })));
+                    // Ordenar categorias pelo orderIndex
+                    const sortedCategories = data.data
+                        .map((cat: any) => ({
+                            _id: cat._id,
+                            name: cat.name,
+                            emoji: cat.emoji || '🍽️', // Emoji padrão se não tiver
+                            orderIndex: cat.orderIndex || 0
+                        }))
+                        .sort((a: { orderIndex: number }, b: { orderIndex: number }) => a.orderIndex - b.orderIndex);
+
+                    setCategories(sortedCategories);
                 }
             } catch (err) {
                 setCategories([]);
@@ -226,8 +237,9 @@ export default function MenuDisplay() {
     // Definir categoria inicial e garantir visualização correta
     useEffect(() => {
         if ((categories || []).length > 0 && !selectedCategory) {
-            const salgadosCategory = categories.find(cat => cat.name.toLowerCase().includes('salgado'));
-            const categoryId = salgadosCategory ? salgadosCategory._id : categories[0]._id;
+            // Usar a primeira categoria da lista ordenada
+            const firstCategory = categories[0];
+            const categoryId = firstCategory._id;
             setSelectedCategory(categoryId);
 
             // Pequeno atraso para garantir que os elementos do DOM foram renderizados
@@ -401,13 +413,13 @@ export default function MenuDisplay() {
                 // Desativar o modo de rolagem manual após concluir a animação
                 setTimeout(() => {
                     setIsManualScrolling(false);
-                }, 800); // Tempo suficiente para a animação de rolagem concluir
+                }, 400); // Reduzido de 800 para 400ms
 
                 // Efeito visual de feedback para indicar a mudança de categoria
                 element.classList.add('bg-yellow-500/10');
                 setTimeout(() => {
                     element.classList.remove('bg-yellow-500/10');
-                }, 500);
+                }, 250); // Reduzido de 500 para 250ms
             }
         } else {
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -772,15 +784,16 @@ export default function MenuDisplay() {
                                         return (
                                             <motion.button
                                                 key={cat._id}
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
+                                                whileHover={{ scale: 1.03 }}
+                                                whileTap={{ scale: 0.97 }}
+                                                transition={{ duration: 0.15 }}
                                                 onClick={() => handleCategoryClick(cat._id)}
                                                 data-category={cat._id}
                                                 aria-selected={selectedCategory === cat._id}
                                                 className={`
                                                     relative flex items-center gap-1.5 sm:gap-2
                                                     px-2.5 sm:px-4 py-1.5 sm:py-2.5
-                                                    rounded-lg transition-all duration-200
+                                                    rounded-lg transition-all duration-150
                                                     ${selectedCategory === cat._id
                                                         ? 'bg-yellow-500 text-gray-900 font-medium shadow-lg active'
                                                         : 'bg-gray-800/80 text-gray-300 hover:bg-yellow-500/20 hover:text-yellow-400 border border-gray-700'}
@@ -850,7 +863,7 @@ export default function MenuDisplay() {
                                                         initial="hidden"
                                                         animate="visible"
                                                         onClick={() => setMiniModalItem(item)}
-                                                        className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 border border-yellow-500 cursor-pointer hover:bg-gray-750 hover:border-yellow-400"
+                                                        className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-150 border border-yellow-500 cursor-pointer hover:bg-gray-750 hover:border-yellow-400"
                                                     >
                                                         <div className="flex flex-col sm:flex-row w-full">
                                                             {/* Imagem */}
@@ -891,13 +904,14 @@ export default function MenuDisplay() {
                                                                         </span>
                                                                     ) : (
                                                                         <motion.button
-                                                                            whileHover={{ scale: 1.05 }}
-                                                                            whileTap={{ scale: 0.95 }}
+                                                                            whileHover={{ scale: 1.03 }}
+                                                                            whileTap={{ scale: 0.97 }}
+                                                                            transition={{ duration: 0.1 }}
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
                                                                                 setMiniModalItem(item);
                                                                             }}
-                                                                            className="bg-yellow-500 text-gray-900 p-2 md:p-3 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-200 flex-shrink-0"
+                                                                            className="bg-yellow-500 text-gray-900 p-2 md:p-3 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-150 flex-shrink-0"
                                                                         >
                                                                             <FaPlus className="text-sm md:text-base" />
                                                                         </motion.button>
@@ -1003,19 +1017,21 @@ export default function MenuDisplay() {
 
                                 <div className="flex justify-center gap-4">
                                     <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
+                                        whileHover={{ scale: 1.03 }}
+                                        whileTap={{ scale: 0.97 }}
+                                        transition={{ duration: 0.1 }}
                                         onClick={handleWhatsAppClick}
-                                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+                                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 transition-colors duration-150"
                                     >
                                         <FaWhatsapp className="text-xl" />
                                         Enviar para WhatsApp
                                     </motion.button>
                                     <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
+                                        whileHover={{ scale: 1.03 }}
+                                        whileTap={{ scale: 0.97 }}
+                                        transition={{ duration: 0.1 }}
                                         onClick={() => setShowWhatsAppModal(false)}
-                                        className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700"
+                                        className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-150"
                                     >
                                         Cancelar
                                     </motion.button>
@@ -1046,9 +1062,10 @@ export default function MenuDisplay() {
 
                                 <div className="flex justify-center">
                                     <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700"
+                                        whileHover={{ scale: 1.03 }}
+                                        whileTap={{ scale: 0.97 }}
+                                        transition={{ duration: 0.1 }}
+                                        className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors duration-150"
                                         onClick={() => {
                                             setOrderSuccessId(null);
                                         }}

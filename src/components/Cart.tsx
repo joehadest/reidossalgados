@@ -64,36 +64,36 @@ const calculateItemPrice = (item: CartItem) => {
         let price = 0;
 
         if (item.item.category === 'pizzas') {
-        // Se for pizza meio a meio, pega o preço mais alto dos dois sabores
-        if (item.observation && item.observation.includes('Meio a meio:')) {
-            const [sabor1, sabor2] = item.observation.split('Meio a meio:')[1].split('/').map(s => s.trim());
-            const pizzas = menuItems.filter((p: MenuItem) => p.category === 'pizzas');
-            const pizza1 = pizzas.find((p: MenuItem) => p.name === sabor1);
-            const pizza2 = pizzas.find((p: MenuItem) => p.name === sabor2);
+            // Se for pizza meio a meio, pega o preço mais alto dos dois sabores
+            if (item.observation && item.observation.includes('Meio a meio:')) {
+                const [sabor1, sabor2] = item.observation.split('Meio a meio:')[1].split('/').map(s => s.trim());
+                const pizzas = menuItems.filter((p: MenuItem) => p.category === 'pizzas');
+                const pizza1 = pizzas.find((p: MenuItem) => p.name === sabor1);
+                const pizza2 = pizzas.find((p: MenuItem) => p.name === sabor2);
 
-            if (pizza1 && pizza2) {
-                const price1 = pizza1.sizes ? pizza1.sizes[sizeKey] || pizza1.price : pizza1.price;
-                const price2 = pizza2.sizes ? pizza2.sizes[sizeKey] || pizza2.price : pizza2.price;
-                price = Math.max(price1, price2);
-            }
-        } else {
-            price = item.item.sizes[sizeKey] || item.item.price;
-        }
-
-        // Adiciona o preço da borda se houver
-        if (item.border && item.item.borderOptions) {
-            const borderPrice = sizeKey === 'G' ? 8.00 : 4.00;
-            price += borderPrice;
-        }
-
-        // Adiciona o preço dos extras se houver
-        if (item.extras && item.item.extraOptions) {
-            item.extras.forEach(extra => {
-                const extraPrice = item.item.extraOptions![extra];
-                if (extraPrice) {
-                    price += extraPrice;
+                if (pizza1 && pizza2) {
+                    const price1 = pizza1.sizes ? pizza1.sizes[sizeKey] || pizza1.price : pizza1.price;
+                    const price2 = pizza2.sizes ? pizza2.sizes[sizeKey] || pizza2.price : pizza2.price;
+                    price = Math.max(price1, price2);
                 }
-            });
+            } else {
+                price = item.item.sizes[sizeKey] || item.item.price;
+            }
+
+            // Adiciona o preço da borda se houver
+            if (item.border && item.item.borderOptions) {
+                const borderPrice = sizeKey === 'G' ? 8.00 : 4.00;
+                price += borderPrice;
+            }
+
+            // Adiciona o preço dos extras se houver
+            if (item.extras && item.item.extraOptions) {
+                item.extras.forEach(extra => {
+                    const extraPrice = item.item.extraOptions![extra];
+                    if (extraPrice) {
+                        price += extraPrice;
+                    }
+                });
             }
         } else {
             // Para massas, apenas pega o preço do tamanho
@@ -111,36 +111,36 @@ const calculateUnitPrice = (item: CartItem) => {
         let price = 0;
 
         if (item.item.category === 'pizzas') {
-        // Se for pizza meio a meio, pega o preço mais alto dos dois sabores
-        if (item.observation && item.observation.includes('Meio a meio:')) {
-            const [sabor1, sabor2] = item.observation.split('Meio a meio:')[1].split('/').map(s => s.trim());
-            const pizzas = menuItems.filter((p: MenuItem) => p.category === 'pizzas');
-            const pizza1 = pizzas.find((p: MenuItem) => p.name === sabor1);
-            const pizza2 = pizzas.find((p: MenuItem) => p.name === sabor2);
+            // Se for pizza meio a meio, pega o preço mais alto dos dois sabores
+            if (item.observation && item.observation.includes('Meio a meio:')) {
+                const [sabor1, sabor2] = item.observation.split('Meio a meio:')[1].split('/').map(s => s.trim());
+                const pizzas = menuItems.filter((p: MenuItem) => p.category === 'pizzas');
+                const pizza1 = pizzas.find((p: MenuItem) => p.name === sabor1);
+                const pizza2 = pizzas.find((p: MenuItem) => p.name === sabor2);
 
-            if (pizza1 && pizza2) {
-                const price1 = pizza1.sizes ? pizza1.sizes[sizeKey] || pizza1.price : pizza1.price;
-                const price2 = pizza2.sizes ? pizza2.sizes[sizeKey] || pizza2.price : pizza2.price;
-                price = Math.max(price1, price2);
-            }
-        } else {
-            price = item.item.sizes[sizeKey] || item.item.price;
-        }
-
-        // Adiciona o preço da borda se houver
-        if (item.border && item.item.borderOptions) {
-            const borderPrice = sizeKey === 'G' ? 8.00 : 4.00;
-            price += borderPrice;
-        }
-
-        // Adiciona o preço dos extras se houver
-        if (item.extras && item.item.extraOptions) {
-            item.extras.forEach(extra => {
-                const extraPrice = item.item.extraOptions![extra];
-                if (extraPrice) {
-                    price += extraPrice;
+                if (pizza1 && pizza2) {
+                    const price1 = pizza1.sizes ? pizza1.sizes[sizeKey] || pizza1.price : pizza1.price;
+                    const price2 = pizza2.sizes ? pizza2.sizes[sizeKey] || pizza2.price : pizza2.price;
+                    price = Math.max(price1, price2);
                 }
-            });
+            } else {
+                price = item.item.sizes[sizeKey] || item.item.price;
+            }
+
+            // Adiciona o preço da borda se houver
+            if (item.border && item.item.borderOptions) {
+                const borderPrice = sizeKey === 'G' ? 8.00 : 4.00;
+                price += borderPrice;
+            }
+
+            // Adiciona o preço dos extras se houver
+            if (item.extras && item.item.extraOptions) {
+                item.extras.forEach(extra => {
+                    const extraPrice = item.item.extraOptions![extra];
+                    if (extraPrice) {
+                        price += extraPrice;
+                    }
+                });
             }
         } else {
             // Para massas, apenas pega o preço do tamanho
@@ -316,7 +316,7 @@ export default function Cart({ items, onUpdateQuantity, onRemoveItem, onCheckout
                 >
                     <button
                         onClick={onClose}
-                        className="absolute top-2 right-2 sm:top-3 sm:right-3 text-gray-400 hover:text-white z-10 w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-gray-800/80 hover:bg-gray-700/80 transition-all duration-200 hover:scale-110"
+                        className="absolute top-2 right-2 sm:top-3 sm:right-3 text-gray-400 hover:text-white z-10 w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-gray-800/80 hover:bg-gray-700/80 transition-all duration-150 hover:scale-110"
                     >
                         <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -446,11 +446,10 @@ export default function Cart({ items, onUpdateQuantity, onRemoveItem, onCheckout
                                                 setTipoEntrega('entrega');
                                                 localStorage.setItem('tipoEntrega', 'entrega');
                                             }}
-                                            className={`p-3 xs:p-4 rounded-lg border-2 transition-all duration-200 text-center ${
-                                                tipoEntrega === 'entrega'
+                                            className={`p-3 xs:p-4 rounded-lg border-2 transition-all duration-150 text-center ${tipoEntrega === 'entrega'
                                                     ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400'
                                                     : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500 hover:bg-gray-750'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="flex flex-col items-center gap-1">
                                                 <svg className="w-5 h-5 xs:w-6 xs:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -465,11 +464,10 @@ export default function Cart({ items, onUpdateQuantity, onRemoveItem, onCheckout
                                                 setTipoEntrega('retirada');
                                                 localStorage.setItem('tipoEntrega', 'retirada');
                                             }}
-                                            className={`p-3 xs:p-4 rounded-lg border-2 transition-all duration-200 text-center ${
-                                                tipoEntrega === 'retirada'
+                                            className={`p-3 xs:p-4 rounded-lg border-2 transition-all duration-150 text-center ${tipoEntrega === 'retirada'
                                                     ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400'
                                                     : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500 hover:bg-gray-750'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="flex flex-col items-center gap-1">
                                                 <svg className="w-5 h-5 xs:w-6 xs:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -638,7 +636,7 @@ export default function Cart({ items, onUpdateQuantity, onRemoveItem, onCheckout
                                     <button
                                         type="submit"
                                         disabled={loading || items.length === 0}
-                                        className="w-full bg-yellow-500 text-gray-900 font-bold py-2 xs:py-3 px-3 xs:px-4 rounded-lg transition-colors duration-300 flex items-center justify-center gap-2 hover:bg-yellow-400 disabled:bg-gray-600 disabled:cursor-not-allowed text-xs xs:text-sm sm:text-base"
+                                        className="w-full bg-yellow-500 text-gray-900 font-bold py-2 xs:py-3 px-3 xs:px-4 rounded-lg transition-colors duration-150 flex items-center justify-center gap-2 hover:bg-yellow-400 disabled:bg-gray-600 disabled:cursor-not-allowed text-xs xs:text-sm sm:text-base"
                                     >
                                         {loading ? (
                                             <svg className="animate-spin h-4 w-4 xs:h-5 xs:w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
