@@ -197,6 +197,9 @@ export default function MenuDisplay() {
     const [isManualScrolling, setIsManualScrolling] = useState(false);
 
     useEffect(() => {
+        // Detectar se estamos em mobile para ajustar o observer
+        const isMobile = window.innerWidth < 640;
+
         const observer = new IntersectionObserver(
             (entries) => {
                 // Só atualizar categoria automaticamente se NÃO estiver em rolagem manual
@@ -210,8 +213,8 @@ export default function MenuDisplay() {
                 }
             },
             {
-                rootMargin: '-120px 0px -40% 0px',
-                threshold: 0.2
+                rootMargin: isMobile ? '-100px 0px -50% 0px' : '-120px 0px -40% 0px',
+                threshold: isMobile ? 0.1 : 0.2
             }
         );
 
@@ -250,19 +253,19 @@ export default function MenuDisplay() {
                 // Garantir que a primeira categoria esteja visível na barra de categorias
                 const categoryBtn = document.querySelector(`button[data-category="${categoryId}"]`);
                 if (categoryBtn) {
-                    // Em mobile, alinhamos à esquerda sem usar scrollIntoView
-                    if (isMobile) {
-                        const scrollContainer = categoryBtn.closest('.scrollbar-hide');
-                        if (scrollContainer) {
-                            scrollContainer.scrollLeft = 0; // Forçar scroll para o início em mobile
+                    const scrollContainer = categoryBtn.closest('.scrollbar-hide');
+                    if (scrollContainer) {
+                        // Centralizar tanto em mobile quanto em desktop
+                        const btnRect = categoryBtn.getBoundingClientRect();
+                        const containerRect = scrollContainer.getBoundingClientRect();
+
+                        if (categoryBtn instanceof HTMLElement) {
+                            const targetScrollLeft = categoryBtn.offsetLeft - (containerRect.width / 2) + (btnRect.width / 2);
+                            const maxScroll = scrollContainer.scrollWidth - containerRect.width;
+                            const finalScrollLeft = Math.max(0, Math.min(targetScrollLeft, maxScroll));
+
+                            scrollContainer.scrollLeft = finalScrollLeft;
                         }
-                    } else {
-                        // Em desktop, centralizamos normalmente
-                        categoryBtn.scrollIntoView({
-                            behavior: 'auto',
-                            inline: 'center',
-                            block: 'nearest'
-                        });
                     }
                 }
 
@@ -332,7 +335,7 @@ export default function MenuDisplay() {
         };
     }, [isMenuOpen, touchStart, touchEnd]);
 
-    // Scroll horizontal automático da barra de categorias - centralizado apenas no desktop
+    // Scroll horizontal automático da barra de categorias - centralizado em desktop e mobile
     useEffect(() => {
         if (!selectedCategory) return;
 
@@ -342,7 +345,7 @@ export default function MenuDisplay() {
         // Detectar se estamos em modo mobile
         const isMobile = window.innerWidth < 640;
 
-        // Centralizar a categoria selecionada na barra de navegação (apenas no desktop)
+        // Centralizar a categoria selecionada na barra de navegação
         const scrollContainer = btn.closest('.scrollbar-hide');
         if (scrollContainer) {
             const btnRect = btn.getBoundingClientRect();
@@ -352,17 +355,8 @@ export default function MenuDisplay() {
             let targetScrollLeft = 0;
             if (btn instanceof HTMLElement) {
                 if (isMobile) {
-                    // No mobile, garantir que o botão esteja visível mas não necessariamente centralizado
-                    const isButtonVisible =
-                        btn.offsetLeft >= scrollContainer.scrollLeft &&
-                        btn.offsetLeft + btnRect.width <= scrollContainer.scrollLeft + containerRect.width;
-
-                    if (!isButtonVisible) {
-                        targetScrollLeft = btn.offsetLeft - 16; // Adicionar pequeno padding à esquerda
-                    } else {
-                        // Se já estiver visível, não mudar o scroll
-                        targetScrollLeft = scrollContainer.scrollLeft;
-                    }
+                    // No mobile, centralizar o botão na tela
+                    targetScrollLeft = btn.offsetLeft - (containerRect.width / 2) + (btnRect.width / 2);
                 } else {
                     // No desktop, centralizar o botão
                     targetScrollLeft = btn.offsetLeft - (containerRect.width / 2) + (btnRect.width / 2);
