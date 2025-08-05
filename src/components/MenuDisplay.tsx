@@ -848,63 +848,171 @@ export default function MenuDisplay() {
                                                         variants={itemVariants}
                                                         initial="hidden"
                                                         animate="visible"
-                                                        onClick={() => setMiniModalItem(item)}
-                                                        className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-150 border border-yellow-500 cursor-pointer hover:bg-gray-750 hover:border-yellow-400"
+                                                        className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-150 border border-yellow-500 hover:bg-gray-750 hover:border-yellow-400"
                                                     >
-                                                        <div className="flex flex-col sm:flex-row w-full">
-                                                            {/* Imagem */}
-                                                            <div className="flex-shrink-0 w-full sm:w-24 md:w-28 h-32 sm:h-24 md:h-28 bg-gray-900">
-                                                                <Image
-                                                                    src={item.image || '/placeholder.jpg'}
-                                                                    alt={item.name}
-                                                                    width={112}
-                                                                    height={112}
-                                                                    className="object-cover w-full h-full"
-                                                                />
-                                                            </div>
-
-                                                            {/* Conteúdo */}
-                                                            <div className="flex-1 p-3 md:p-4 flex flex-col justify-between min-h-0 w-full">
-                                                                <div className="flex-1">
-                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                        <h3 className="text-base md:text-lg font-semibold text-white break-words line-clamp-2 leading-tight" title={item.name}>
-                                                                            {item.name}
-                                                                        </h3>
-                                                                        {item.available === false && (
-                                                                            <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded whitespace-nowrap">
-                                                                                Indisponível
-                                                                            </span>
-                                                                        )}
+                                                        {item.isMainType ? (
+                                                            // Exibição para tipos de salgados com sabores
+                                                            <div className="p-4">
+                                                                <div className="flex items-center gap-3 mb-3">
+                                                                    <div className="flex-shrink-0 w-16 h-16 bg-gray-900 rounded-lg">
+                                                                        <Image
+                                                                            src={item.image || '/placeholder.jpg'}
+                                                                            alt={item.name}
+                                                                            width={64}
+                                                                            height={64}
+                                                                            className="object-cover w-full h-full rounded-lg"
+                                                                        />
                                                                     </div>
-                                                                    <p className="text-gray-400 text-xs md:text-sm mb-3 line-clamp-2 sm:line-clamp-3 break-words leading-relaxed" title={item.description}>
-                                                                        {item.description}
-                                                                    </p>
+                                                                    <div className="flex-1">
+                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                            <h3 className="text-lg font-bold text-yellow-400">
+                                                                                🍽️ {item.name}
+                                                                            </h3>
+                                                                            {item.available === false && (
+                                                                                <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">
+                                                                                    Indisponível
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-gray-400 text-sm">{item.description}</p>
+                                                                    </div>
                                                                 </div>
+                                                                
+                                                                {item.flavors && item.flavors.length > 0 && (
+                                                                    <div className="space-y-2">
+                                                                        <h4 className="text-sm font-medium text-green-400 mb-2">Sabores disponíveis:</h4>
+                                                                        <div className="grid grid-cols-1 gap-2">
+                                                                            {item.flavors.map((flavor, index) => (
+                                                                                <motion.div
+                                                                                    key={index}
+                                                                                    whileHover={{ scale: 1.02 }}
+                                                                                    whileTap={{ scale: 0.98 }}
+                                                                                    onClick={() => flavor.available && setMiniModalItem({
+                                                                                        ...item,
+                                                                                        name: `${item.name} - ${flavor.name}`,
+                                                                                        description: flavor.description || item.description,
+                                                                                        price: flavor.price,
+                                                                                        available: flavor.available,
+                                                                                        isMainType: false
+                                                                                    } as MenuItem)}
+                                                                                    className={`
+                                                                                        bg-gray-900 rounded-lg p-3 transition-all duration-150 border
+                                                                                        ${flavor.available 
+                                                                                            ? 'border-gray-600 hover:border-yellow-500 cursor-pointer hover:bg-gray-750' 
+                                                                                            : 'border-gray-700 opacity-60 cursor-not-allowed'
+                                                                                        }
+                                                                                    `}
+                                                                                >
+                                                                                    <div className="flex items-center justify-between">
+                                                                                        <div className="flex-1">
+                                                                                            <div className="flex items-center gap-2 mb-1">
+                                                                                                <span className={`font-medium ${flavor.available ? 'text-white' : 'text-gray-500 line-through'}`}>
+                                                                                                    {flavor.name}
+                                                                                                </span>
+                                                                                                {!flavor.available && (
+                                                                                                    <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">
+                                                                                                        Indisponível
+                                                                                                    </span>
+                                                                                                )}
+                                                                                            </div>
+                                                                                            {flavor.description && (
+                                                                                                <p className="text-xs text-gray-400">{flavor.description}</p>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <span className={`font-bold text-lg ${flavor.available ? 'text-green-400' : 'text-gray-500'}`}>
+                                                                                                R$ {flavor.price.toFixed(2)}
+                                                                                            </span>
+                                                                                            {flavor.available && (
+                                                                                                <motion.button
+                                                                                                    whileHover={{ scale: 1.05 }}
+                                                                                                    whileTap={{ scale: 0.95 }}
+                                                                                                    onClick={(e) => {
+                                                                                                        e.stopPropagation();
+                                                                                                        setMiniModalItem({
+                                                                                                            ...item,
+                                                                                                            name: `${item.name} - ${flavor.name}`,
+                                                                                                            description: flavor.description || item.description,
+                                                                                                            price: flavor.price,
+                                                                                                            available: flavor.available,
+                                                                                                            isMainType: false
+                                                                                                        } as MenuItem);
+                                                                                                    }}
+                                                                                                    className="bg-yellow-500 text-gray-900 p-2 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-150"
+                                                                                                >
+                                                                                                    <FaPlus className="text-sm" />
+                                                                                                </motion.button>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </motion.div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            // Exibição para itens simples (original)
+                                                            <div
+                                                                onClick={() => setMiniModalItem(item)}
+                                                                className="cursor-pointer"
+                                                            >
+                                                                <div className="flex flex-col sm:flex-row w-full">
+                                                                    {/* Imagem */}
+                                                                    <div className="flex-shrink-0 w-full sm:w-24 md:w-28 h-32 sm:h-24 md:h-28 bg-gray-900">
+                                                                        <Image
+                                                                            src={item.image || '/placeholder.jpg'}
+                                                                            alt={item.name}
+                                                                            width={112}
+                                                                            height={112}
+                                                                            className="object-cover w-full h-full"
+                                                                        />
+                                                                    </div>
 
-                                                                {/* Preço e Botão */}
-                                                                <div className="flex items-center justify-between mt-auto w-full">
-                                                                    <span className="text-yellow-500 font-bold text-lg md:text-xl">R$ {item.price.toFixed(2)}</span>
-                                                                    {item.available === false ? (
-                                                                        <span className="text-sm text-red-400 font-medium">
-                                                                            Item indisponível
-                                                                        </span>
-                                                                    ) : (
-                                                                        <motion.button
-                                                                            whileHover={{ scale: 1.03 }}
-                                                                            whileTap={{ scale: 0.97 }}
-                                                                            transition={{ duration: 0.1 }}
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                setMiniModalItem(item);
-                                                                            }}
-                                                                            className="bg-yellow-500 text-gray-900 p-2 md:p-3 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-150 flex-shrink-0"
-                                                                        >
-                                                                            <FaPlus className="text-sm md:text-base" />
-                                                                        </motion.button>
-                                                                    )}
+                                                                    {/* Conteúdo */}
+                                                                    <div className="flex-1 p-3 md:p-4 flex flex-col justify-between min-h-0 w-full">
+                                                                        <div className="flex-1">
+                                                                            <div className="flex items-center gap-2 mb-2">
+                                                                                <h3 className="text-base md:text-lg font-semibold text-white break-words line-clamp-2 leading-tight" title={item.name}>
+                                                                                    {item.name}
+                                                                                </h3>
+                                                                                {item.available === false && (
+                                                                                    <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded whitespace-nowrap">
+                                                                                        Indisponível
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            <p className="text-gray-400 text-xs md:text-sm mb-3 line-clamp-2 sm:line-clamp-3 break-words leading-relaxed" title={item.description}>
+                                                                                {item.description}
+                                                                            </p>
+                                                                        </div>
+
+                                                                        {/* Preço e Botão */}
+                                                                        <div className="flex items-center justify-between mt-auto w-full">
+                                                                            <span className="text-yellow-500 font-bold text-lg md:text-xl">R$ {item.price.toFixed(2)}</span>
+                                                                            {item.available === false ? (
+                                                                                <span className="text-sm text-red-400 font-medium">
+                                                                                    Item indisponível
+                                                                                </span>
+                                                                            ) : (
+                                                                                <motion.button
+                                                                                    whileHover={{ scale: 1.03 }}
+                                                                                    whileTap={{ scale: 0.97 }}
+                                                                                    transition={{ duration: 0.1 }}
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setMiniModalItem(item);
+                                                                                    }}
+                                                                                    className="bg-yellow-500 text-gray-900 p-2 md:p-3 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-150 flex-shrink-0"
+                                                                                >
+                                                                                    <FaPlus className="text-sm md:text-base" />
+                                                                                </motion.button>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
+                                                        )}
                                                     </motion.div>
                                                 ))
                                             )}

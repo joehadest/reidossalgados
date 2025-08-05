@@ -32,4 +32,17 @@ export interface MenuItem {
         [key: string]: number;
     };
     ingredients?: string[];
+    // Novos campos para organização por tipo e sabor
+    isMainType?: boolean; // Define se é um tipo principal (ex: "Coxinha")
+    parentType?: string; // ID do tipo principal (para sabores específicos)
+    flavors?: SalgadoFlavor[]; // Sabores disponíveis para este tipo
+}
+
+export interface SalgadoFlavor {
+    _id?: string;
+    name: string; // Nome do sabor (ex: "Frango", "Frango com Catupiry")
+    description?: string;
+    price: number;
+    available: boolean;
+    image?: string;
 } 
