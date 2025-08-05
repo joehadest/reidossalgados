@@ -762,14 +762,6 @@ export default function MenuDisplay() {
 
                         {/* Barra de Categorias Scrollável - Otimizada para mobile */}
                         <div className="relative pt-3 pb-1">
-                            {/* Indicadores de mais categorias com animação de pulse */}
-                            <div className="absolute right-0 top-0 bottom-0 w-6 sm:w-10 pointer-events-none bg-gradient-to-l from-gray-900 to-transparent z-10 flex items-center justify-end pr-1">
-                                <div className="h-3 w-3 rounded-full bg-yellow-500/20 animate-pulse"></div>
-                            </div>
-                            <div className="absolute left-0 top-0 bottom-0 w-6 sm:w-10 pointer-events-none bg-gradient-to-r from-gray-900 to-transparent z-10 flex items-center pl-1">
-                                <div className="h-3 w-3 rounded-full bg-yellow-500/20 animate-pulse"></div>
-                            </div>
-
                             <div className="w-full overflow-x-auto scrollbar-hide category-bar-container py-1">
                                 <div className="flex justify-start sm:justify-center space-x-2 sm:space-x-3 min-w-min px-4 sm:px-6 mx-auto">
                                     {categories.map((cat) => {
