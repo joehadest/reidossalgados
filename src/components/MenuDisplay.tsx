@@ -361,7 +361,7 @@ export default function MenuDisplay() {
             if (category !== selectedCategory) {
                 setSelectedCategory(category);
             }
-        }, isIPhone ? 500 : 300); // Debounce maior para iPhone para melhor performance
+        }, isIPhone ? 200 : 150); // Debounce reduzido para melhor responsividade
     }, [selectedCategory, isIPhone]);
 
     useEffect(() => {
@@ -376,14 +376,37 @@ export default function MenuDisplay() {
                     let mostVisibleEntry: IntersectionObserverEntry | null = null;
                     let maxIntersectionRatio = 0;
 
-                    for (const entry of entries) {
-                        if (entry.isIntersecting && entry.intersectionRatio > maxIntersectionRatio) {
-                            maxIntersectionRatio = entry.intersectionRatio;
-                            mostVisibleEntry = entry;
+                    // Separar entradas por posição para priorizar categorias no topo
+                    const visibleEntries = entries.filter(entry => entry.isIntersecting);
+
+                    if (visibleEntries.length > 0) {
+                        // Se múltiplas categorias estão visíveis, priorizar a que está mais no topo
+                        visibleEntries.sort((a, b) => {
+                            const aRect = a.boundingClientRect;
+                            const bRect = b.boundingClientRect;
+                            return aRect.top - bRect.top;
+                        });
+
+                        // Pegar a primeira categoria visível (mais no topo) se tiver intersection ratio razoável
+                        const topEntry = visibleEntries[0];
+                        if (topEntry.intersectionRatio > 0.1) { // Threshold muito baixo para categorias no topo
+                            mostVisibleEntry = topEntry;
+                            maxIntersectionRatio = topEntry.intersectionRatio;
+                        } else {
+                            // Se a primeira não tem ratio suficiente, usar a lógica normal
+                            for (const entry of visibleEntries) {
+                                if (entry.intersectionRatio > maxIntersectionRatio) {
+                                    maxIntersectionRatio = entry.intersectionRatio;
+                                    mostVisibleEntry = entry;
+                                }
+                            }
                         }
                     }
 
-                    if (mostVisibleEntry && maxIntersectionRatio > (isIPhone ? 0.4 : 0.3)) { // Threshold maior para iPhone
+                    // Threshold mais baixo para melhor detecção, especialmente para categorias no topo
+                    const minThreshold = isIPhone ? 0.1 : 0.08; // Threshold ainda mais baixo
+
+                    if (mostVisibleEntry && maxIntersectionRatio > minThreshold) {
                         const element = mostVisibleEntry.target;
                         if (element instanceof HTMLElement && element.id) {
                             const category = element.id.replace('category-', '');
@@ -396,13 +419,14 @@ export default function MenuDisplay() {
                 // Ajustar rootMargin baseado na altura real do header sticky e iPhone
                 rootMargin: (() => {
                     const stickyHeader = document.querySelector('.sticky') as HTMLElement;
-                    let headerHeight = stickyHeader ? stickyHeader.offsetHeight + 20 : (window.innerWidth < 640 ? 120 : 140);
+                    let headerHeight = stickyHeader ? stickyHeader.offsetHeight + 10 : (window.innerWidth < 640 ? 110 : 130);
                     if (isIPhone) {
-                        headerHeight += window.innerWidth < 400 ? 44 : 20; // Considerar notch do iPhone
+                        headerHeight += window.innerWidth < 400 ? 34 : 10; // Reduzir margin extra para melhor detecção
                     }
-                    return `-${headerHeight}px 0px -40% 0px`;
+                    // Margin inferior menos restritivo para melhor detecção de categorias
+                    return `-${headerHeight}px 0px -30% 0px`; // Reduzido de -40% para -30%
                 })(),
-                threshold: isIPhone ? [0, 0.4, 0.8] : [0, 0.3, 0.7, 1.0] // Menos thresholds para iPhone para melhor performance
+                threshold: isIPhone ? [0, 0.2, 0.5] : [0, 0.15, 0.4, 0.7] // Thresholds mais baixos para melhor detecção
             }
         );
 
