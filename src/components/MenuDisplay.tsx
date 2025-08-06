@@ -201,41 +201,82 @@ export default function MenuDisplay() {
         const isMobile = window.innerWidth < 640;
 
         const observer = new IntersectionObserver(
-            (entries) => {
+            (entries: IntersectionObserverEntry[]) => {
                 // Só atualizar categoria automaticamente se NÃO estiver em rolagem manual
                 if (!isManualScrolling) {
-                    entries.forEach((entry) => {
-                        if (entry.isIntersecting) {
-                            const category = entry.target.id.replace('category-', '');
-                            setSelectedCategory(category);
+                    // Encontrar a entrada que está mais visível na tela
+                    let mostVisibleEntry: IntersectionObserverEntry | null = null;
+                    let maxIntersectionRatio = 0;
+
+                    for (const entry of entries) {
+                        if (entry.isIntersecting && entry.intersectionRatio > maxIntersectionRatio) {
+                            maxIntersectionRatio = entry.intersectionRatio;
+                            mostVisibleEntry = entry;
                         }
-                    });
+                    }
+
+                    if (mostVisibleEntry) {
+                        const element = mostVisibleEntry.target;
+                        if (element instanceof HTMLElement && element.id) {
+                            const category = element.id.replace('category-', '');
+                            if (category !== selectedCategory) {
+                                setSelectedCategory(category);
+                            }
+                        }
+                    }
                 }
             },
             {
                 rootMargin: isMobile ? '-100px 0px -50% 0px' : '-120px 0px -40% 0px',
-                threshold: isMobile ? 0.1 : 0.2
+                threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
             }
         );
 
-        setTimeout(() => {
+        // Aguardar um pouco mais para garantir que o DOM foi renderizado
+        const timeoutId = setTimeout(() => {
             (categories || []).forEach(category => {
                 const element = document.getElementById(`category-${category._id}`);
                 if (element) {
                     observer.observe(element);
                 }
             });
-        }, 500);
+        }, 1000);
 
         return () => {
+            clearTimeout(timeoutId);
             (categories || []).forEach(category => {
                 const element = document.getElementById(`category-${category._id}`);
                 if (element) {
                     observer.unobserve(element);
                 }
             });
+            observer.disconnect();
         };
-    }, [categories]);
+    }, [categories, isManualScrolling, selectedCategory]);
+
+    // Listener de scroll para detectar quando a rolagem termina
+    useEffect(() => {
+        let scrollTimeout: NodeJS.Timeout;
+
+        const handleScroll = () => {
+            // Limpar timeout anterior
+            clearTimeout(scrollTimeout);
+            
+            // Setar um novo timeout para detectar quando a rolagem parou
+            scrollTimeout = setTimeout(() => {
+                // Permitir que o observer funcione novamente quando a rolagem parar
+                setIsManualScrolling(false);
+            }, 150); // Tempo reduzido para resposta mais rápida
+        };
+
+        // Adicionar listener apenas se não estiver já adicionado
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            clearTimeout(scrollTimeout);
+        };
+    }, []); // Array vazio para executar apenas uma vez
 
     // Definir categoria inicial e garantir visualização correta
     useEffect(() => {
@@ -398,25 +439,25 @@ export default function MenuDisplay() {
                 // Calcular a posição do elemento
                 const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
 
-                // Rolagem em uma única etapa, sem setTimeout aninhados
+                // Rolagem em uma única etapa
                 window.scrollTo({
                     top: elementPosition - headerHeight,
                     behavior: 'smooth'
                 });
 
-                // Desativar o modo de rolagem manual após concluir a animação
-                setTimeout(() => {
-                    setIsManualScrolling(false);
-                }, 400); // Reduzido de 800 para 400ms
-
                 // Efeito visual de feedback para indicar a mudança de categoria
                 element.classList.add('bg-yellow-500/10');
                 setTimeout(() => {
                     element.classList.remove('bg-yellow-500/10');
-                }, 250); // Reduzido de 500 para 250ms
+                }, 300);
+
+                // O modo manual será desabilitado automaticamente pelo listener de scroll
+                // quando o usuário parar de rolar
             }
         } else {
+            setIsManualScrolling(true);
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            // O modo manual será desabilitado automaticamente pelo listener de scroll
         }
     }; useEffect(() => {
         const interval = setInterval(async () => {
@@ -500,7 +541,17 @@ export default function MenuDisplay() {
             formaPagamento === 'dinheiro' ? `\nForma de Pagamento: Dinheiro${troco ? `\nTroco para: R$ ${troco}` : ''}\n` :
                 formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
 
-        const message = `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${cartItems.map(item => `${item.quantity}x ${item.item.name}${item.size ? ` (${item.size})` : ''}${item.observation ? ` - ${item.observation}` : ''} - R$ ${calculateItemPrice(item).toFixed(2)}`).join('\n')}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*${formaPagamento === 'pix' ? `\n\n*Chave PIX para pagamento:* ${pixKey}` : ''}`;
+        const message = `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${cartItems.map(item => {
+            let itemText = `${item.quantity}x ${item.item.name}`;
+            if (item.size) itemText += ` (${item.size})`;
+            if (item.border) itemText += ` - Borda: ${item.border}`;
+            if (item.extras && item.extras.length > 0) {
+                itemText += ` - Extras: ${item.extras.join(', ')}`;
+            }
+            if (item.observation) itemText += ` - ${item.observation}`;
+            itemText += ` - R$ ${calculateItemPrice(item).toFixed(2)}`;
+            return itemText;
+        }).join('\n')}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*${formaPagamento === 'pix' ? `\n\n*Chave PIX para pagamento:* ${pixKey}` : ''}`;
 
         setOrderDetails(cartItems);
         setShowWhatsAppModal(true);
@@ -576,9 +627,17 @@ export default function MenuDisplay() {
             formaPagamento === 'dinheiro' ? `\nForma de Pagamento: Dinheiro${troco ? `\nTroco para: R$ ${troco}` : ''}\n` :
                 formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
 
-        const itemsInfo = cartItems.map(item =>
-            `${item.quantity}x ${item.item.name}${item.size ? ` (${item.size})` : ''}${item.observation ? ` - ${item.observation}` : ''} - R$ ${calculateItemPrice(item).toFixed(2)}`
-        ).join('\n');
+        const itemsInfo = cartItems.map(item => {
+            let itemText = `${item.quantity}x ${item.item.name}`;
+            if (item.size) itemText += ` (${item.size})`;
+            if (item.border) itemText += ` - Borda: ${item.border}`;
+            if (item.extras && item.extras.length > 0) {
+                itemText += ` - Extras: ${item.extras.join(', ')}`;
+            }
+            if (item.observation) itemText += ` - ${item.observation}`;
+            itemText += ` - R$ ${calculateItemPrice(item).toFixed(2)}`;
+            return itemText;
+        }).join('\n');
 
         const message = `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* ${pixKey}`;
 
@@ -613,9 +672,17 @@ export default function MenuDisplay() {
             formaPagamento === 'dinheiro' ? `\nForma de Pagamento: Dinheiro${troco ? `\nTroco para: R$ ${troco}` : ''}\n` :
                 formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
 
-        const itemsInfo = cartItems.map(item =>
-            `${item.quantity}x ${item.item.name}${item.size ? ` (${item.size})` : ''}${item.observation ? ` - ${item.observation}` : ''} - R$ ${calculateItemPrice(item).toFixed(2)}`
-        ).join('\n');
+        const itemsInfo = cartItems.map(item => {
+            let itemText = `${item.quantity}x ${item.item.name}`;
+            if (item.size) itemText += ` (${item.size})`;
+            if (item.border) itemText += ` - Borda: ${item.border}`;
+            if (item.extras && item.extras.length > 0) {
+                itemText += ` - Extras: ${item.extras.join(', ')}`;
+            }
+            if (item.observation) itemText += ` - ${item.observation}`;
+            itemText += ` - R$ ${calculateItemPrice(item).toFixed(2)}`;
+            return itemText;
+        }).join('\n');
 
         const message = `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* ${pixKey}`;
 
@@ -651,8 +718,10 @@ export default function MenuDisplay() {
     };
 
     // Forçar seleção da primeira categoria ao rolar para o topo
-    // Mas apenas quando não estiver em rolagem manual
+    // E detectar quando o usuário para de rolar para reativar o observer
     useEffect(() => {
+        let scrollTimeout: NodeJS.Timeout;
+
         const handleScroll = () => {
             // Só realizar esta ação se não estiver em rolagem manual
             if (!isManualScrolling && window.scrollY < 30 && categories.length > 0) {
@@ -662,9 +731,22 @@ export default function MenuDisplay() {
                     setSelectedCategory(firstCategoryId);
                 }
             }
+
+            // Detectar quando o usuário para de rolar (debounce)
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                // Se estava em modo manual e parou de rolar, desabilitar o modo manual
+                if (isManualScrolling) {
+                    setIsManualScrolling(false);
+                }
+            }, 150); // 150ms após parar de rolar
         };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            clearTimeout(scrollTimeout);
+        };
     }, [categories, selectedCategory, isManualScrolling]);
 
     if (!restaurantIsOpen) {
@@ -866,7 +948,7 @@ export default function MenuDisplay() {
                                                                     <div className="flex-1">
                                                                         <div className="flex items-center gap-2 mb-1">
                                                                             <h3 className="text-lg font-bold text-yellow-400">
-                                                                                🍽️ {item.name}
+                                                                                {cat.emoji || '🍽️'} {item.name}
                                                                             </h3>
                                                                             {item.available === false && (
                                                                                 <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">
@@ -1199,8 +1281,8 @@ export default function MenuDisplay() {
                         <MiniItemModal
                             item={miniModalItem}
                             onClose={() => setMiniModalItem(null)}
-                            onAdd={(quantity, observation) => {
-                                handleAddToCart(miniModalItem, quantity, observation, Object.keys(miniModalItem.sizes ?? {})[0] ?? 'Única');
+                            onAdd={(quantity, observation, extras) => {
+                                handleAddToCart(miniModalItem, quantity, observation, Object.keys(miniModalItem.sizes ?? {})[0] ?? 'Única', undefined, extras);
                                 setMiniModalItem(null);
                             }}
                         />

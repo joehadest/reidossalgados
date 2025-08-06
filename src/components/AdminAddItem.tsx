@@ -25,6 +25,8 @@ export default function AdminAddItem() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalFlavors, setModalFlavors] = useState<SalgadoFlavor[]>([]);
   const [sortBy, setSortBy] = useState<'date' | 'alphabetical' | 'priceAsc' | 'priceDesc' | 'availability' | 'category'>('date');
+  const [extraOptions, setExtraOptions] = useState<{[key: string]: number}>({});
+  const [modalExtraOptions, setModalExtraOptions] = useState<{[key: string]: number}>({});
 
   // Filtra os itens baseado no termo de busca
   const filteredItens = itens.filter(item =>
@@ -181,7 +183,7 @@ export default function AdminAddItem() {
         isMainType: true,
         flavors: validFlavors,
         borderOptions: {},
-        extraOptions: {},
+        extraOptions: extraOptions,
         ingredients: [],
       };
 
@@ -204,6 +206,7 @@ export default function AdminAddItem() {
           available: true
         });
         setFlavors([{ name: '', description: '', price: 0, available: true }]);
+        setExtraOptions({});
         fetchItens();
       } else {
         setError(data.message || 'Erro ao adicionar item.');
@@ -247,6 +250,45 @@ export default function AdminAddItem() {
     }
   };
 
+  // Funções para gerenciar extras
+  const addExtra = () => {
+    const extraName = prompt('Nome do extra/cobertura:');
+    if (extraName && extraName.trim()) {
+      const extraPrice = parseFloat(prompt('Preço do extra (0 para grátis):') || '0');
+      setExtraOptions(prev => ({
+        ...prev,
+        [extraName.trim()]: isNaN(extraPrice) ? 0 : extraPrice
+      }));
+    }
+  };
+
+  const removeExtra = (extraName: string) => {
+    setExtraOptions(prev => {
+      const newOptions = { ...prev };
+      delete newOptions[extraName];
+      return newOptions;
+    });
+  };
+
+  const addModalExtra = () => {
+    const extraName = prompt('Nome do extra/cobertura:');
+    if (extraName && extraName.trim()) {
+      const extraPrice = parseFloat(prompt('Preço do extra (0 para grátis):') || '0');
+      setModalExtraOptions(prev => ({
+        ...prev,
+        [extraName.trim()]: isNaN(extraPrice) ? 0 : extraPrice
+      }));
+    }
+  };
+
+  const removeModalExtra = (extraName: string) => {
+    setModalExtraOptions(prev => {
+      const newOptions = { ...prev };
+      delete newOptions[extraName];
+      return newOptions;
+    });
+  };
+
   const updateModalFlavor = (index: number, field: keyof SalgadoFlavor, value: any) => {
     const updatedFlavors = modalFlavors.map((flavor, i) => 
       i === index ? { ...flavor, [field]: value } : flavor
@@ -259,6 +301,7 @@ export default function AdminAddItem() {
     setEditId(null);
     setEditItem({});
     setModalFlavors([]);
+    setModalExtraOptions({});
     setError('');
     setSuccess('');
   };
@@ -282,6 +325,9 @@ export default function AdminAddItem() {
     } else {
       setModalFlavors([]);
     }
+    
+    // Carregar extras existentes
+    setModalExtraOptions(item.extraOptions || {});
     
     setIsModalOpen(true);
   };
@@ -319,10 +365,10 @@ export default function AdminAddItem() {
         updateData.flavors = validFlavors;
         updateData.isMainType = true;
         updateData.price = editItem.price || (validFlavors.length > 0 ? validFlavors[0].price : 0);
+        updateData.extraOptions = modalExtraOptions;
         
         // Garantir que outros campos de tipo estão definidos
         updateData.borderOptions = editItem.borderOptions || {};
-        updateData.extraOptions = editItem.extraOptions || {};
         updateData.ingredients = editItem.ingredients || [];
       } else {
         // Para itens simples, garantir que o preço seja válido
@@ -332,6 +378,7 @@ export default function AdminAddItem() {
           return;
         }
         updateData.price = typeof editItem.price === 'number' ? editItem.price : parseFloat(editItem.price as string) || 0;
+        updateData.extraOptions = modalExtraOptions;
         
         // Remover campos específicos de tipos se existirem
         updateData.isMainType = false;
@@ -493,6 +540,48 @@ export default function AdminAddItem() {
           </div>
         </div>
 
+        {/* Seção de Extras/Coberturas */}
+        <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-600">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-blue-400 font-medium">🍫 Extras/Coberturas</h4>
+            <button
+              type="button"
+              onClick={addExtra}
+              className="bg-blue-500 hover:bg-blue-400 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+            >
+              <FaPlus className="inline mr-1" />
+              Adicionar Extra
+            </button>
+          </div>
+          <p className="text-gray-400 text-xs mb-3">
+            Configure opções extras como coberturas, granulados, etc. Deixe o preço em 0 para extras gratuitos.
+          </p>
+          
+          {Object.keys(extraOptions).length > 0 ? (
+            <div className="space-y-2">
+              {Object.entries(extraOptions).map(([extraName, price]) => (
+                <div key={extraName} className="flex items-center justify-between bg-gray-800 rounded p-2">
+                  <div>
+                    <span className="text-white font-medium text-sm">{extraName}</span>
+                    <span className="ml-2 text-gray-400 text-xs">
+                      {price > 0 ? `+ R$ ${price.toFixed(2)}` : 'Grátis'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeExtra(extraName)}
+                    className="text-red-500 hover:text-red-400 transition-colors"
+                  >
+                    <FaTrash size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">Nenhum extra configurado</p>
+          )}
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-200 mb-1">Imagem (URL)</label>
           <input
@@ -500,37 +589,37 @@ export default function AdminAddItem() {
             name="image"
             value={form.image}
             onChange={handleChange}
-            className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500"
+            className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-sm"
           />
         </div>
         
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6">
+          <div className="flex items-center gap-2 sm:gap-3">
             <input
               type="checkbox"
               name="destaque"
               checked={form.destaque}
               onChange={handleChange}
-              className="h-4 w-4 text-yellow-500 focus:ring-yellow-400 border-gray-700 rounded"
+              className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-500 focus:ring-yellow-400 border-gray-700 rounded"
             />
-            <label className="text-gray-200 text-sm">Destaque</label>
+            <label className="text-gray-200 text-xs sm:text-sm">Destaque</label>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <input
               type="checkbox"
               name="available"
               checked={form.available}
               onChange={handleChange}
-              className="h-4 w-4 text-green-500 focus:ring-green-400 border-gray-700 rounded"
+              className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 focus:ring-green-400 border-gray-700 rounded"
             />
-            <label className="text-gray-200 text-sm">Disponível</label>
+            <label className="text-gray-200 text-xs sm:text-sm">Disponível</label>
           </div>
         </div>
 
         <button
           type="submit"
-          className="w-full py-2 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold rounded-lg transition-colors mt-4 disabled:opacity-60"
+          className="w-full py-2 sm:py-3 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold rounded-lg transition-colors mt-3 sm:mt-4 disabled:opacity-60 text-sm sm:text-base"
           disabled={loading}
         >
           {loading ? 'Adicionando...' : 'Adicionar Item'}
@@ -616,60 +705,60 @@ export default function AdminAddItem() {
                 if (itensCategoria.length === 0) return null;
 
                 return (
-                  <div key={categoria._id} className="bg-gray-900/50 rounded-lg p-4">
-                    <h4 className="text-yellow-500 font-medium mb-3 border-b border-yellow-500/30 pb-2">{categoria.name}</h4>
-                    <ul className="space-y-3">
+                  <div key={categoria._id} className="bg-gray-900/50 rounded-lg p-3 sm:p-4">
+                    <h4 className="text-yellow-500 font-medium mb-3 border-b border-yellow-500/30 pb-2 text-sm sm:text-base">{categoria.name}</h4>
+                    <ul className="space-y-2 sm:space-y-3">
                       {itensCategoria.map((item) => (
                         <li key={item._id} className="bg-gray-800 rounded border border-gray-700 hover:border-yellow-500/50 transition-colors">
                           {item.isMainType ? (
                             // Exibição para itens organizados
-                            <div className="p-4">
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-yellow-400 text-lg">🍽️ {item.name}</span>
+                            <div className="p-3 sm:p-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-3 gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-yellow-400 text-base sm:text-lg">🍽️ {item.name}</span>
                                   {!item.available && (
                                     <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">
                                       Indisponível
                                     </span>
                                   )}
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 self-end sm:self-center">
                                   <button
                                     onClick={() => handleEdit(item)}
-                                    className="text-yellow-400 hover:text-yellow-300 transition-colors"
+                                    className="text-yellow-400 hover:text-yellow-300 transition-colors p-1"
                                     title="Editar item"
                                   >
-                                    <FaEdit />
+                                    <FaEdit size={14} />
                                   </button>
                                   <button
                                     onClick={() => handleRemove(item._id!)}
-                                    className={`text-red-500 hover:text-red-400 transition-colors ${removingId === item._id ? 'opacity-50 pointer-events-none' : ''}`}
+                                    className={`text-red-500 hover:text-red-400 transition-colors p-1 ${removingId === item._id ? 'opacity-50 pointer-events-none' : ''}`}
                                     disabled={removingId === item._id}
                                     title="Remover item"
                                   >
-                                    <FaTrash />
+                                    <FaTrash size={14} />
                                   </button>
                                 </div>
                               </div>
                               
-                              <p className="text-gray-400 text-sm mb-3">{item.description}</p>
+                              <p className="text-gray-400 text-xs sm:text-sm mb-2 sm:mb-3">{item.description}</p>
                               
                               {item.flavors && item.flavors.length > 0 && (
-                                <div className="bg-gray-900/70 rounded p-3 border border-gray-600">
-                                  <h5 className="text-green-400 font-medium mb-2 text-sm">Sabores disponíveis:</h5>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className="bg-gray-900/70 rounded p-2 sm:p-3 border border-gray-600">
+                                  <h5 className="text-green-400 font-medium mb-2 text-xs sm:text-sm">Sabores disponíveis:</h5>
+                                  <div className="grid grid-cols-1 gap-2">
                                     {item.flavors.map((flavor, index) => (
-                                      <div key={index} className="flex items-center justify-between bg-gray-800 rounded px-3 py-2">
-                                        <div>
-                                          <span className={`text-sm font-medium ${flavor.available ? 'text-white' : 'text-gray-500 line-through'}`}>
+                                      <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between bg-gray-800 rounded p-2 sm:px-3 sm:py-2 gap-1 sm:gap-0">
+                                        <div className="flex-1">
+                                          <span className={`text-xs sm:text-sm font-medium ${flavor.available ? 'text-white' : 'text-gray-500 line-through'}`}>
                                             {flavor.name}
                                           </span>
                                           {flavor.description && (
                                             <p className="text-xs text-gray-400">{flavor.description}</p>
                                           )}
                                         </div>
-                                        <div className="text-right">
-                                          <span className={`text-sm font-bold ${flavor.available ? 'text-green-400' : 'text-gray-500'}`}>
+                                        <div className="text-left sm:text-right">
+                                          <span className={`text-xs sm:text-sm font-bold ${flavor.available ? 'text-green-400' : 'text-gray-500'}`}>
                                             R$ {flavor.price.toFixed(2)}
                                           </span>
                                           {!flavor.available && (
@@ -684,10 +773,10 @@ export default function AdminAddItem() {
                             </div>
                           ) : (
                             // Exibição para itens simples
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 px-3 py-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-1 p-2 sm:px-3 sm:py-2">
                               <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-yellow-400">{item.name}</span>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-bold text-yellow-400 text-sm sm:text-base">{item.name}</span>
                                   {!item.available ? (
                                     <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">
                                       Indisponível
@@ -698,20 +787,20 @@ export default function AdminAddItem() {
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-xs text-gray-400 block">{item.description}</span>
+                                <span className="text-xs text-gray-400 block mt-1">{item.description}</span>
                                 <span className="text-xs text-gray-400 block">Preço: R$ {item.price?.toFixed(2)}</span>
                               </div>
-                              <div className="flex gap-2 mt-2 sm:mt-0">
+                              <div className="flex gap-2 self-end sm:self-center">
                                 <button
                                   onClick={() => handleEdit(item)}
-                                  className="text-yellow-400 hover:text-yellow-300 transition-colors"
+                                  className="text-yellow-400 hover:text-yellow-300 transition-colors p-1"
                                   title="Editar item"
                                 >
-                                  <FaEdit />
+                                  <FaEdit size={14} />
                                 </button>
                                 <button
                                   onClick={() => handleRemove(item._id!)}
-                                  className={`text-red-500 hover:text-red-400 transition-colors ${removingId === item._id ? 'opacity-50 pointer-events-none' : ''}`}
+                                  className={`text-red-500 hover:text-red-400 transition-colors p-1 ${removingId === item._id ? 'opacity-50 pointer-events-none' : ''}`}
                                   disabled={removingId === item._id}
                                   title="Remover item"
                                 >
@@ -733,24 +822,24 @@ export default function AdminAddItem() {
 
       {/* Modal de Edição */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-yellow-500/30">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-yellow-500">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-gray-800 rounded-xl p-3 sm:p-4 md:p-6 w-full max-w-xs sm:max-w-md md:max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto border border-yellow-500/30">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h3 className="text-lg sm:text-xl font-bold text-yellow-500">
                 {editItem.isMainType ? '🍽️ Editar Item' : '📝 Editar Item'}
               </h3>
               <button
                 onClick={closeModal}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="text-gray-400 hover:text-white transition-colors p-1"
               >
-                <FaTimes size={20} />
+                <FaTimes size={18} className="sm:w-5 sm:h-5" />
               </button>
             </div>
 
-            {success && <div className="bg-green-700/20 text-green-400 rounded p-2 text-center mb-4">{success}</div>}
-            {error && <div className="bg-red-700/20 text-red-400 rounded p-2 text-center mb-4">{error}</div>}
+            {success && <div className="bg-green-700/20 text-green-400 rounded p-2 text-center mb-3 sm:mb-4 text-sm">{success}</div>}
+            {error && <div className="bg-red-700/20 text-red-400 rounded p-2 text-center mb-3 sm:mb-4 text-sm">{error}</div>}
             
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Nome */}
               <div>
                 <label className="block text-sm font-medium text-gray-200 mb-1">
@@ -760,7 +849,7 @@ export default function AdminAddItem() {
                   type="text"
                   value={editItem.name || ''}
                   onChange={e => setEditItem({ ...editItem, name: e.target.value })}
-                  className="w-full p-3 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500"
+                  className="w-full p-2 sm:p-3 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-sm sm:text-base"
                   placeholder={editItem.isMainType ? "Ex: Coxinha, Refrigerantes..." : "Nome do item"}
                 />
               </div>
@@ -771,7 +860,7 @@ export default function AdminAddItem() {
                 <select
                   value={editItem.category || ''}
                   onChange={e => setEditItem({ ...editItem, category: e.target.value })}
-                  className="w-full p-3 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500"
+                  className="w-full p-2 sm:p-3 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-sm sm:text-base"
                 >
                   {categorias.length === 0 ? (
                     <option value="">Nenhuma categoria</option>
@@ -789,7 +878,7 @@ export default function AdminAddItem() {
                 <textarea
                   value={editItem.description || ''}
                   onChange={e => setEditItem({ ...editItem, description: e.target.value })}
-                  className="w-full p-3 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500"
+                  className="w-full p-2 sm:p-3 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-sm sm:text-base"
                   rows={3}
                   placeholder="Descrição do item"
                 />
@@ -803,7 +892,7 @@ export default function AdminAddItem() {
                     type="number"
                     value={editItem.price?.toString() || ''}
                     onChange={e => setEditItem({ ...editItem, price: parseFloat(e.target.value) || 0 })}
-                    className="w-full p-3 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500"
+                    className="w-full p-2 sm:p-3 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-sm sm:text-base"
                     placeholder="0.00"
                     min="0"
                     step="0.01"
@@ -813,31 +902,31 @@ export default function AdminAddItem() {
 
               {/* Sabores para itens organizados */}
               {editItem.isMainType && (
-                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-600">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-yellow-500 font-medium">Sabores</h4>
+                <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 border border-gray-600">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
+                    <h4 className="text-yellow-500 font-medium text-sm sm:text-base">Sabores</h4>
                     <button
                       type="button"
                       onClick={addModalFlavor}
-                      className="bg-yellow-500 hover:bg-yellow-400 text-gray-900 px-3 py-1 rounded text-sm font-medium transition-colors"
+                      className="bg-yellow-500 hover:bg-yellow-400 text-gray-900 px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium transition-colors w-full sm:w-auto"
                     >
                       <FaPlus className="inline mr-1" />
                       Adicionar
                     </button>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {modalFlavors.map((flavor, index) => (
-                      <div key={index} className="bg-gray-800 rounded p-3 border border-gray-700">
+                      <div key={index} className="bg-gray-800 rounded p-2 sm:p-3 border border-gray-700">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-gray-300">Sabor {index + 1}</span>
+                          <span className="text-xs sm:text-sm text-gray-300">Sabor {index + 1}</span>
                           {modalFlavors.length > 1 && (
                             <button
                               type="button"
                               onClick={() => removeModalFlavor(index)}
-                              className="text-red-500 hover:text-red-400 transition-colors"
+                              className="text-red-500 hover:text-red-400 transition-colors p-1"
                             >
-                              <FaMinus />
+                              <FaMinus size={12} />
                             </button>
                           )}
                         </div>
@@ -848,10 +937,10 @@ export default function AdminAddItem() {
                             placeholder="Nome do sabor (ex: Frango, Queijo...)"
                             value={flavor.name}
                             onChange={(e) => updateModalFlavor(index, 'name', e.target.value)}
-                            className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-sm"
+                            className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-xs sm:text-sm"
                           />
                           
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-2">
                             <input
                               type="number"
                               placeholder="Preço"
@@ -859,17 +948,17 @@ export default function AdminAddItem() {
                               onChange={(e) => updateModalFlavor(index, 'price', parseFloat(e.target.value) || 0)}
                               min="0"
                               step="0.01"
-                              className="flex-1 p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-sm"
+                              className="flex-1 p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-xs sm:text-sm"
                             />
                             
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 justify-center sm:justify-start">
                               <input
                                 type="checkbox"
                                 checked={flavor.available}
                                 onChange={(e) => updateModalFlavor(index, 'available', e.target.checked)}
-                                className="h-4 w-4 text-green-500 focus:ring-green-400 border-gray-700 rounded"
+                                className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 focus:ring-green-400 border-gray-700 rounded"
                               />
-                              <label className="text-gray-300 text-sm">Disponível</label>
+                              <label className="text-gray-300 text-xs sm:text-sm">Disponível</label>
                             </div>
                           </div>
                           
@@ -878,7 +967,7 @@ export default function AdminAddItem() {
                             placeholder="Descrição (opcional)"
                             value={flavor.description || ''}
                             onChange={(e) => updateModalFlavor(index, 'description', e.target.value)}
-                            className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-sm"
+                            className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-xs sm:text-sm"
                           />
                         </div>
                       </div>
@@ -887,6 +976,48 @@ export default function AdminAddItem() {
                 </div>
               )}
 
+              {/* Extras/Coberturas no Modal */}
+              <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 border border-gray-600">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
+                  <h4 className="text-blue-400 font-medium text-sm sm:text-base">🍫 Extras/Coberturas</h4>
+                  <button
+                    type="button"
+                    onClick={addModalExtra}
+                    className="bg-blue-500 hover:bg-blue-400 text-white px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-medium transition-colors w-full sm:w-auto"
+                  >
+                    <FaPlus className="inline mr-1" />
+                    Adicionar Extra
+                  </button>
+                </div>
+                <p className="text-gray-400 text-xs mb-3">
+                  Configure opções extras como coberturas, granulados, etc.
+                </p>
+                
+                {Object.keys(modalExtraOptions).length > 0 ? (
+                  <div className="space-y-2">
+                    {Object.entries(modalExtraOptions).map(([extraName, price]) => (
+                      <div key={extraName} className="flex flex-col sm:flex-row sm:items-center justify-between bg-gray-800 rounded p-2 gap-2">
+                        <div className="flex-1">
+                          <span className="text-white font-medium text-xs sm:text-sm block">{extraName}</span>
+                          <span className="text-gray-400 text-xs">
+                            {price > 0 ? `+ R$ ${price.toFixed(2)}` : 'Grátis'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeModalExtra(extraName)}
+                          className="text-red-500 hover:text-red-400 transition-colors self-end sm:self-center p-1"
+                        >
+                          <FaTrash size={10} className="sm:w-3 sm:h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-xs sm:text-sm">Nenhum extra configurado</p>
+                )}
+              </div>
+
               {/* Imagem */}
               <div>
                 <label className="block text-sm font-medium text-gray-200 mb-1">Imagem (URL)</label>
@@ -894,49 +1025,49 @@ export default function AdminAddItem() {
                   type="text"
                   value={editItem.image || ''}
                   onChange={e => setEditItem({ ...editItem, image: e.target.value })}
-                  className="w-full p-3 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500"
+                  className="w-full p-2 sm:p-3 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-sm sm:text-base"
                   placeholder="https://exemplo.com/imagem.jpg"
                 />
               </div>
 
               {/* Opções */}
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <input
                     type="checkbox"
                     checked={editItem.destaque || false}
                     onChange={e => setEditItem({ ...editItem, destaque: e.target.checked })}
-                    className="h-4 w-4 text-yellow-500 focus:ring-yellow-400 border-gray-700 rounded"
+                    className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-500 focus:ring-yellow-400 border-gray-700 rounded"
                   />
-                  <label className="text-gray-200 text-sm">Destaque</label>
+                  <label className="text-gray-200 text-xs sm:text-sm">Destaque</label>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <input
                     type="checkbox"
                     checked={editItem.available !== false}
                     onChange={e => setEditItem({ ...editItem, available: e.target.checked })}
-                    className="h-4 w-4 text-green-500 focus:ring-green-400 border-gray-700 rounded"
+                    className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 focus:ring-green-400 border-gray-700 rounded"
                   />
-                  <label className="text-gray-200 text-sm">Disponível</label>
+                  <label className="text-gray-200 text-xs sm:text-sm">Disponível</label>
                 </div>
               </div>
 
               {/* Botões */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 sm:pt-4">
                 <button
                   onClick={() => handleEditSave(editId!)}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:opacity-60"
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors disabled:opacity-60 text-sm sm:text-base"
                   disabled={loading}
                 >
-                  <FaCheck className="inline mr-2" />
+                  <FaCheck className="inline mr-1 sm:mr-2" size={12} />
                   {loading ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
                 <button
                   onClick={closeModal}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors text-sm sm:text-base"
                 >
-                  <FaTimes className="inline mr-2" />
+                  <FaTimes className="inline mr-1 sm:mr-2" size={12} />
                   Cancelar
                 </button>
               </div>

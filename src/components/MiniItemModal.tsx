@@ -7,24 +7,42 @@ import Image from 'next/image';
 interface MiniItemModalProps {
   item: MenuItem;
   onClose: () => void;
-  onAdd: (quantity: number, observation: string) => void;
+  onAdd: (quantity: number, observation: string, extras?: string[]) => void;
 }
 
 export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalProps) {
   const [quantity, setQuantity] = useState(1);
   const [observation, setObservation] = useState('');
+  const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
 
   useEffect(() => {
     document.body.classList.add('overflow-hidden');
     return () => document.body.classList.remove('overflow-hidden');
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onAdd(quantity, observation);
+  const toggleExtra = (extra: string) => {
+    setSelectedExtras(prev =>
+      prev.includes(extra)
+        ? prev.filter(e => e !== extra)
+        : [...prev, extra]
+    );
   };
 
-  const totalPrice = item.price * quantity;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    let finalObservation = observation;
+    
+    // Não incluir os extras na observação, pois agora são passados separadamente
+    
+    onAdd(quantity, finalObservation, selectedExtras);
+  };
+
+  // Calcular preço total incluindo extras
+  const extrasPrice = selectedExtras.reduce((total, extra) => {
+    return total + (item.extraOptions?.[extra] || 0);
+  }, 0);
+  
+  const totalPrice = (item.price + extrasPrice) * quantity;
 
   if (!item.available) {
     // Only show header with image and description if item is unavailable
@@ -168,6 +186,41 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
               </div>
             )}
 
+            {/* Extras/Coberturas */}
+            {item.extraOptions && Object.keys(item.extraOptions).length > 0 && (
+              <div className="mb-4 sm:mb-6">
+                <h3 className="text-base sm:text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  🍫 Extras/Coberturas
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                  {Object.entries(item.extraOptions).map(([extra, price]) => (
+                    <motion.button
+                      key={extra}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      type="button"
+                      onClick={() => toggleExtra(extra)}
+                      className={`p-2 sm:p-3 rounded-lg border-2 transition-all text-xs sm:text-sm ${
+                        selectedExtras.includes(extra)
+                          ? 'border-yellow-500 bg-yellow-500/20 text-yellow-400'
+                          : 'border-gray-700 hover:border-yellow-500 text-gray-300'
+                      }`}
+                    >
+                      <div className="font-semibold">{extra}</div>
+                      <div className="text-xs opacity-80">
+                        {price > 0 ? `+ R$ ${price.toFixed(2)}` : 'Grátis'}
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+                {selectedExtras.length > 0 && (
+                  <div className="mt-2 text-xs text-yellow-400">
+                    Selecionados: {selectedExtras.join(', ')}
+                  </div>
+                )}
+              </div>
+            )}
+
 
 
             {/* Formulário */}
@@ -232,6 +285,12 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
                   <span className="text-gray-300 text-xs sm:text-sm">Preço unitário:</span>
                   <span className="text-white font-semibold text-sm sm:text-base">R$ {item.price.toFixed(2)}</span>
                 </div>
+                {extrasPrice > 0 && (
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-gray-300 text-xs sm:text-sm">Extras:</span>
+                    <span className="text-yellow-400 font-semibold text-sm sm:text-base">+ R$ {extrasPrice.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-gray-300 text-xs sm:text-sm">Quantidade:</span>
                   <span className="text-white font-semibold text-sm sm:text-base">{quantity}</span>
