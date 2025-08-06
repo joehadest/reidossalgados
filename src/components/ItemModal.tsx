@@ -298,7 +298,7 @@ export default function ItemModal({ item, onClose, onAddToCart, allPizzas }: Ite
                                 onChange={(e) => setObservation(e.target.value)}
                                 className="block w-full rounded-md border-gray-700 bg-gray-800 text-gray-200 shadow-sm focus:border-red-600 focus:ring-red-600"
                                 rows={3}
-                                placeholder="Ex: Sem cebola, mais queijo..."
+                                placeholder=""
                             />
                         </div>
 

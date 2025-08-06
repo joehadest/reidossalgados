@@ -275,7 +275,7 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
                   onChange={e => setObservation(e.target.value)}
                   className="w-full bg-gray-800 text-white border-2 border-gray-700 rounded-lg p-2 sm:p-3 focus:outline-none focus:border-yellow-500 transition-colors resize-none text-xs sm:text-sm"
                   rows={2}
-                  placeholder="Ex: Sem cebola, mais queijo, bem passado..."
+                  placeholder=""
                 />
               </div>
 

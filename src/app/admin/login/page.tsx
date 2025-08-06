@@ -1,17 +1,26 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Cookies from 'js-cookie';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaLock, FaEye, FaEyeSlash, FaShieldAlt, FaCrown } from 'react-icons/fa';
+import { FaLock, FaEye, FaEyeSlash, FaShieldAlt, FaCrown, FaBug } from 'react-icons/fa';
 import Image from 'next/image';
+import AuthCookieManager from '@/utils/auth-cookies';
 
 export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [showDebug, setShowDebug] = useState(false);
     const router = useRouter();
+
+    // Verificar se já está autenticado ao carregar
+    useEffect(() => {
+        if (AuthCookieManager.isAuthenticated()) {
+            console.log('Usuário já autenticado, redirecionando...');
+            router.push('/admin');
+        }
+    }, [router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,17 +37,29 @@ export default function LoginPage() {
             const data = await res.json();
 
             if (data.success) {
-                // Armazena o status de autenticação em um cookie
-                Cookies.set('isAuthenticated', 'true', { expires: 1 }); // Expira em 1 dia
-                router.push('/admin');
+                console.log('Autenticação bem-sucedida, definindo cookie...');
+                // Usar o novo gerenciador de cookies
+                AuthCookieManager.setAuthCookie('true');
+                
+                // Aguardar um pouco para garantir que o cookie foi definido
+                setTimeout(() => {
+                    console.log('Redirecionando para admin...');
+                    router.push('/admin');
+                }, 200);
             } else {
                 setError(data.message || 'Erro na autenticação');
             }
         } catch (error) {
+            console.error('Erro na autenticação:', error);
             setError('Erro de conexão. Tente novamente.');
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleDebug = () => {
+        AuthCookieManager.diagnose();
+        setShowDebug(!showDebug);
     };
 
     return (
@@ -248,7 +269,30 @@ export default function LoginPage() {
                             <p className="text-xs text-gray-600">
                                 Mantenha suas credenciais seguras
                             </p>
-            </div>
+                            
+                            {/* Botão de Debug para Mobile */}
+                            <button
+                                type="button"
+                                onClick={handleDebug}
+                                className="text-xs text-gray-500 hover:text-gray-400 transition-colors mt-2"
+                            >
+                                <FaBug className="inline mr-1" />
+                                Debug (Mobile)
+                            </button>
+                            
+                            {/* Informações de Debug */}
+                            {showDebug && (
+                                <div className="mt-3 p-3 bg-gray-900/50 rounded-lg text-left">
+                                    <div className="text-xs text-gray-400 space-y-1">
+                                        <div>Auth: {AuthCookieManager.isAuthenticated() ? '✅' : '❌'}</div>
+                                        <div>Cookie: {AuthCookieManager.getAuthCookie() || 'undefined'}</div>
+                                        <div>Protocol: {typeof window !== 'undefined' ? window.location.protocol : 'SSR'}</div>
+                                        <div>UserAgent: {typeof navigator !== 'undefined' ? 
+                                            (navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop') : 'SSR'}</div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </motion.div>
                 </motion.div>
 

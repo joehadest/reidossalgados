@@ -5,6 +5,7 @@ import { StoreProvider } from '@/contexts/StoreContext';
 import { MenuProvider } from '@/contexts/MenuContext';
 import { CartProvider } from '@/contexts/CartContext';
 import { RestaurantStatusProvider } from '@/contexts/RestaurantStatusContext';
+import ConnectivityStatus from '@/components/ConnectivityStatus';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -53,6 +54,15 @@ export default function RootLayout({
                 <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png" />
                 <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
                 <meta name="theme-color" content="#facc15" />
+                
+                {/* Configurações específicas para mobile e cookies */}
+                <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+                <meta httpEquiv="Pragma" content="no-cache" />
+                <meta httpEquiv="Expires" content="0" />
+                <meta name="apple-mobile-web-app-capable" content="yes" />
+                <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+                <meta name="mobile-web-app-capable" content="yes" />
+                <meta name="format-detection" content="telephone=no" />
             </head>
             <body className="bg-gray-900 min-h-screen">
                 <RestaurantStatusProvider>
@@ -62,6 +72,7 @@ export default function RootLayout({
                             <main className="min-h-screen">
                                 {children}
                             </main>
+                            <ConnectivityStatus />
                         </StoreProvider>
                     </MenuProvider>
                 </CartProvider>

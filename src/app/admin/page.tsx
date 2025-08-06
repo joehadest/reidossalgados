@@ -4,6 +4,8 @@ import AdminOrders from '@/components/AdminOrders';
 import AdminSettings from '@/components/AdminSettings';
 import AdminAddItem from '@/components/AdminAddItem';
 import AdminAddCategory from '@/components/AdminAddCategory';
+import AuthGuard from '@/components/AuthGuard';
+import LogoutButton from '@/components/LogoutButton';
 
 export default function AdminPanel() {
     const [activeTab, setActiveTab] = useState<'config' | 'orders' | 'addItem' | 'addCategory'>(() => {
@@ -18,12 +20,13 @@ export default function AdminPanel() {
     }, [activeTab]);
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white">
-            <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
-                <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-8 gap-2 sm:gap-0">
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-yellow-500 text-center sm:text-left">Painel Administrativo</h1>
-                    {/* Pode adicionar um botão de logout aqui */}
-                </div>
+        <AuthGuard>
+            <div className="min-h-screen bg-gray-900 text-white">
+                <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-8 gap-2 sm:gap-0">
+                        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-yellow-500 text-center sm:text-left">Painel Administrativo</h1>
+                        <LogoutButton variant="secondary" />
+                    </div>
 
                 {/* Mobile Tabs - Grid Layout */}
                 <div className="lg:hidden mb-4 sm:mb-6">
@@ -125,5 +128,6 @@ export default function AdminPanel() {
                 </div>
             </div>
         </div>
+        </AuthGuard>
     );
 } 

@@ -162,7 +162,7 @@ export default function PastaModal({ item, onClose, onAddToCart }: PastaModalPro
                                 onChange={(e) => setObservation(e.target.value)}
                                 className="block w-full rounded-md border-gray-700 bg-[#262525] text-gray-200 shadow-sm focus:border-red-600 focus:ring-red-600"
                                 rows={3}
-                                placeholder="Ex: Sem cebola, mais queijo..."
+                                placeholder=""
                             />
                         </div>
 
