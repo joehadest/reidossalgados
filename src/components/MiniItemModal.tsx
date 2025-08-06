@@ -40,13 +40,24 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
   }, []);
 
   const toggleExtra = (extra: string) => {
-    if (item.flavors && item.flavors.length > 0) {
+    // Verificar se o extra é um sabor (flavor) ou uma opção extra (extraOption)
+    const isFlavor = item.flavors?.some(flavor => flavor.name === extra);
+    const isExtraOption = item.extraOptions && Object.keys(item.extraOptions).includes(extra);
+
+    if (isFlavor) {
       // Para sabores (flavors), permitir apenas uma seleção
-      setSelectedExtras(prev =>
-        prev.includes(extra) ? [] : [extra]
-      );
-    } else {
-      // Para extras normais, permitir múltiplas seleções
+      setSelectedExtras(prev => {
+        // Remove outros sabores e mantém apenas extras
+        const currentExtras = prev.filter(e =>
+          item.extraOptions && Object.keys(item.extraOptions).includes(e)
+        );
+        // Se o sabor já está selecionado, remove. Senão, adiciona.
+        return prev.includes(extra)
+          ? currentExtras
+          : [...currentExtras, extra];
+      });
+    } else if (isExtraOption) {
+      // Para extras/coberturas, permitir múltiplas seleções
       setSelectedExtras(prev =>
         prev.includes(extra)
           ? prev.filter(e => e !== extra)
@@ -64,20 +75,35 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
     onAdd(quantity, finalObservation, selectedExtras);
   };
 
-  // Calcular preço total incluindo extras ou sabores
-  const extrasPrice = selectedExtras.reduce((total, extra) => {
-    // Se tem flavors, usar o preço do sabor selecionado
-    if (item.flavors && item.flavors.length > 0) {
-      const flavor = item.flavors.find(f => f.name === extra);
-      return total + (flavor ? flavor.price : 0);
-    }
-    // Senão, usar extraOptions normal
-    return total + (item.extraOptions?.[extra] || 0);
-  }, 0);
+  // Calcular preço total incluindo extras e sabores
+  const calculatePrice = () => {
+    let total = 0;
+    let hasSelectedFlavor = false;
 
-  // Se tem flavors selecionados, usar o preço do sabor ao invés do item base + extra
-  const basePrice = (item.flavors && item.flavors.length > 0 && selectedExtras.length > 0) ? 0 : item.price;
-  const totalPrice = (basePrice + extrasPrice) * quantity;
+    selectedExtras.forEach(extra => {
+      // Se é um sabor, usar o preço do sabor
+      const flavor = item.flavors?.find(f => f.name === extra);
+      if (flavor) {
+        total += flavor.price;
+        hasSelectedFlavor = true;
+      } else if (item.extraOptions?.[extra] !== undefined) {
+        // Se é um extra, somar o preço do extra
+        total += item.extraOptions[extra];
+      }
+    });
+
+    // Se não há sabor selecionado e tem flavors disponíveis, usar preço base
+    if (!hasSelectedFlavor && item.flavors && item.flavors.length > 0) {
+      total += item.price;
+    } else if (!hasSelectedFlavor && (!item.flavors || item.flavors.length === 0)) {
+      // Se não tem flavors, usar preço base
+      total += item.price;
+    }
+
+    return total;
+  };
+
+  const totalPrice = calculatePrice() * quantity;
 
   if (!item.available) {
     // Only show header with image and description if item is unavailable
@@ -258,27 +284,37 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
                 )}
 
                 {/* Se tem extraOptions, mostrar extras */}
-                {item.extraOptions && Object.keys(item.extraOptions).length > 0 && !item.flavors && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                    {Object.entries(item.extraOptions).map(([extra, price]) => (
-                      <motion.button
-                        key={extra}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        type="button"
-                        onClick={() => toggleExtra(extra)}
-                        className={`p-2 sm:p-3 rounded-lg border-2 transition-all text-xs sm:text-sm ${selectedExtras.includes(extra)
-                          ? 'border-yellow-500 bg-yellow-500/20 text-yellow-400'
-                          : 'border-gray-700 hover:border-yellow-500 text-gray-300'
-                          }`}
-                      >
-                        <div className="font-semibold">{extra}</div>
-                        <div className="text-xs opacity-80">
-                          {price > 0 ? `+ R$ ${price.toFixed(2)}` : 'Grátis'}
-                        </div>
-                      </motion.button>
-                    ))}
-                  </div>
+                {item.extraOptions && Object.keys(item.extraOptions).length > 0 && (
+                  <>
+                    {/* Se tem flavors também, adicionar uma separação visual */}
+                    {item.flavors && item.flavors.length > 0 && (
+                      <div className="mt-4 mb-3">
+                        <h3 className="text-sm sm:text-base font-semibold text-blue-400 mb-3">
+                          🍫 Extras/Coberturas (Opcionais)
+                        </h3>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                      {Object.entries(item.extraOptions).map(([extra, price]) => (
+                        <motion.button
+                          key={extra}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          type="button"
+                          onClick={() => toggleExtra(extra)}
+                          className={`p-2 sm:p-3 rounded-lg border-2 transition-all text-xs sm:text-sm ${selectedExtras.includes(extra)
+                            ? 'border-yellow-500 bg-yellow-500/20 text-yellow-400'
+                            : 'border-gray-700 hover:border-yellow-500 text-gray-300'
+                            }`}
+                        >
+                          <div className="font-semibold">{extra}</div>
+                          <div className="text-xs opacity-80">
+                            {price > 0 ? `+ R$ ${price.toFixed(2)}` : 'Grátis'}
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </>
                 )}
 
                 {selectedExtras.length > 0 && (
@@ -351,14 +387,8 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
               <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-300 text-xs sm:text-sm">Preço unitário:</span>
-                  <span className="text-white font-semibold text-sm sm:text-base">R$ {item.price.toFixed(2)}</span>
+                  <span className="text-white font-semibold text-sm sm:text-base">R$ {calculatePrice().toFixed(2)}</span>
                 </div>
-                {extrasPrice > 0 && (
-                  <div className="flex justify-between items-center mt-1">
-                    <span className="text-gray-300 text-xs sm:text-sm">Extras:</span>
-                    <span className="text-yellow-400 font-semibold text-sm sm:text-base">+ R$ {extrasPrice.toFixed(2)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-gray-300 text-xs sm:text-sm">Quantidade:</span>
                   <span className="text-white font-semibold text-sm sm:text-base">{quantity}</span>

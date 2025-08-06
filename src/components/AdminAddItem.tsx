@@ -25,8 +25,8 @@ export default function AdminAddItem() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalFlavors, setModalFlavors] = useState<SalgadoFlavor[]>([]);
   const [sortBy, setSortBy] = useState<'date' | 'alphabetical' | 'priceAsc' | 'priceDesc' | 'availability' | 'category'>('date');
-  const [extraOptions, setExtraOptions] = useState<{[key: string]: number}>({});
-  const [modalExtraOptions, setModalExtraOptions] = useState<{[key: string]: number}>({});
+  const [extraOptions, setExtraOptions] = useState<{ [key: string]: number }>({});
+  const [modalExtraOptions, setModalExtraOptions] = useState<{ [key: string]: number }>({});
 
   // Filtra os itens baseado no termo de busca
   const filteredItens = itens.filter(item =>
@@ -40,34 +40,34 @@ export default function AdminAddItem() {
       switch (sortBy) {
         case 'alphabetical':
           return a.name.localeCompare(b.name);
-        
+
         case 'priceAsc':
-          const priceA = a.isMainType && a.flavors?.length ? 
+          const priceA = a.isMainType && a.flavors?.length ?
             Math.min(...a.flavors.map(f => f.price)) : (a.price || 0);
-          const priceB = b.isMainType && b.flavors?.length ? 
+          const priceB = b.isMainType && b.flavors?.length ?
             Math.min(...b.flavors.map(f => f.price)) : (b.price || 0);
           return priceA - priceB;
-        
+
         case 'priceDesc':
-          const priceDescA = a.isMainType && a.flavors?.length ? 
+          const priceDescA = a.isMainType && a.flavors?.length ?
             Math.max(...a.flavors.map(f => f.price)) : (a.price || 0);
-          const priceDescB = b.isMainType && b.flavors?.length ? 
+          const priceDescB = b.isMainType && b.flavors?.length ?
             Math.max(...b.flavors.map(f => f.price)) : (b.price || 0);
           return priceDescB - priceDescA;
-        
+
         case 'availability':
           // Disponíveis primeiro
           if (a.available && !b.available) return -1;
           if (!a.available && b.available) return 1;
           return a.name.localeCompare(b.name);
-        
+
         case 'category':
           // Ordenar por categoria primeiro, depois por nome
           const categoryA = categorias.find(cat => cat._id === a.category)?.name || '';
           const categoryB = categorias.find(cat => cat._id === b.category)?.name || '';
           const categoryCompare = categoryA.localeCompare(categoryB);
           return categoryCompare !== 0 ? categoryCompare : a.name.localeCompare(b.name);
-        
+
         case 'date':
         default:
           // Por data de criação (mais recentes primeiro)
@@ -150,7 +150,7 @@ export default function AdminAddItem() {
   };
 
   const updateFlavor = (index: number, field: keyof SalgadoFlavor, value: any) => {
-    const updatedFlavors = flavors.map((flavor, i) => 
+    const updatedFlavors = flavors.map((flavor, i) =>
       i === index ? { ...flavor, [field]: value } : flavor
     );
     setFlavors(updatedFlavors);
@@ -161,7 +161,7 @@ export default function AdminAddItem() {
     setLoading(true);
     setSuccess('');
     setError('');
-    
+
     try {
       // Validar sabores
       const validFlavors = flavors.filter(flavor => flavor.name.trim() && flavor.price > 0);
@@ -196,13 +196,13 @@ export default function AdminAddItem() {
       const data = await res.json();
       if (data.success) {
         setSuccess(`Item "${form.name}" adicionado com ${validFlavors.length} sabor(es)!`);
-        setForm({ 
-          name: '', 
-          description: '', 
-          price: '', 
-          category: categorias.length > 0 ? categorias[0]._id : '', 
-          image: '', 
-          destaque: false, 
+        setForm({
+          name: '',
+          description: '',
+          price: '',
+          category: categorias.length > 0 ? categorias[0]._id : '',
+          image: '',
+          destaque: false,
           available: true
         });
         setFlavors([{ name: '', description: '', price: 0, available: true }]);
@@ -290,7 +290,7 @@ export default function AdminAddItem() {
   };
 
   const updateModalFlavor = (index: number, field: keyof SalgadoFlavor, value: any) => {
-    const updatedFlavors = modalFlavors.map((flavor, i) => 
+    const updatedFlavors = modalFlavors.map((flavor, i) =>
       i === index ? { ...flavor, [field]: value } : flavor
     );
     setModalFlavors(updatedFlavors);
@@ -312,7 +312,7 @@ export default function AdminAddItem() {
       ...item,
       available: item.available !== false
     });
-    
+
     // Carregar sabores para o modal
     if (item.isMainType && item.flavors && item.flavors.length > 0) {
       const editableFlavors = item.flavors.map((flavor: SalgadoFlavor) => ({
@@ -325,10 +325,12 @@ export default function AdminAddItem() {
     } else {
       setModalFlavors([]);
     }
-    
-    // Carregar extras existentes
-    setModalExtraOptions(item.extraOptions || {});
-    
+
+    // Carregar extras existentes - sempre carregar se houver
+    const existingExtras = item.extraOptions || {};
+    console.log('Loading extraOptions for item:', item.name, existingExtras);
+    setModalExtraOptions(existingExtras);
+
     setIsModalOpen(true);
   };
 
@@ -337,11 +339,11 @@ export default function AdminAddItem() {
       setError('Nome e categoria são obrigatórios.');
       return;
     }
-    
+
     setLoading(true);
     setSuccess('');
     setError('');
-    
+
     try {
       let updateData: any = {
         name: editItem.name,
@@ -355,18 +357,18 @@ export default function AdminAddItem() {
       // Se for um item organizado (com sabores), incluir os sabores
       if (editItem.isMainType) {
         const validFlavors = modalFlavors.filter(flavor => flavor.name.trim() && flavor.price > 0);
-        
+
         if (validFlavors.length === 0) {
           setError('Adicione pelo menos um sabor válido para o item.');
           setLoading(false);
           return;
         }
-        
+
         updateData.flavors = validFlavors;
         updateData.isMainType = true;
         updateData.price = editItem.price || (validFlavors.length > 0 ? validFlavors[0].price : 0);
         updateData.extraOptions = modalExtraOptions;
-        
+
         // Garantir que outros campos de tipo estão definidos
         updateData.borderOptions = editItem.borderOptions || {};
         updateData.ingredients = editItem.ingredients || [];
@@ -379,7 +381,7 @@ export default function AdminAddItem() {
         }
         updateData.price = typeof editItem.price === 'number' ? editItem.price : parseFloat(editItem.price as string) || 0;
         updateData.extraOptions = modalExtraOptions;
-        
+
         // Remover campos específicos de tipos se existirem
         updateData.isMainType = false;
         updateData.flavors = [];
@@ -415,7 +417,7 @@ export default function AdminAddItem() {
       <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
         {success && <div className="bg-green-700/20 text-green-400 rounded p-2 text-center">{success}</div>}
         {error && <div className="bg-red-700/20 text-red-400 rounded p-2 text-center">{error}</div>}
-        
+
         <div className="bg-blue-900/20 border border-blue-500/30 rounded p-3 mb-4">
           <p className="text-blue-400 text-sm">
             <strong>Sistema Organizado:</strong> Crie um item (ex: "Coxinha", "Refrigerantes") e adicione vários sabores abaixo.
@@ -434,7 +436,7 @@ export default function AdminAddItem() {
             className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500"
           />
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-200 mb-1">Descrição</label>
           <textarea
@@ -495,7 +497,7 @@ export default function AdminAddItem() {
                     </button>
                   )}
                 </div>
-                
+
                 <div className="grid grid-cols-1 gap-2">
                   <input
                     type="text"
@@ -504,7 +506,7 @@ export default function AdminAddItem() {
                     onChange={(e) => updateFlavor(index, 'name', e.target.value)}
                     className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-sm"
                   />
-                  
+
                   <div className="flex gap-2">
                     <input
                       type="number"
@@ -515,7 +517,7 @@ export default function AdminAddItem() {
                       step="0.01"
                       className="flex-1 p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-sm"
                     />
-                    
+
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -526,7 +528,7 @@ export default function AdminAddItem() {
                       <label className="text-gray-300 text-sm">Disponível</label>
                     </div>
                   </div>
-                  
+
                   <input
                     type="text"
                     placeholder="Descrição (opcional)"
@@ -556,7 +558,7 @@ export default function AdminAddItem() {
           <p className="text-gray-400 text-xs mb-3">
             Configure opções extras como coberturas, granulados, etc. Deixe o preço em 0 para extras gratuitos.
           </p>
-          
+
           {Object.keys(extraOptions).length > 0 ? (
             <div className="space-y-2">
               {Object.entries(extraOptions).map(([extraName, price]) => (
@@ -592,7 +594,7 @@ export default function AdminAddItem() {
             className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-sm"
           />
         </div>
-        
+
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6">
           <div className="flex items-center gap-2 sm:gap-3">
             <input
@@ -683,11 +685,11 @@ export default function AdminAddItem() {
             <span className="flex items-center gap-1">
               🔄 {
                 sortBy === 'date' ? 'Por data de adição' :
-                sortBy === 'alphabetical' ? 'Alfabética A-Z' :
-                sortBy === 'category' ? 'Por categoria' :
-                sortBy === 'priceAsc' ? 'Preço crescente' :
-                sortBy === 'priceDesc' ? 'Preço decrescente' :
-                'Por disponibilidade'
+                  sortBy === 'alphabetical' ? 'Alfabética A-Z' :
+                    sortBy === 'category' ? 'Por categoria' :
+                      sortBy === 'priceAsc' ? 'Preço crescente' :
+                        sortBy === 'priceDesc' ? 'Preço decrescente' :
+                          'Por disponibilidade'
               }
             </span>
           </div>
@@ -740,9 +742,9 @@ export default function AdminAddItem() {
                                   </button>
                                 </div>
                               </div>
-                              
+
                               <p className="text-gray-400 text-xs sm:text-sm mb-2 sm:mb-3">{item.description}</p>
-                              
+
                               {item.flavors && item.flavors.length > 0 && (
                                 <div className="bg-gray-900/70 rounded p-2 sm:p-3 border border-gray-600">
                                   <h5 className="text-green-400 font-medium mb-2 text-xs sm:text-sm">Sabores disponíveis:</h5>
@@ -838,7 +840,7 @@ export default function AdminAddItem() {
 
             {success && <div className="bg-green-700/20 text-green-400 rounded p-2 text-center mb-3 sm:mb-4 text-sm">{success}</div>}
             {error && <div className="bg-red-700/20 text-red-400 rounded p-2 text-center mb-3 sm:mb-4 text-sm">{error}</div>}
-            
+
             <div className="space-y-3 sm:space-y-4">
               {/* Nome */}
               <div>
@@ -930,7 +932,7 @@ export default function AdminAddItem() {
                             </button>
                           )}
                         </div>
-                        
+
                         <div className="grid grid-cols-1 gap-2">
                           <input
                             type="text"
@@ -939,7 +941,7 @@ export default function AdminAddItem() {
                             onChange={(e) => updateModalFlavor(index, 'name', e.target.value)}
                             className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-xs sm:text-sm"
                           />
-                          
+
                           <div className="flex flex-col sm:flex-row gap-2">
                             <input
                               type="number"
@@ -950,7 +952,7 @@ export default function AdminAddItem() {
                               step="0.01"
                               className="flex-1 p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500 text-xs sm:text-sm"
                             />
-                            
+
                             <div className="flex items-center gap-2 justify-center sm:justify-start">
                               <input
                                 type="checkbox"
@@ -961,7 +963,7 @@ export default function AdminAddItem() {
                               <label className="text-gray-300 text-xs sm:text-sm">Disponível</label>
                             </div>
                           </div>
-                          
+
                           <input
                             type="text"
                             placeholder="Descrição (opcional)"
@@ -992,10 +994,10 @@ export default function AdminAddItem() {
                 <p className="text-gray-400 text-xs mb-3">
                   Configure opções extras como coberturas, granulados, etc.
                 </p>
-                
-                {Object.keys(modalExtraOptions).length > 0 ? (
-                  <div className="space-y-2">
-                    {Object.entries(modalExtraOptions).map(([extraName, price]) => (
+
+                <div className="space-y-2">
+                  {Object.keys(modalExtraOptions).length > 0 ? (
+                    Object.entries(modalExtraOptions).map(([extraName, price]) => (
                       <div key={extraName} className="flex flex-col sm:flex-row sm:items-center justify-between bg-gray-800 rounded p-2 gap-2">
                         <div className="flex-1">
                           <span className="text-white font-medium text-xs sm:text-sm block">{extraName}</span>
@@ -1011,11 +1013,11 @@ export default function AdminAddItem() {
                           <FaTrash size={10} className="sm:w-3 sm:h-3" />
                         </button>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-xs sm:text-sm">Nenhum extra configurado</p>
-                )}
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-xs sm:text-sm">Nenhum extra configurado</p>
+                  )}
+                </div>
               </div>
 
               {/* Imagem */}
