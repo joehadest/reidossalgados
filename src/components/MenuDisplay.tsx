@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRestaurantStatus } from '@/contexts/RestaurantStatusContext';
 import ItemModal from './ItemModal';
@@ -17,36 +17,36 @@ const containerVariants = {
     visible: {
         opacity: 1,
         transition: {
-            staggerChildren: 0.03, // Reduzido de 0.1 para 0.03
-            duration: 0.2 // Adicionado duração mais rápida
+            staggerChildren: 0.01, // Reduzido ainda mais para performance
+            duration: 0.15 // Mais rápido
         }
     }
 };
 
 const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 10 }, // Reduzido movimento
     visible: {
         opacity: 1,
         y: 0,
         transition: {
             type: "spring",
-            stiffness: 200, // Aumentado de 100 para 200
-            damping: 20, // Adicionado damping para reduzir oscilação
-            duration: 0.3 // Duração mais rápida
+            stiffness: 300, // Mais rápido
+            damping: 25,
+            duration: 0.2 // Mais rápido
         }
     }
 };
 
 const categoryVariants = {
-    hidden: { opacity: 0, x: -20 },
+    hidden: { opacity: 0, x: -10 }, // Reduzido movimento
     visible: {
         opacity: 1,
         x: 0,
         transition: {
             type: "spring",
-            stiffness: 200, // Aumentado de 100 para 200
-            damping: 20, // Adicionado damping
-            duration: 0.25 // Duração mais rápida
+            stiffness: 400, // Mais rápido
+            damping: 25,
+            duration: 0.15 // Mais rápido
         }
     }
 };
@@ -81,8 +81,122 @@ export default function MenuDisplay() {
     const [menuTitle, setMenuTitle] = useState<string>('Cardápio Digital');
     const [showLogo, setShowLogo] = useState<boolean>(true);
 
-    // Filtro para itens de pizza (se existirem no banco)
-    const allPizzas = menuItems.filter((item: MenuItem) => item.category === 'pizzas');
+    // Filtro para itens de pizza (se existirem no banco) - Memoizado para performance
+    const allPizzas = useMemo(() =>
+        menuItems.filter((item: MenuItem) => item.category === 'pizzas'),
+        [menuItems]
+    );
+
+    // Memoizar itens por categoria para evitar re-filtros desnecessários
+    const itemsByCategory = useMemo(() => {
+        const grouped: Record<string, MenuItem[]> = {};
+        menuItems.forEach(item => {
+            if (!grouped[item.category]) {
+                grouped[item.category] = [];
+            }
+            grouped[item.category].push(item);
+        });
+        return grouped;
+    }, [menuItems]);
+
+    // Memoizar callbacks para evitar re-renders
+    const handleCategoryClick = useCallback((categoryId: string) => {
+        setIsManualScrolling(true);
+        setSelectedCategory(categoryId);
+
+        const element = document.getElementById(`category-${categoryId}`);
+        if (element) {
+            // Calcular a altura total do header sticky
+            const stickyHeader = document.querySelector('.sticky') as HTMLElement;
+            const headerHeight = stickyHeader ? stickyHeader.offsetHeight + 20 : (window.innerWidth < 640 ? 120 : 140);
+
+            // Calcular a posição exata onde deve rolar
+            const elementRect = element.getBoundingClientRect();
+            const elementTop = elementRect.top + window.pageYOffset;
+            const targetPosition = elementTop - headerHeight;
+
+            // Rolar diretamente para a posição calculada
+            window.scrollTo({
+                top: Math.max(0, targetPosition), // Garantir que não role para posição negativa
+                behavior: 'smooth'
+            });
+        }
+
+        // Aumentar o tempo para prevenir que o observer interfira
+        setTimeout(() => setIsManualScrolling(false), 2500);
+    }, []);
+
+    const handleItemClick = useCallback((item: MenuItem) => {
+        if (item.category === 'pizzas') {
+            setSelectedItem(item);
+        } else if (item.category === 'massas') {
+            setSelectedPasta(item);
+        } else {
+            setMiniModalItem(item);
+        }
+    }, []);
+
+    // Componente otimizado para item do menu
+    const OptimizedMenuItem = React.memo(({ item }: { item: MenuItem }) => (
+        <motion.div
+            variants={itemVariants}
+            className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-150 border border-yellow-500 cursor-pointer hover:bg-gray-750 hover:border-yellow-400"
+            style={{ willChange: 'transform' }} // Otimização CSS
+            onClick={() => handleItemClick(item)}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+        >
+            <div className="relative h-32 sm:h-48">
+                {item.image && (
+                    <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+                        className="object-cover"
+                        loading="lazy" // Lazy loading para performance
+                        placeholder="blur"
+                        blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R/AOzuFuJZHluIZnhkP2I5EcwuQWBIEjsxGTgAtgAOX/9k="
+                    />
+                )}
+                {!item.available && (
+                    <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+                        <span className="text-red-400 font-bold text-sm bg-red-900/80 px-2 py-1 rounded">
+                            Indisponível
+                        </span>
+                    </div>
+                )}
+            </div>
+            <div className="p-3 sm:p-4">
+                <h3 className="font-bold text-white text-base sm:text-lg mb-1 truncate">
+                    {item.name}
+                </h3>
+                {item.description && (
+                    <p className="text-gray-400 text-xs sm:text-sm mb-2 line-clamp-2">
+                        {item.description}
+                    </p>
+                )}
+                <div className="flex justify-between items-center">
+                    <span className="text-yellow-500 font-bold text-lg">
+                        {item.sizes && Object.keys(item.sizes).length > 0 ?
+                            `R$ ${Math.min(...Object.values(item.sizes).filter(v => v !== undefined)).toFixed(2)}` :
+                            `R$ ${item.price.toFixed(2)}`
+                        }
+                    </span>
+                    <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        className="bg-yellow-500 hover:bg-yellow-400 text-black p-2 rounded-full"
+                        disabled={!item.available}
+                    >
+                        <FaPlus className="text-sm" />
+                    </motion.button>
+                </div>
+            </div>
+        </motion.div>
+    ));
+
+    OptimizedMenuItem.displayName = 'OptimizedMenuItem';
 
     // Função para obter ícone da categoria
     const getCategoryIcon = (categoryName: string) => {
@@ -195,6 +309,20 @@ export default function MenuDisplay() {
 
     // Estado para controlar se o scroll está sendo feito por clique ou por rolagem normal
     const [isManualScrolling, setIsManualScrolling] = useState(false);
+    const observerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Debounce para o observer para melhorar performance
+    const debouncedCategoryUpdate = useCallback((category: string) => {
+        if (observerTimeoutRef.current) {
+            clearTimeout(observerTimeoutRef.current);
+        }
+
+        observerTimeoutRef.current = setTimeout(() => {
+            if (category !== selectedCategory) {
+                setSelectedCategory(category);
+            }
+        }, 300); // Aumentar debounce para 300ms para evitar mudanças muito rápidas
+    }, [selectedCategory]);
 
     useEffect(() => {
         // Detectar se estamos em mobile para ajustar o observer
@@ -215,24 +343,27 @@ export default function MenuDisplay() {
                         }
                     }
 
-                    if (mostVisibleEntry) {
+                    if (mostVisibleEntry && maxIntersectionRatio > 0.3) { // Só mudar se estiver bem visível
                         const element = mostVisibleEntry.target;
                         if (element instanceof HTMLElement && element.id) {
                             const category = element.id.replace('category-', '');
-                            if (category !== selectedCategory) {
-                                setSelectedCategory(category);
-                            }
+                            debouncedCategoryUpdate(category);
                         }
                     }
                 }
             },
             {
-                rootMargin: isMobile ? '-100px 0px -50% 0px' : '-120px 0px -40% 0px',
-                threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+                // Ajustar rootMargin baseado na altura real do header sticky
+                rootMargin: (() => {
+                    const stickyHeader = document.querySelector('.sticky') as HTMLElement;
+                    const headerHeight = stickyHeader ? stickyHeader.offsetHeight + 20 : (window.innerWidth < 640 ? 120 : 140);
+                    return `-${headerHeight}px 0px -40% 0px`;
+                })(),
+                threshold: [0, 0.3, 0.7, 1.0] // Thresholds mais conservadores
             }
         );
 
-        // Aguardar um pouco mais para garantir que o DOM foi renderizado
+        // Aguardar menos tempo para melhor responsividade
         const timeoutId = setTimeout(() => {
             (categories || []).forEach(category => {
                 const element = document.getElementById(`category-${category._id}`);
@@ -240,10 +371,13 @@ export default function MenuDisplay() {
                     observer.observe(element);
                 }
             });
-        }, 1000);
+        }, 300); // Reduzido de 1000ms para 300ms
 
         return () => {
             clearTimeout(timeoutId);
+            if (observerTimeoutRef.current) {
+                clearTimeout(observerTimeoutRef.current);
+            }
             (categories || []).forEach(category => {
                 const element = document.getElementById(`category-${category._id}`);
                 if (element) {
@@ -259,24 +393,29 @@ export default function MenuDisplay() {
         let scrollTimeout: NodeJS.Timeout;
 
         const handleScroll = () => {
+            // Se não estiver em modo manual, não fazer nada
+            if (!isManualScrolling) return;
+
             // Limpar timeout anterior
             clearTimeout(scrollTimeout);
-            
+
             // Setar um novo timeout para detectar quando a rolagem parou
             scrollTimeout = setTimeout(() => {
                 // Permitir que o observer funcione novamente quando a rolagem parar
                 setIsManualScrolling(false);
-            }, 150); // Tempo reduzido para resposta mais rápida
+            }, 200); // Tempo para detectar o fim da rolagem
         };
 
-        // Adicionar listener apenas se não estiver já adicionado
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        
+        // Adicionar listener de scroll apenas quando em modo manual
+        if (isManualScrolling) {
+            window.addEventListener('scroll', handleScroll, { passive: true });
+        }
+
         return () => {
-            window.removeEventListener('scroll', handleScroll);
             clearTimeout(scrollTimeout);
+            window.removeEventListener('scroll', handleScroll);
         };
-    }, []); // Array vazio para executar apenas uma vez
+    }, [isManualScrolling]);
 
     // Definir categoria inicial e garantir visualização correta
     useEffect(() => {
@@ -423,43 +562,7 @@ export default function MenuDisplay() {
         }
     }, [selectedCategory]);
 
-    const handleCategoryClick = (category: string | null) => {
-        setSelectedCategory(category);
-
-        if (category) {
-            const element = document.getElementById(`category-${category}`);
-            if (element) {
-                // Ativar o modo de rolagem manual para evitar que o observer mude a categoria
-                setIsManualScrolling(true);
-
-                // Detectar tamanho da tela para ajustar offset
-                const isMobile = window.innerWidth < 640;
-                const headerHeight = isMobile ? 100 : 120;
-
-                // Calcular a posição do elemento
-                const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
-
-                // Rolagem em uma única etapa
-                window.scrollTo({
-                    top: elementPosition - headerHeight,
-                    behavior: 'smooth'
-                });
-
-                // Efeito visual de feedback para indicar a mudança de categoria
-                element.classList.add('bg-yellow-500/10');
-                setTimeout(() => {
-                    element.classList.remove('bg-yellow-500/10');
-                }, 300);
-
-                // O modo manual será desabilitado automaticamente pelo listener de scroll
-                // quando o usuário parar de rolar
-            }
-        } else {
-            setIsManualScrolling(true);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            // O modo manual será desabilitado automaticamente pelo listener de scroll
-        }
-    }; useEffect(() => {
+    useEffect(() => {
         const interval = setInterval(async () => {
             const notifyOrders = JSON.parse(localStorage.getItem('notifyOrders') || '[]');
             if (notifyOrders.length === 0) return;
@@ -877,8 +980,8 @@ export default function MenuDisplay() {
                             <div className="w-full overflow-x-auto scrollbar-hide category-bar-container py-1">
                                 <div className="flex justify-start sm:justify-center space-x-2 sm:space-x-3 min-w-min px-4 sm:px-6 mx-auto">
                                     {categories.map((cat) => {
-                                        // Usar o emoji da categoria em vez do ícone, se estiver disponível
-                                        const itemCount = menuItems.filter((item) => item.category === cat._id).length;
+                                        // Usar contagem memoizada em vez de filtro direto
+                                        const itemCount = itemsByCategory[cat._id]?.length || 0;
                                         return (
                                             <motion.button
                                                 key={cat._id}
@@ -943,7 +1046,7 @@ export default function MenuDisplay() {
                             className="space-y-8"
                         >
                             {(categories || []).map(cat => {
-                                const itemsInCategory = menuItems.filter((item: MenuItem) => item.category === cat._id);
+                                const itemsInCategory = itemsByCategory[cat._id] || [];
                                 return (
                                     <div key={cat._id} id={`category-${cat._id}`} className="space-y-3 transition-colors duration-300 ease-in-out">
                                         <h2 className="text-base sm:text-lg font-semibold text-white capitalize mb-2 sm:mb-4 mt-6 sm:mt-8 pl-3 sm:pl-4 tracking-wide flex items-center">
@@ -961,6 +1064,8 @@ export default function MenuDisplay() {
                                                         initial="hidden"
                                                         animate="visible"
                                                         className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-150 border border-yellow-500 hover:bg-gray-750 hover:border-yellow-400"
+                                                        style={{ willChange: 'transform' }}
+                                                        onClick={() => handleItemClick(item)}
                                                     >
                                                         {item.isMainType ? (
                                                             // Exibição para tipos de salgados com sabores
@@ -989,7 +1094,7 @@ export default function MenuDisplay() {
                                                                         <p className="text-gray-400 text-sm">{item.description}</p>
                                                                     </div>
                                                                 </div>
-                                                                
+
                                                                 {item.flavors && item.flavors.length > 0 && (
                                                                     <div className="space-y-2">
                                                                         <h4 className="text-sm font-medium text-green-400 mb-2">Sabores disponíveis:</h4>
@@ -1009,8 +1114,8 @@ export default function MenuDisplay() {
                                                                                     } as MenuItem)}
                                                                                     className={`
                                                                                         bg-gray-900 rounded-lg p-3 transition-all duration-150 border
-                                                                                        ${flavor.available 
-                                                                                            ? 'border-gray-600 hover:border-yellow-500 cursor-pointer hover:bg-gray-750' 
+                                                                                        ${flavor.available
+                                                                                            ? 'border-gray-600 hover:border-yellow-500 cursor-pointer hover:bg-gray-750'
                                                                                             : 'border-gray-700 opacity-60 cursor-not-allowed'
                                                                                         }
                                                                                     `}
