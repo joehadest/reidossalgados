@@ -68,6 +68,18 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validar se tem sabores disponíveis e se algum foi selecionado
+    if (item.flavors && item.flavors.length > 0) {
+      const hasSelectedFlavor = selectedExtras.some(extra =>
+        item.flavors?.some(flavor => flavor.name === extra)
+      );
+
+      if (!hasSelectedFlavor) {
+        return; // Não permite envio sem sabor selecionado
+      }
+    }
+
     let finalObservation = observation;
 
     // Não incluir os extras na observação, pois agora são passados separadamente
@@ -104,6 +116,14 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
   };
 
   const totalPrice = calculatePrice() * quantity;
+
+  // Verificar se precisa selecionar sabor
+  const needsFlavorSelection = item.flavors && item.flavors.length > 0;
+  const hasSelectedFlavor = needsFlavorSelection ? selectedExtras.some(extra =>
+    item.flavors?.some(flavor => flavor.name === extra)
+  ) : true;
+
+  const canAddToCart = !needsFlavorSelection || hasSelectedFlavor;
 
   if (!item.available) {
     // Only show header with image and description if item is unavailable
@@ -402,26 +422,41 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
               </div>
 
               {/* Botões */}
-              <div className="flex gap-2 sm:gap-3 pt-2">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 py-2.5 sm:py-3 px-3 sm:px-4 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium text-sm sm:text-base"
-                >
-                  {!item.available ? 'Fechar' : 'Cancelar'}
-                </motion.button>
-                {item.available && (
+              <div className="flex flex-col gap-2 sm:gap-3 pt-2">
+                {/* Mensagem de aviso se precisa selecionar sabor */}
+                {needsFlavorSelection && !hasSelectedFlavor && (
+                  <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-2 sm:p-3">
+                    <p className="text-yellow-400 text-xs sm:text-sm text-center font-medium">
+                      ⚠️ Selecione um sabor para continuar
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex gap-2 sm:gap-3">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    type="submit"
-                    className="flex-1 py-2.5 sm:py-3 px-3 sm:px-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-gray-900 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition-all font-bold shadow-lg text-sm sm:text-base"
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 py-2.5 sm:py-3 px-3 sm:px-4 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium text-sm sm:text-base"
                   >
-                    Adicionar ao Carrinho
+                    {!item.available ? 'Fechar' : 'Cancelar'}
                   </motion.button>
-                )}
+                  {item.available && (
+                    <motion.button
+                      whileHover={canAddToCart ? { scale: 1.02 } : {}}
+                      whileTap={canAddToCart ? { scale: 0.98 } : {}}
+                      type="submit"
+                      disabled={!canAddToCart}
+                      className={`flex-1 py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg transition-all font-bold shadow-lg text-sm sm:text-base ${canAddToCart
+                          ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-gray-900 hover:from-yellow-600 hover:to-yellow-700'
+                          : 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50'
+                        }`}
+                    >
+                      Adicionar ao Carrinho
+                    </motion.button>
+                  )}
+                </div>
               </div>
             </form>
           </div>
