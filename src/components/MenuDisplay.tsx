@@ -56,6 +56,40 @@ export default function MenuDisplay() {
     const { items: cartItems, addToCart, removeFromCart, updateQuantity, clearCart } = useCart();
     const { isOpen: restaurantIsOpen } = useRestaurantStatus();
 
+    // Detectar se é iPhone para otimizações específicas
+    const [isIPhone, setIsIPhone] = useState(false);
+    const [iosVersion, setIosVersion] = useState<number | null>(null);
+
+    useEffect(() => {
+        // Detectar iPhone e versão iOS
+        const userAgent = navigator.userAgent;
+        const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+        const isIPhoneDevice = /iPhone/.test(userAgent);
+
+        setIsIPhone(isIPhoneDevice);
+
+        if (isIOS) {
+            const match = userAgent.match(/OS (\d+)_/);
+            if (match) {
+                setIosVersion(parseInt(match[1]));
+            }
+        }
+
+        // Adicionar classe específica para iPhone no body
+        if (isIPhoneDevice) {
+            document.body.classList.add('iphone-device');
+            // Prevenir zoom em inputs para iPhone
+            const metaViewport = document.querySelector('meta[name="viewport"]');
+            if (metaViewport) {
+                metaViewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+            }
+        }
+
+        return () => {
+            document.body.classList.remove('iphone-device');
+        };
+    }, []);
+
     const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -108,7 +142,12 @@ export default function MenuDisplay() {
         if (element) {
             // Calcular a altura total do header sticky
             const stickyHeader = document.querySelector('.sticky') as HTMLElement;
-            const headerHeight = stickyHeader ? stickyHeader.offsetHeight + 20 : (window.innerWidth < 640 ? 120 : 140);
+            let headerHeight = stickyHeader ? stickyHeader.offsetHeight + 20 : (window.innerWidth < 640 ? 120 : 140);
+
+            // Ajuste específico para iPhone devido ao notch e safe area
+            if (isIPhone) {
+                headerHeight += window.innerWidth < 400 ? 44 : 20; // Considerar notch do iPhone
+            }
 
             // Calcular a posição exata onde deve rolar
             const elementRect = element.getBoundingClientRect();
@@ -116,15 +155,16 @@ export default function MenuDisplay() {
             const targetPosition = elementTop - headerHeight;
 
             // Rolar diretamente para a posição calculada
+            // Usar scrollTo mais suave para iPhone
             window.scrollTo({
                 top: Math.max(0, targetPosition), // Garantir que não role para posição negativa
-                behavior: 'smooth'
+                behavior: isIPhone ? 'smooth' : 'auto' // Auto para outros dispositivos, smooth para iPhone
             });
         }
 
         // Aumentar o tempo para prevenir que o observer interfira
-        setTimeout(() => setIsManualScrolling(false), 2500);
-    }, []);
+        setTimeout(() => setIsManualScrolling(false), isIPhone ? 3000 : 2500);
+    }, [isIPhone]);
 
     const handleItemClick = useCallback((item: MenuItem) => {
         if (item.category === 'pizzas') {
@@ -321,8 +361,8 @@ export default function MenuDisplay() {
             if (category !== selectedCategory) {
                 setSelectedCategory(category);
             }
-        }, 300); // Aumentar debounce para 300ms para evitar mudanças muito rápidas
-    }, [selectedCategory]);
+        }, isIPhone ? 500 : 300); // Debounce maior para iPhone para melhor performance
+    }, [selectedCategory, isIPhone]);
 
     useEffect(() => {
         // Detectar se estamos em mobile para ajustar o observer
@@ -343,7 +383,7 @@ export default function MenuDisplay() {
                         }
                     }
 
-                    if (mostVisibleEntry && maxIntersectionRatio > 0.3) { // Só mudar se estiver bem visível
+                    if (mostVisibleEntry && maxIntersectionRatio > (isIPhone ? 0.4 : 0.3)) { // Threshold maior para iPhone
                         const element = mostVisibleEntry.target;
                         if (element instanceof HTMLElement && element.id) {
                             const category = element.id.replace('category-', '');
@@ -353,13 +393,16 @@ export default function MenuDisplay() {
                 }
             },
             {
-                // Ajustar rootMargin baseado na altura real do header sticky
+                // Ajustar rootMargin baseado na altura real do header sticky e iPhone
                 rootMargin: (() => {
                     const stickyHeader = document.querySelector('.sticky') as HTMLElement;
-                    const headerHeight = stickyHeader ? stickyHeader.offsetHeight + 20 : (window.innerWidth < 640 ? 120 : 140);
+                    let headerHeight = stickyHeader ? stickyHeader.offsetHeight + 20 : (window.innerWidth < 640 ? 120 : 140);
+                    if (isIPhone) {
+                        headerHeight += window.innerWidth < 400 ? 44 : 20; // Considerar notch do iPhone
+                    }
                     return `-${headerHeight}px 0px -40% 0px`;
                 })(),
-                threshold: [0, 0.3, 0.7, 1.0] // Thresholds mais conservadores
+                threshold: isIPhone ? [0, 0.4, 0.8] : [0, 0.3, 0.7, 1.0] // Menos thresholds para iPhone para melhor performance
             }
         );
 
@@ -969,15 +1012,15 @@ export default function MenuDisplay() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-900">
+        <div className={`min-h-screen bg-gray-900 ${isIPhone ? 'iphone-optimized' : ''}`}>
             <div className="max-w-7xl mx-auto px-4">
-                {/* Barra de Navegação com Categorias - Versão otimizada para mobile */}
-                <div className="sticky top-0 z-30 w-full bg-gray-900 shadow-lg border-b border-yellow-500/30">
+                {/* Barra de Navegação com Categorias - Versão otimizada para mobile e iPhone */}
+                <div className={`sticky top-0 z-30 w-full bg-gray-900 shadow-lg border-b border-yellow-500/30 ${isIPhone ? 'safe-area-top' : ''}`}>
                     <div className="w-full flex flex-col">
 
-                        {/* Barra de Categorias Scrollável - Otimizada para mobile */}
+                        {/* Barra de Categorias Scrollável - Otimizada para mobile e iPhone */}
                         <div className="relative pt-3 pb-1">
-                            <div className="w-full overflow-x-auto scrollbar-hide category-bar-container py-1">
+                            <div className={`w-full overflow-x-auto scrollbar-hide category-bar-container py-1 ${isIPhone ? 'ios-scroll-smooth' : ''}`}>
                                 <div className="flex justify-start sm:justify-center space-x-2 sm:space-x-3 min-w-min px-4 sm:px-6 mx-auto">
                                     {categories.map((cat) => {
                                         // Usar contagem memoizada em vez de filtro direto
@@ -995,6 +1038,7 @@ export default function MenuDisplay() {
                                                     relative flex items-center gap-1.5 sm:gap-2
                                                     px-2.5 sm:px-4 py-1.5 sm:py-2.5
                                                     rounded-lg transition-all duration-150
+                                                    ${isIPhone ? 'touch-manipulation min-h-[44px]' : ''} 
                                                     ${selectedCategory === cat._id
                                                         ? 'bg-yellow-500 text-gray-900 font-medium shadow-lg active'
                                                         : 'bg-gray-800/80 text-gray-300 hover:bg-yellow-500/20 hover:text-yellow-400 border border-gray-700'}
@@ -1012,8 +1056,8 @@ export default function MenuDisplay() {
                                                     <span className="text-2xs sm:text-xs font-medium whitespace-normal break-normal leading-tight">{cat.name}</span>
                                                     <span className="text-[9px] sm:text-[10px] opacity-75 whitespace-normal">{itemCount} {itemCount === 1 ? 'item' : 'itens'}</span>
                                                 </div>
-                                                {/* Efeito de toque para feedback tátil em mobile */}
-                                                <div className="absolute inset-0 bg-white/10 opacity-0 rounded-lg touch-ripple-effect"></div>
+                                                {/* Efeito de toque otimizado para iPhone */}
+                                                <div className={`absolute inset-0 bg-white/10 opacity-0 rounded-lg ${isIPhone ? 'ios-touch-feedback' : 'touch-ripple-effect'}`}></div>
                                                 {selectedCategory === cat._id && (
                                                     <motion.div
                                                         layoutId="categoryIndicator"
@@ -1155,9 +1199,9 @@ export default function MenuDisplay() {
                                                                                                             isMainType: false
                                                                                                         } as MenuItem);
                                                                                                     }}
-                                                                                                    className="bg-yellow-500 text-gray-900 p-2 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-150"
+                                                                                                    className={`bg-yellow-500 text-gray-900 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-150 ${isIPhone ? 'p-3 touch-manipulation min-h-[36px] min-w-[36px]' : 'p-2'}`}
                                                                                                 >
-                                                                                                    <FaPlus className="text-sm" />
+                                                                                                    <FaPlus className={`${isIPhone ? 'text-sm' : 'text-sm'}`} />
                                                                                                 </motion.button>
                                                                                             )}
                                                                                         </div>
@@ -1220,9 +1264,9 @@ export default function MenuDisplay() {
                                                                                         e.stopPropagation();
                                                                                         setMiniModalItem(item);
                                                                                     }}
-                                                                                    className="bg-yellow-500 text-gray-900 p-2 md:p-3 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-150 flex-shrink-0"
+                                                                                    className={`bg-yellow-500 text-gray-900 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-150 flex-shrink-0 ${isIPhone ? 'p-3 touch-manipulation min-h-[44px] min-w-[44px]' : 'p-2 md:p-3'}`}
                                                                                 >
-                                                                                    <FaPlus className="text-sm md:text-base" />
+                                                                                    <FaPlus className={`${isIPhone ? 'text-base' : 'text-sm md:text-base'}`} />
                                                                                 </motion.button>
                                                                             )}
                                                                         </div>
@@ -1389,10 +1433,10 @@ export default function MenuDisplay() {
                     )}
                 </AnimatePresence>
 
-                {/* Botão flutuante do carrinho */}
+                {/* Botão flutuante do carrinho - Otimizado para iPhone */}
                 {cartItems.length > 0 && (
                     <motion.div
-                        className="fixed bottom-6 right-6 z-40"
+                        className={`fixed ${isIPhone ? 'bottom-8 right-6 safe-area-bottom' : 'bottom-6 right-6'} z-40`}
                         initial={{ scale: 0, y: 100 }}
                         animate={{ scale: 1, y: 0 }}
                         exit={{ scale: 0, y: 100 }}
@@ -1400,11 +1444,11 @@ export default function MenuDisplay() {
                     >
                         <button
                             onClick={() => setIsCartOpen(true)}
-                            className="bg-yellow-500 text-gray-900 rounded-full w-16 h-16 flex items-center justify-center shadow-lg hover:bg-yellow-400 transition-transform transform hover:scale-110"
+                            className={`bg-yellow-500 text-gray-900 rounded-full flex items-center justify-center shadow-lg hover:bg-yellow-400 transition-transform transform hover:scale-110 ${isIPhone ? 'w-14 h-14 touch-manipulation' : 'w-16 h-16'}`}
                             aria-label={`Ver carrinho com ${cartItems.reduce((total, item) => total + item.quantity, 0)} itens`}
                         >
-                            <FaShoppingCart className="text-2xl" />
-                            <span className="absolute -top-1 -right-1 bg-gray-900 text-yellow-500 text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold border-2 border-yellow-500">
+                            <FaShoppingCart className={`${isIPhone ? 'text-xl' : 'text-2xl'}`} />
+                            <span className={`absolute -top-1 -right-1 bg-gray-900 text-yellow-500 text-xs rounded-full flex items-center justify-center font-bold border-2 border-yellow-500 ${isIPhone ? 'w-5 h-5' : 'w-6 h-6'}`}>
                                 {cartItems.reduce((total, item) => total + item.quantity, 0)}
                             </span>
                         </button>

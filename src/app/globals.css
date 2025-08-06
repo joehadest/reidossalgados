@@ -302,3 +302,6 @@ body {
         display: none !important;
     }
 }
+
+/* Importar otimizações específicas para iPhone */
+@import '../styles/iphone-optimizations.css';
