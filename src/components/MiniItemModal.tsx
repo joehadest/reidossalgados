@@ -16,8 +16,17 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
 
   useEffect(() => {
+    // Bloquear scroll do body
     document.body.classList.add('overflow-hidden');
-    return () => document.body.classList.remove('overflow-hidden');
+
+    // Prevenir scroll em dispositivos touch
+    const preventDefault = (e: Event) => e.preventDefault();
+    document.body.addEventListener('touchmove', preventDefault, { passive: false });
+
+    return () => {
+      document.body.classList.remove('overflow-hidden');
+      document.body.removeEventListener('touchmove', preventDefault);
+    };
   }, []);
 
   const toggleExtra = (extra: string) => {

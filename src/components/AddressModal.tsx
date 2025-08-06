@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Address {
@@ -51,6 +51,15 @@ export default function AddressModal({ isOpen, onClose, onSave, initialAddress }
         neighborhood: '',
         zipCode: ''
     });
+
+    useEffect(() => {
+        if (isOpen) {
+            document.body.classList.add('overflow-hidden');
+        } else {
+            document.body.classList.remove('overflow-hidden');
+        }
+        return () => document.body.classList.remove('overflow-hidden');
+    }, [isOpen]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

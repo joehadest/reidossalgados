@@ -14,13 +14,26 @@ export default function Home() {
     const [establishmentInfo, setEstablishmentInfo] = useState<any>(null);
     const [infoLoading, setInfoLoading] = useState(true);
 
+    // Bloquear scroll quando modais estão abertos
+    useEffect(() => {
+        const hasModalOpen = showInfo || showOrderTracker;
+
+        if (hasModalOpen) {
+            document.body.classList.add('overflow-hidden');
+        } else {
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        return () => document.body.classList.remove('overflow-hidden');
+    }, [showInfo, showOrderTracker]);
+
     // Função para buscar informações do estabelecimento
     const fetchEstablishmentInfo = async () => {
         try {
             setInfoLoading(true);
             const response = await fetch('/api/settings');
             const data = await response.json();
-            
+
             if (data.success && data.data) {
                 setEstablishmentInfo({
                     ...data.data.establishmentInfo,
@@ -37,7 +50,7 @@ export default function Home() {
     // Função para formatar horários de funcionamento
     const formatBusinessHours = (hours: any) => {
         if (!hours) return null;
-        
+
         const daysOfWeek = [
             { key: 'monday', label: 'Segunda' },
             { key: 'tuesday', label: 'Terça' },
@@ -115,7 +128,7 @@ export default function Home() {
                                     <span className={`w-2 h-2 rounded-full mr-1 ${isOpen ? 'bg-green-400' : 'bg-red-400'}`}></span>
                                     {loading ? 'Carregando...' : isOpen ? 'Aberto' : 'Fechado'}
                                 </span>
-                                
+
                                 {/* Botão de Acompanhar Pedido */}
                                 <motion.button
                                     whileHover={{ scale: 1.05 }}
@@ -135,7 +148,7 @@ export default function Home() {
             {/* Modal de informações do restaurante */}
             <AnimatePresence>
                 {showInfo && (
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -163,15 +176,15 @@ export default function Home() {
                                         className="w-full h-full object-cover rounded-full"
                                     />
                                 </div>
-                            <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={() => setShowInfo(false)}
+                                <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => setShowInfo(false)}
                                     className="absolute top-3 right-3 w-8 h-8 bg-gray-900/80 backdrop-blur-sm rounded-full flex items-center justify-center text-yellow-500 hover:text-yellow-400 transition-colors"
-                                aria-label="Fechar informações"
-                            >
+                                    aria-label="Fechar informações"
+                                >
                                     <FaExclamationCircle className="text-base" />
-                            </motion.button>
+                                </motion.button>
                             </div>
                             {/* Conteúdo */}
                             <div className="p-3 sm:p-6">
@@ -195,7 +208,7 @@ export default function Home() {
                                                         <span className={day.open ? 'text-white font-medium' : 'text-red-400 font-medium'}>
                                                             {day.open ? `${day.start} às ${day.end}` : 'Fechado'}
                                                         </span>
-                                            </div>
+                                                    </div>
                                                 ))
                                             ) : (
                                                 <div className="text-gray-400">Horários não disponíveis</div>
@@ -231,7 +244,7 @@ export default function Home() {
                                             Formas de Pagamento
                                         </h3>
                                         <div className="text-gray-300 text-xs sm:text-sm">
-                                            <p>{establishmentInfo?.paymentMethods?.length > 0 
+                                            <p>{establishmentInfo?.paymentMethods?.length > 0
                                                 ? `Aceitamos ${establishmentInfo.paymentMethods.join(', ').toLowerCase()}`
                                                 : 'Aceitamos cartões de crédito/débito, PIX e dinheiro'
                                             }</p>
@@ -245,8 +258,8 @@ export default function Home() {
                                         </h3>
                                         <div className="text-gray-300 text-xs sm:text-sm">
                                             <p>Instagram: <span className="text-white font-medium">{establishmentInfo?.socialMedia?.instagram || '@reidossalgados'}</span></p>
-                                </div>
-                                </div>
+                                        </div>
+                                    </div>
                                     {/* Sobre Nós */}
                                     <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
                                         <h3 className="text-yellow-400 font-semibold text-xs sm:text-base mb-2 flex items-center gap-2">
@@ -255,8 +268,8 @@ export default function Home() {
                                         </h3>
                                         <div className="text-gray-300 text-xs sm:text-sm leading-relaxed">
                                             <p>{establishmentInfo?.about || 'Especialistas em salgados artesanais, oferecendo qualidade e sabor em cada pedido. Nossos produtos são feitos com ingredientes frescos e selecionados.'}</p>
-                                </div>
-                                </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 {/* Botão fechar */}
                                 <div className="mt-6 pt-4 border-t border-gray-700">

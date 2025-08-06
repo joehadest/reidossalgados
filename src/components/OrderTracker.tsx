@@ -85,6 +85,11 @@ export default function OrderTracker({ onClose }: OrderTrackerProps) {
     const [order, setOrder] = useState<OrderStatus | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    useEffect(() => {
+        document.body.classList.add('overflow-hidden');
+        return () => document.body.classList.remove('overflow-hidden');
+    }, []);
+
     const handleSearch = async () => {
         if (!searchValue.trim()) {
             setError('Por favor, insira um valor para busca');
@@ -96,10 +101,10 @@ export default function OrderTracker({ onClose }: OrderTrackerProps) {
         setOrder(null);
 
         try {
-            const url = searchType === 'id' 
+            const url = searchType === 'id'
                 ? `/api/pedidos?id=${searchValue.trim()}`
                 : `/api/pedidos?telefone=${searchValue.trim()}`;
-            
+
             const response = await fetch(url);
             const data = await response.json();
 
@@ -177,21 +182,19 @@ export default function OrderTracker({ onClose }: OrderTrackerProps) {
                             <div className="flex flex-col xs:flex-row gap-2">
                                 <button
                                     onClick={() => setSearchType('phone')}
-                                    className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                                        searchType === 'phone'
+                                    className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${searchType === 'phone'
                                             ? 'bg-yellow-500 text-gray-900'
                                             : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                    }`}
+                                        }`}
                                 >
                                     Telefone
                                 </button>
                                 <button
                                     onClick={() => setSearchType('id')}
-                                    className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                                        searchType === 'id'
+                                    className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${searchType === 'id'
                                             ? 'bg-yellow-500 text-gray-900'
                                             : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                    }`}
+                                        }`}
                                 >
                                     ID do Pedido
                                 </button>

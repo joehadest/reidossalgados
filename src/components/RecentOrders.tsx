@@ -115,6 +115,17 @@ export default function RecentOrders() {
   });
   const UPDATE_INTERVAL = 30000; // 30 segundos
 
+  // Bloquear scroll quando modal está aberto
+  useEffect(() => {
+    if (pedidoSelecionado) {
+      document.body.classList.add('overflow-hidden');
+    } else {
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    return () => document.body.classList.remove('overflow-hidden');
+  }, [pedidoSelecionado]);
+
   const fetchPedidos = async (force = false) => {
     const now = Date.now();
     if (!force && now - lastUpdate < UPDATE_INTERVAL) {
@@ -393,9 +404,9 @@ export default function RecentOrders() {
           <h3 className="text-lg font-semibold text-white mb-2">Informações de Pagamento</h3>
           <p className="text-gray-300">Total: R$ {pedido.total.toFixed(2)}</p>
           <p className="text-gray-300">Forma de Pagamento: {
-            pedido.formaPagamento?.toLowerCase() === 'pix' ? 'PIX' : 
-            pedido.formaPagamento?.toLowerCase() === 'cartao' ? 'Cartão' : 
-            'Dinheiro'
+            pedido.formaPagamento?.toLowerCase() === 'pix' ? 'PIX' :
+              pedido.formaPagamento?.toLowerCase() === 'cartao' ? 'Cartão' :
+                'Dinheiro'
           }</p>
           {pedido.formaPagamento?.toLowerCase() === 'pix' && (
             <p className="text-gray-300">Chave PIX: 8498729126</p>

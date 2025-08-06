@@ -44,6 +44,17 @@ export default function AdminOrders() {
     const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
     const [notification, setNotification] = useState<string | null>(null);
 
+    // Bloquear scroll quando modal está aberto
+    useEffect(() => {
+        if (pedidoSelecionado) {
+            document.body.classList.add('overflow-hidden');
+        } else {
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        return () => document.body.classList.remove('overflow-hidden');
+    }, [pedidoSelecionado]);
+
     const fetchPedidos = async () => {
         try {
             const res = await fetch('/api/pedidos');
@@ -119,17 +130,17 @@ export default function AdminOrders() {
 
     const handleCompartilharPedido = (pedido: Pedido) => {
         const endereco = pedido.endereco;
-        const enderecoFormatado = endereco ? 
-            `${endereco.address.street}, ${endereco.address.number}${endereco.address.complement ? ` - ${endereco.address.complement}` : ''}, ${endereco.address.neighborhood}` : 
+        const enderecoFormatado = endereco ?
+            `${endereco.address.street}, ${endereco.address.number}${endereco.address.complement ? ` - ${endereco.address.complement}` : ''}, ${endereco.address.neighborhood}` :
             'Retirada no local';
 
         const formaPagamento = pedido.formaPagamento === 'pix' ? 'PIX' :
             pedido.formaPagamento === 'cartao' ? 'Cartão' : 'Dinheiro';
 
-        const troco = pedido.formaPagamento === 'dinheiro' && pedido.troco ? 
+        const troco = pedido.formaPagamento === 'dinheiro' && pedido.troco ?
             `\nTroco: R$ ${pedido.troco}` : '';
 
-        const taxaEntrega = pedido.endereco?.deliveryFee ? 
+        const taxaEntrega = pedido.endereco?.deliveryFee ?
             `\nTaxa de Entrega: R$ ${pedido.endereco.deliveryFee}` : '';
 
         const itensFormatados = pedido.itens.map(item => {
@@ -147,9 +158,9 @@ export default function AdminOrders() {
         const total = subtotal + (pedido.endereco?.deliveryFee || 0);
 
         const mensagem = `*Rei dos Salgados - Pedido #${pedido._id}*\n\n` +
-                `*Data:* ${new Date(pedido.data).toLocaleString()}\n` +
+            `*Data:* ${new Date(pedido.data).toLocaleString()}\n` +
             `*Status:* ${pedido.status}\n\n` +
-                `*Cliente:*\n` +
+            `*Cliente:*\n` +
             `Nome: ${pedido.cliente.nome}\n` +
             `Telefone: ${pedido.cliente.telefone}\n\n` +
             `*Endereço:*\n${enderecoFormatado}\n\n` +
@@ -194,11 +205,11 @@ export default function AdminOrders() {
                 ));
                 setMensagem('Status atualizado com sucesso!');
                 setNotification(`Status do pedido #${orderId.slice(-6)} atualizado para ${getStatusText(newStatus)}`);
-                
+
                 // Enviar notificação em tempo real
                 const timestamp = new Date().toLocaleString('pt-BR');
                 const message = `Status do pedido #${orderId.slice(-6)} atualizado para ${getStatusText(newStatus)}`;
-                
+
                 // Enviar para o servidor de notificações
                 await fetch('/api/notifications', {
                     method: 'POST',
@@ -213,7 +224,7 @@ export default function AdminOrders() {
                         timestamp
                     }),
                 });
-                
+
                 // Atualizar localStorage para compatibilidade com o sistema atual
                 const notifyOrders = JSON.parse(localStorage.getItem('notifyOrders') || '[]');
                 if (!notifyOrders.includes(orderId)) {
@@ -222,7 +233,7 @@ export default function AdminOrders() {
                 }
                 localStorage.setItem(`notifyStatus_${orderId}`, newStatus);
                 localStorage.setItem(`notifyTimestamp_${orderId}`, timestamp);
-                
+
                 setTimeout(() => setMensagem(null), 3000);
             } else {
                 throw new Error(data.message || 'Erro ao atualizar status do pedido');
@@ -295,7 +306,7 @@ export default function AdminOrders() {
     return (
         <div className="p-2 sm:p-0">
             {notification && <Notification message={notification} onClose={() => setNotification(null)} />}
-            
+
             <div className="bg-gray-800 p-3 sm:p-4 rounded-lg shadow-md mb-4 sm:mb-6">
                 <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">Filtros</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -338,8 +349,8 @@ export default function AdminOrders() {
                         </thead>
                         <tbody className="divide-y divide-gray-700">
                             {filteredPedidos.map((pedido) => (
-                                <tr 
-                                    key={pedido._id} 
+                                <tr
+                                    key={pedido._id}
                                     className="hover:bg-gray-700 transition-colors cursor-pointer"
                                     onClick={() => setPedidoSelecionado(pedido)}
                                 >
@@ -399,8 +410,8 @@ export default function AdminOrders() {
             {/* Mobile Card View */}
             <div className="lg:hidden space-y-3">
                 {filteredPedidos.map((pedido) => (
-                    <div 
-                        key={pedido._id} 
+                    <div
+                        key={pedido._id}
                         className="bg-gray-800 rounded-lg p-4 shadow-md cursor-pointer hover:bg-gray-750 transition-colors"
                         onClick={() => setPedidoSelecionado(pedido)}
                     >
@@ -468,118 +479,118 @@ export default function AdminOrders() {
             </div>
 
             {pedidoSelecionado && (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-2 sm:p-4"
-            style={{ overscrollBehavior: 'contain' }}
-            onClick={() => setPedidoSelecionado(null)}
-        >
-            <div
-              className="bg-gray-900 rounded-xl shadow-xl p-2 xs:p-4 sm:p-8 w-full max-w-md mx-auto text-gray-200 border border-yellow-500 relative max-h-[90vh] overflow-y-auto"
-              style={{ width: '100%', maxWidth: '95vw', minHeight: 'auto', boxSizing: 'border-box' }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-base xs:text-lg sm:text-xl font-bold text-yellow-500 break-all">Pedido #{pedidoSelecionado._id}</h3>
-                <button
-                    className="text-gray-400 hover:text-white text-xl sm:text-2xl focus:outline-none px-2"
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-2 sm:p-4"
+                    style={{ overscrollBehavior: 'contain' }}
                     onClick={() => setPedidoSelecionado(null)}
-                    aria-label="Fechar modal de pedido"
                 >
-                    &times;
-                </button>
-              </div>
+                    <div
+                        className="bg-gray-900 rounded-xl shadow-xl p-2 xs:p-4 sm:p-8 w-full max-w-md mx-auto text-gray-200 border border-yellow-500 relative max-h-[90vh] overflow-y-auto"
+                        style={{ width: '100%', maxWidth: '95vw', minHeight: 'auto', boxSizing: 'border-box' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-base xs:text-lg sm:text-xl font-bold text-yellow-500 break-all">Pedido #{pedidoSelecionado._id}</h3>
+                            <button
+                                className="text-gray-400 hover:text-white text-xl sm:text-2xl focus:outline-none px-2"
+                                onClick={() => setPedidoSelecionado(null)}
+                                aria-label="Fechar modal de pedido"
+                            >
+                                &times;
+                            </button>
+                        </div>
 
-              {/* Detalhes do Pedido */}
-              <div className="space-y-3 sm:space-y-4">
-                  {/* Informações do Cliente */}
-                  <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
-                      <h4 className="text-yellow-500 font-semibold mb-2 text-sm sm:text-base">Cliente</h4>
-                      <p className="text-white text-sm sm:text-base">{pedidoSelecionado.cliente.nome}</p>
-                      <p className="text-gray-400 text-xs sm:text-sm">{pedidoSelecionado.cliente.telefone}</p>
-                  </div>
+                        {/* Detalhes do Pedido */}
+                        <div className="space-y-3 sm:space-y-4">
+                            {/* Informações do Cliente */}
+                            <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
+                                <h4 className="text-yellow-500 font-semibold mb-2 text-sm sm:text-base">Cliente</h4>
+                                <p className="text-white text-sm sm:text-base">{pedidoSelecionado.cliente.nome}</p>
+                                <p className="text-gray-400 text-xs sm:text-sm">{pedidoSelecionado.cliente.telefone}</p>
+                            </div>
 
-                  {/* Data e Status */}
-                  <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
-                      <div className="flex justify-between items-center mb-2">
-                          <h4 className="text-yellow-500 font-semibold text-sm sm:text-base">Data do Pedido</h4>
-                          <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(pedidoSelecionado.status)}`}>
-                              {getStatusText(pedidoSelecionado.status)}
-                          </span>
-                      </div>
-                      <p className="text-gray-300 text-sm sm:text-base">{formatDate(pedidoSelecionado.data)}</p>
-                  </div>
+                            {/* Data e Status */}
+                            <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
+                                <div className="flex justify-between items-center mb-2">
+                                    <h4 className="text-yellow-500 font-semibold text-sm sm:text-base">Data do Pedido</h4>
+                                    <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(pedidoSelecionado.status)}`}>
+                                        {getStatusText(pedidoSelecionado.status)}
+                                    </span>
+                                </div>
+                                <p className="text-gray-300 text-sm sm:text-base">{formatDate(pedidoSelecionado.data)}</p>
+                            </div>
 
-                  {/* Endereço de Entrega */}
-                  {pedidoSelecionado.endereco && (
-                      <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
-                          <h4 className="text-yellow-500 font-semibold mb-2 text-sm sm:text-base">Endereço de Entrega</h4>
-                          <p className="text-gray-300 text-sm sm:text-base">
-                              {pedidoSelecionado.endereco.address.street}, {pedidoSelecionado.endereco.address.number}
-                              {pedidoSelecionado.endereco.address.complement && ` - ${pedidoSelecionado.endereco.address.complement}`}
-                          </p>
-                          <p className="text-gray-400 text-xs sm:text-sm">{pedidoSelecionado.endereco.address.neighborhood}</p>
-                          {pedidoSelecionado.endereco.deliveryFee > 0 && (
-                              <p className="text-yellow-500 mt-1 text-sm">Taxa de entrega: R$ {pedidoSelecionado.endereco.deliveryFee.toFixed(2)}</p>
-                          )}
-                      </div>
-                  )}
+                            {/* Endereço de Entrega */}
+                            {pedidoSelecionado.endereco && (
+                                <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
+                                    <h4 className="text-yellow-500 font-semibold mb-2 text-sm sm:text-base">Endereço de Entrega</h4>
+                                    <p className="text-gray-300 text-sm sm:text-base">
+                                        {pedidoSelecionado.endereco.address.street}, {pedidoSelecionado.endereco.address.number}
+                                        {pedidoSelecionado.endereco.address.complement && ` - ${pedidoSelecionado.endereco.address.complement}`}
+                                    </p>
+                                    <p className="text-gray-400 text-xs sm:text-sm">{pedidoSelecionado.endereco.address.neighborhood}</p>
+                                    {pedidoSelecionado.endereco.deliveryFee > 0 && (
+                                        <p className="text-yellow-500 mt-1 text-sm">Taxa de entrega: R$ {pedidoSelecionado.endereco.deliveryFee.toFixed(2)}</p>
+                                    )}
+                                </div>
+                            )}
 
-                  {/* Itens do Pedido */}
-                  <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
-                      <h4 className="text-yellow-500 font-semibold mb-3 text-sm sm:text-base">Itens do Pedido</h4>
-                      <div className="space-y-3">
-                          {pedidoSelecionado.itens.map((item, index) => (
-                              <div key={index} className="border-b border-gray-700 pb-2 last:border-b-0">
-                                  <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-2">
-                                      <div className="flex-1">
-                                          <p className="text-white font-medium text-sm sm:text-base">
-                                              {item.quantidade}x {item.nome}
-                                          </p>
-                                          {item.size && <p className="text-gray-400 text-xs sm:text-sm">Tamanho: {item.size}</p>}
-                                          {item.border && <p className="text-gray-400 text-xs sm:text-sm">Borda: {item.border}</p>}
-                                          {item.extras && item.extras.length > 0 && (
-                                              <p className="text-gray-400 text-xs sm:text-sm">Extras: {item.extras.join(', ')}</p>
-                                          )}
-                                          {item.observacao && (
-                                              <p className="text-gray-400 text-xs sm:text-sm italic">Obs: {item.observacao}</p>
-                                          )}
-                                      </div>
-                                      <p className="text-yellow-500 font-semibold ml-2 text-sm sm:text-base min-w-max">
-                                          R$ {(item.preco * item.quantidade).toFixed(2)}
-                                      </p>
-                                  </div>
-                              </div>
-                          ))}
-                      </div>
-                  </div>
+                            {/* Itens do Pedido */}
+                            <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
+                                <h4 className="text-yellow-500 font-semibold mb-3 text-sm sm:text-base">Itens do Pedido</h4>
+                                <div className="space-y-3">
+                                    {pedidoSelecionado.itens.map((item, index) => (
+                                        <div key={index} className="border-b border-gray-700 pb-2 last:border-b-0">
+                                            <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-2">
+                                                <div className="flex-1">
+                                                    <p className="text-white font-medium text-sm sm:text-base">
+                                                        {item.quantidade}x {item.nome}
+                                                    </p>
+                                                    {item.size && <p className="text-gray-400 text-xs sm:text-sm">Tamanho: {item.size}</p>}
+                                                    {item.border && <p className="text-gray-400 text-xs sm:text-sm">Borda: {item.border}</p>}
+                                                    {item.extras && item.extras.length > 0 && (
+                                                        <p className="text-gray-400 text-xs sm:text-sm">Extras: {item.extras.join(', ')}</p>
+                                                    )}
+                                                    {item.observacao && (
+                                                        <p className="text-gray-400 text-xs sm:text-sm italic">Obs: {item.observacao}</p>
+                                                    )}
+                                                </div>
+                                                <p className="text-yellow-500 font-semibold ml-2 text-sm sm:text-base min-w-max">
+                                                    R$ {(item.preco * item.quantidade).toFixed(2)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
 
-                  {/* Forma de Pagamento */}
-                  <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
-                      <h4 className="text-yellow-500 font-semibold mb-2 text-sm sm:text-base">Forma de Pagamento</h4>
-                      <p className="text-white capitalize text-sm sm:text-base">{pedidoSelecionado.formaPagamento}</p>
-                      {pedidoSelecionado.troco && (
-                          <p className="text-gray-400 text-sm">Troco: R$ {pedidoSelecionado.troco}</p>
-                      )}
-                  </div>
+                            {/* Forma de Pagamento */}
+                            <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
+                                <h4 className="text-yellow-500 font-semibold mb-2 text-sm sm:text-base">Forma de Pagamento</h4>
+                                <p className="text-white capitalize text-sm sm:text-base">{pedidoSelecionado.formaPagamento}</p>
+                                {pedidoSelecionado.troco && (
+                                    <p className="text-gray-400 text-sm">Troco: R$ {pedidoSelecionado.troco}</p>
+                                )}
+                            </div>
 
-                  {/* Observações */}
-                  {pedidoSelecionado.observacoes && (
-                      <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
-                          <h4 className="text-yellow-500 font-semibold mb-2 text-sm sm:text-base">Observações</h4>
-                          <p className="text-gray-300 text-sm sm:text-base">{pedidoSelecionado.observacoes}</p>
-                      </div>
-                  )}
+                            {/* Observações */}
+                            {pedidoSelecionado.observacoes && (
+                                <div className="bg-gray-800 rounded-lg p-3 sm:p-4">
+                                    <h4 className="text-yellow-500 font-semibold mb-2 text-sm sm:text-base">Observações</h4>
+                                    <p className="text-gray-300 text-sm sm:text-base">{pedidoSelecionado.observacoes}</p>
+                                </div>
+                            )}
 
-                  {/* Total */}
-                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 sm:p-4">
-                      <div className="flex justify-between items-center">
-                          <span className="text-yellow-500 font-semibold text-sm sm:text-base">Total do Pedido</span>
-                          <span className="text-yellow-500 text-lg sm:text-xl font-bold">R$ {calcularTotal(pedidoSelecionado).toFixed(2)}</span>
-                      </div>
-                  </div>
-              </div>
+                            {/* Total */}
+                            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 sm:p-4">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-yellow-500 font-semibold text-sm sm:text-base">Total do Pedido</span>
+                                    <span className="text-yellow-500 text-lg sm:text-xl font-bold">R$ {calcularTotal(pedidoSelecionado).toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
 
-              <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-2">
+                        <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-2">
                             {getNextStatus(pedidoSelecionado.status) && (
                                 <button
                                     onClick={() => updateOrderStatus(pedidoSelecionado._id, getNextStatus(pedidoSelecionado.status)!)}
@@ -614,9 +625,9 @@ export default function AdminOrders() {
                                 Compartilhar
                             </button>
                         </div>
-            </div>
-        </div>
-      )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 } 

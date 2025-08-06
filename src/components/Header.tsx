@@ -18,6 +18,19 @@ export default function Header() {
 
     const totalItems = items.reduce((total: number, item: any) => total + item.quantity, 0);
 
+    // Bloquear scroll quando modais estão abertos
+    useEffect(() => {
+        const hasModalOpen = showInfo || showOrderTracker || isCartOpen;
+
+        if (hasModalOpen) {
+            document.body.classList.add('overflow-hidden');
+        } else {
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        return () => document.body.classList.remove('overflow-hidden');
+    }, [showInfo, showOrderTracker, isCartOpen]);
+
     const handleCheckout = (orderId: string) => {
         // Implementar checkout
         console.log('Checkout:', orderId);
@@ -86,19 +99,19 @@ export default function Header() {
             {/* Modal de informações do restaurante */}
             {showInfo && (
                 <AnimatePresence>
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60" 
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"
                         onClick={() => setShowInfo(false)}
                     >
                         <motion.div
                             initial={{ opacity: 0, scale: 0.8, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                            transition={{ 
+                            transition={{
                                 type: "spring",
                                 damping: 25,
                                 stiffness: 300
@@ -150,12 +163,12 @@ export default function Header() {
             )}
 
             {isCartOpen && (
-                <Cart 
+                <Cart
                     items={items}
                     onUpdateQuantity={updateQuantity}
                     onRemoveItem={removeFromCart}
                     onCheckout={handleCheckout}
-                    onClose={() => setIsCartOpen(false)} 
+                    onClose={() => setIsCartOpen(false)}
                 />
             )}
 

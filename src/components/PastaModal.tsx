@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MenuItem } from '../types/menu';
 
@@ -39,6 +39,20 @@ export default function PastaModal({ item, onClose, onAddToCart }: PastaModalPro
     const [quantity, setQuantity] = useState(1);
     const [observation, setObservation] = useState('');
     const [selectedSize, setSelectedSize] = useState<'P' | 'G'>('P');
+
+    useEffect(() => {
+        // Bloquear scroll do body
+        document.body.classList.add('overflow-hidden');
+
+        // Prevenir scroll em dispositivos touch
+        const preventDefault = (e: Event) => e.preventDefault();
+        document.body.addEventListener('touchmove', preventDefault, { passive: false });
+
+        return () => {
+            document.body.classList.remove('overflow-hidden');
+            document.body.removeEventListener('touchmove', preventDefault);
+        };
+    }, []);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

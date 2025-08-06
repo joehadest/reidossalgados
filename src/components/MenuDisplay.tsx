@@ -477,7 +477,37 @@ export default function MenuDisplay() {
         return () => clearInterval(interval);
     }, []);
 
-    const calculateDeliveryFee = (neighborhood: string, tipoEntrega: string) => {
+    // Bloquear scroll para modal de WhatsApp
+    useEffect(() => {
+        if (showWhatsAppModal) {
+            document.body.classList.add('overflow-hidden');
+            const preventDefault = (e: Event) => e.preventDefault();
+            document.body.addEventListener('touchmove', preventDefault, { passive: false });
+
+            return () => {
+                document.body.classList.remove('overflow-hidden');
+                document.body.removeEventListener('touchmove', preventDefault);
+            };
+        } else {
+            document.body.classList.remove('overflow-hidden');
+        }
+    }, [showWhatsAppModal]);
+
+    // Bloquear scroll para modal de sucesso do pedido
+    useEffect(() => {
+        if (orderSuccessId) {
+            document.body.classList.add('overflow-hidden');
+            const preventDefault = (e: Event) => e.preventDefault();
+            document.body.addEventListener('touchmove', preventDefault, { passive: false });
+
+            return () => {
+                document.body.classList.remove('overflow-hidden');
+                document.body.removeEventListener('touchmove', preventDefault);
+            };
+        } else {
+            document.body.classList.remove('overflow-hidden');
+        }
+    }, [orderSuccessId]); const calculateDeliveryFee = (neighborhood: string, tipoEntrega: string) => {
         if (tipoEntrega === 'retirada') return 0;
         const deliveryFee = deliveryFees.find(fee => fee.neighborhood === neighborhood);
         return deliveryFee ? deliveryFee.fee : 0;
