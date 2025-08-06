@@ -16,16 +16,26 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
 
   useEffect(() => {
+    // Função mais inteligente que permite scroll dentro do modal
+    const preventScroll = (e: TouchEvent) => {
+      const target = e.target as Element;
+      const modalContent = document.querySelector('[data-modal-content]');
+
+      // Se o evento não é dentro do modal, bloqueia
+      if (modalContent && !modalContent.contains(target)) {
+        e.preventDefault();
+      }
+    };
+
     // Bloquear scroll do body
     document.body.classList.add('overflow-hidden');
 
-    // Prevenir scroll em dispositivos touch
-    const preventDefault = (e: Event) => e.preventDefault();
-    document.body.addEventListener('touchmove', preventDefault, { passive: false });
+    // Prevenir scroll em dispositivos touch apenas fora do modal
+    document.body.addEventListener('touchmove', preventScroll, { passive: false });
 
     return () => {
       document.body.classList.remove('overflow-hidden');
-      document.body.removeEventListener('touchmove', preventDefault);
+      document.body.removeEventListener('touchmove', preventScroll);
     };
   }, []);
 
@@ -40,9 +50,9 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     let finalObservation = observation;
-    
+
     // Não incluir os extras na observação, pois agora são passados separadamente
-    
+
     onAdd(quantity, finalObservation, selectedExtras);
   };
 
@@ -50,7 +60,7 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
   const extrasPrice = selectedExtras.reduce((total, extra) => {
     return total + (item.extraOptions?.[extra] || 0);
   }, 0);
-  
+
   const totalPrice = (item.price + extrasPrice) * quantity;
 
   if (!item.available) {
@@ -65,6 +75,7 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
           onClick={onClose}
         >
           <motion.div
+            data-modal-content
             className="bg-gray-900 rounded-2xl w-full max-w-md mx-2 shadow-2xl border border-red-500/30 overflow-hidden max-h-[90vh] overflow-y-auto overflow-x-hidden"
             initial={{ scale: 0.9, y: 30, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
@@ -131,6 +142,7 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
         onClick={onClose}
       >
         <motion.div
+          data-modal-content
           className="bg-gray-900 rounded-2xl w-full max-w-md mx-2 shadow-2xl border border-yellow-500/30 overflow-hidden max-h-[90vh] overflow-y-auto overflow-x-hidden"
           initial={{ scale: 0.9, y: 30, opacity: 0 }}
           animate={{ scale: 1, y: 0, opacity: 1 }}
@@ -209,11 +221,10 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
                       whileTap={{ scale: 0.98 }}
                       type="button"
                       onClick={() => toggleExtra(extra)}
-                      className={`p-2 sm:p-3 rounded-lg border-2 transition-all text-xs sm:text-sm ${
-                        selectedExtras.includes(extra)
+                      className={`p-2 sm:p-3 rounded-lg border-2 transition-all text-xs sm:text-sm ${selectedExtras.includes(extra)
                           ? 'border-yellow-500 bg-yellow-500/20 text-yellow-400'
                           : 'border-gray-700 hover:border-yellow-500 text-gray-300'
-                      }`}
+                        }`}
                     >
                       <div className="font-semibold">{extra}</div>
                       <div className="text-xs opacity-80">

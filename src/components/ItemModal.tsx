@@ -48,16 +48,26 @@ export default function ItemModal({ item, onClose, onAddToCart, allPizzas }: Ite
     const [half2, setHalf2] = useState<MenuItem | null>(null);
 
     useEffect(() => {
+        // Função mais inteligente que permite scroll dentro do modal
+        const preventScroll = (e: TouchEvent) => {
+            const target = e.target as Element;
+            const modalContent = document.querySelector('[data-modal-content]');
+
+            // Se o evento não é dentro do modal, bloqueia
+            if (modalContent && !modalContent.contains(target)) {
+                e.preventDefault();
+            }
+        };
+
         // Bloquear scroll do body
         document.body.classList.add('overflow-hidden');
 
-        // Prevenir scroll em dispositivos touch
-        const preventDefault = (e: Event) => e.preventDefault();
-        document.body.addEventListener('touchmove', preventDefault, { passive: false });
+        // Prevenir scroll em dispositivos touch apenas fora do modal
+        document.body.addEventListener('touchmove', preventScroll, { passive: false });
 
         return () => {
             document.body.classList.remove('overflow-hidden');
-            document.body.removeEventListener('touchmove', preventDefault);
+            document.body.removeEventListener('touchmove', preventScroll);
         };
     }, []);
 
@@ -96,6 +106,7 @@ export default function ItemModal({ item, onClose, onAddToCart, allPizzas }: Ite
                 onClick={onClose}
             >
                 <motion.div
+                    data-modal-content
                     className="bg-gray-900 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto overflow-x-hidden"
                     variants={modalVariants}
                     initial="hidden"
