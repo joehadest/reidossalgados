@@ -102,7 +102,28 @@ const calculateItemPrice = (item: CartItem) => {
 
         return price * item.quantity;
     }
-    return item.item.price * item.quantity;
+
+    // Para itens que não são pizza/massa, mas têm extras (como esfirras com sabores)
+    let price = item.item.price;
+    if (item.extras && item.extras.length > 0) {
+        if (item.item.flavors && item.item.flavors.length > 0) {
+            // Para itens com flavors, usar o preço do sabor
+            const flavor = item.item.flavors.find(f => f.name === item.extras![0]);
+            if (flavor) {
+                price = flavor.price;
+            }
+        } else if (item.item.extraOptions) {
+            // Para itens com extraOptions, somar ao preço base
+            item.extras.forEach(extra => {
+                const extraPrice = item.item.extraOptions![extra];
+                if (extraPrice) {
+                    price += extraPrice;
+                }
+            });
+        }
+    }
+
+    return price * item.quantity;
 };
 
 const calculateUnitPrice = (item: CartItem) => {
@@ -149,7 +170,28 @@ const calculateUnitPrice = (item: CartItem) => {
 
         return price;
     }
-    return item.item.price;
+
+    // Para itens que não são pizza/massa, mas têm extras (como esfirras com sabores)
+    let price = item.item.price;
+    if (item.extras && item.extras.length > 0) {
+        if (item.item.flavors && item.item.flavors.length > 0) {
+            // Para itens com flavors, usar o preço do sabor
+            const flavor = item.item.flavors.find(f => f.name === item.extras![0]);
+            if (flavor) {
+                price = flavor.price;
+            }
+        } else if (item.item.extraOptions) {
+            // Para itens com extraOptions, somar ao preço base
+            item.extras.forEach(extra => {
+                const extraPrice = item.item.extraOptions![extra];
+                if (extraPrice) {
+                    price += extraPrice;
+                }
+            });
+        }
+    }
+
+    return price;
 };
 
 export default function Cart({ items, onUpdateQuantity, onRemoveItem, onCheckout, onClose }: CartProps) {
@@ -239,15 +281,23 @@ export default function Cart({ items, onUpdateQuantity, onRemoveItem, onCheckout
             localStorage.setItem('customerTroco', troco);
 
             const pedido = {
-                itens: items.map(item => ({
-                    nome: item.item.name,
-                    quantidade: item.quantity,
-                    preco: calculateUnitPrice(item),
-                    observacao: item.observation,
-                    size: item.size,
-                    border: item.border,
-                    extras: item.extras
-                })),
+                itens: items.map(item => {
+                    // Criar nome completo incluindo sabor se houver extras
+                    let nomeCompleto = item.item.name;
+                    if (item.extras && item.extras.length > 0 && item.item.category !== 'pizzas' && item.item.category !== 'massas') {
+                        nomeCompleto += ` - ${item.extras.join(', ')}`;
+                    }
+
+                    return {
+                        nome: nomeCompleto,
+                        quantidade: item.quantity,
+                        preco: calculateUnitPrice(item),
+                        observacao: item.observation,
+                        size: item.size,
+                        border: item.border,
+                        extras: item.extras
+                    };
+                }),
                 total,
                 tipoEntrega,
                 endereco: tipoEntrega === 'entrega' ? {
@@ -342,16 +392,29 @@ export default function Cart({ items, onUpdateQuantity, onRemoveItem, onCheckout
                                         <div className="flex-1 w-full min-w-0">
                                             <div className="flex justify-between items-start">
                                                 <div className="flex-1 min-w-0">
-                                                    <h3 className="font-semibold text-gray-200 text-xs xs:text-sm sm:text-base truncate">{item.item.name}</h3>
-                                                    {(item.item.category === 'pizzas' || item.item.category === 'massas') && (
-                                                        <div className="text-xs text-gray-400 mt-1">
-                                                            {item.size && <span>Tamanho: {item.size}</span>}
-                                                            {item.item.category === 'pizzas' && item.border && <span> • Borda: {item.border}</span>}
-                                                            {item.item.category === 'pizzas' && item.extras && item.extras.length > 0 && (
-                                                                <span> • Extras: {item.extras.join(', ')}</span>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                    <h3 className="font-semibold text-gray-200 text-xs xs:text-sm sm:text-base truncate">
+                                                        {item.item.name}
+                                                        {/* Adicionar sabor/variação no nome se houver extras */}
+                                                        {item.extras && item.extras.length > 0 && item.item.category !== 'pizzas' && item.item.category !== 'massas' && (
+                                                            <span className="text-yellow-400"> - {item.extras.join(', ')}</span>
+                                                        )}
+                                                    </h3>
+                                                    {/* Mostrar informações detalhadas baseadas no tipo de item */}
+                                                    <div className="text-xs text-gray-400 mt-1">
+                                                        {/* Para pizzas e massas - informações específicas */}
+                                                        {(item.item.category === 'pizzas' || item.item.category === 'massas') && (
+                                                            <>
+                                                                {item.size && <span>Tamanho: {item.size}</span>}
+                                                                {item.item.category === 'pizzas' && item.border && <span> • Borda: {item.border}</span>}
+                                                                {item.item.category === 'pizzas' && item.extras && item.extras.length > 0 && (
+                                                                    <span> • Extras: {item.extras.join(', ')}</span>
+                                                                )}
+                                                            </>
+                                                        )}                                                        {/* Para todos os outros itens - mostrar apenas se não mostrou no título */}
+                                                        {item.item.category !== 'pizzas' && item.item.category !== 'massas' && item.extras && item.extras.length > 0 && (
+                                                            <span className="opacity-70">Sabor selecionado</span>
+                                                        )}
+                                                    </div>
                                                     {item.observation && (
                                                         <p className="text-xs text-gray-400 mt-1 break-words">Obs: {item.observation}</p>
                                                     )}
@@ -447,8 +510,8 @@ export default function Cart({ items, onUpdateQuantity, onRemoveItem, onCheckout
                                                 localStorage.setItem('tipoEntrega', 'entrega');
                                             }}
                                             className={`p-3 xs:p-4 rounded-lg border-2 transition-all duration-150 text-center ${tipoEntrega === 'entrega'
-                                                    ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400'
-                                                    : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500 hover:bg-gray-750'
+                                                ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400'
+                                                : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500 hover:bg-gray-750'
                                                 }`}
                                         >
                                             <div className="flex flex-col items-center gap-1">
@@ -465,8 +528,8 @@ export default function Cart({ items, onUpdateQuantity, onRemoveItem, onCheckout
                                                 localStorage.setItem('tipoEntrega', 'retirada');
                                             }}
                                             className={`p-3 xs:p-4 rounded-lg border-2 transition-all duration-150 text-center ${tipoEntrega === 'retirada'
-                                                    ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400'
-                                                    : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500 hover:bg-gray-750'
+                                                ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400'
+                                                : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500 hover:bg-gray-750'
                                                 }`}
                                         >
                                             <div className="flex flex-col items-center gap-1">

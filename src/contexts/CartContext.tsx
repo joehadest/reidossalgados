@@ -24,31 +24,44 @@ export function CartProvider({ children }: { children: ReactNode }) {
             price = item.sizes[sizeKey] || price;
 
             if (item.category === 'pizzas') {
-            if (observation && observation.includes('Meio a meio:')) {
-                const [sabor1, sabor2] = observation.split('Meio a meio:')[1].split('/').map(s => s.trim());
-                const pizzas = menuItems.filter((p: MenuItem) => p.category === 'pizzas');
-                const pizza1 = pizzas.find((p: MenuItem) => p.name === sabor1);
-                const pizza2 = pizzas.find((p: MenuItem) => p.name === sabor2);
+                if (observation && observation.includes('Meio a meio:')) {
+                    const [sabor1, sabor2] = observation.split('Meio a meio:')[1].split('/').map(s => s.trim());
+                    const pizzas = menuItems.filter((p: MenuItem) => p.category === 'pizzas');
+                    const pizza1 = pizzas.find((p: MenuItem) => p.name === sabor1);
+                    const pizza2 = pizzas.find((p: MenuItem) => p.name === sabor2);
 
-                if (pizza1 && pizza2) {
-                    const price1 = pizza1.sizes ? pizza1.sizes[sizeKey] || pizza1.price : pizza1.price;
-                    const price2 = pizza2.sizes ? pizza2.sizes[sizeKey] || pizza2.price : pizza2.price;
-                    price = Math.max(price1, price2);
+                    if (pizza1 && pizza2) {
+                        const price1 = pizza1.sizes ? pizza1.sizes[sizeKey] || pizza1.price : pizza1.price;
+                        const price2 = pizza2.sizes ? pizza2.sizes[sizeKey] || pizza2.price : pizza2.price;
+                        price = Math.max(price1, price2);
+                    }
+                }
+
+                if (border && item.borderOptions) {
+                    const borderPrice = sizeKey === 'G' ? 8.00 : 4.00;
+                    price += borderPrice;
                 }
             }
+        }
 
-            if (border && item.borderOptions) {
-                const borderPrice = sizeKey === 'G' ? 8.00 : 4.00;
-                price += borderPrice;
-            }
-            if (extras && item.extraOptions) {
+        // Calcular preço dos extras para todos os tipos de itens
+        if (extras && extras.length > 0) {
+            if (item.flavors && item.flavors.length > 0) {
+                // Para itens com flavors, usar o preço do sabor
+                extras.forEach(extra => {
+                    const flavor = item.flavors!.find(f => f.name === extra);
+                    if (flavor) {
+                        price = flavor.price; // Usar preço do sabor ao invés de somar
+                    }
+                });
+            } else if (item.extraOptions) {
+                // Para itens com extraOptions, somar ao preço base
                 extras.forEach(extra => {
                     const extraPrice = item.extraOptions![extra];
                     if (extraPrice) {
                         price += extraPrice;
                     }
                 });
-                }
             }
         }
 

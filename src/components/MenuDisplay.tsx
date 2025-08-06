@@ -1385,9 +1385,20 @@ export default function MenuDisplay() {
                                                 formaPagamento === 'dinheiro' ? `\nForma de Pagamento: Dinheiro${troco ? `\nTroco para: R$ ${troco}` : ''}\n` :
                                                     formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
 
-                                            const itemsInfo = cartItems.map(item =>
-                                                `${item.quantity}x ${item.item.name}${item.size ? ` (${item.size})` : ''}${item.observation ? ` - ${item.observation}` : ''} - R$ ${calculateItemPrice(item).toFixed(2)}`
-                                            ).join('\n');
+                                            const itemsInfo = cartItems.map(item => {
+                                                let itemName = item.item.name;
+
+                                                // Adicionar sabor se houver extras para itens não-pizza/massa
+                                                if (item.extras && item.extras.length > 0 && item.item.category !== 'pizzas' && item.item.category !== 'massas') {
+                                                    itemName += ` - ${item.extras.join(', ')}`;
+                                                }
+
+                                                const sizeInfo = item.size ? ` (${item.size})` : '';
+                                                const obsInfo = item.observation ? ` - Obs: ${item.observation}` : '';
+                                                const priceInfo = ` - R$ ${calculateItemPrice(item).toFixed(2)}`;
+
+                                                return `${item.quantity}x ${itemName}${sizeInfo}${obsInfo}${priceInfo}`;
+                                            }).join('\n');
 
                                             return `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* ${pixKey}`;
                                         })()}
