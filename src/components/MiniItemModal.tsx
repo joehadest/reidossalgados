@@ -45,6 +45,12 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
     const isExtraOption = item.extraOptions && Object.keys(item.extraOptions).includes(extra);
 
     if (isFlavor) {
+      // Verificar se o sabor está disponível
+      const flavor = item.flavors?.find(f => f.name === extra);
+      if (!flavor?.available) {
+        return; // Não permite seleção de sabores indisponíveis
+      }
+
       // Para sabores (flavors), permitir apenas uma seleção
       setSelectedExtras(prev => {
         // Remove outros sabores e mantém apenas extras
@@ -70,13 +76,13 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
     e.preventDefault();
 
     // Validar se tem sabores disponíveis e se algum foi selecionado
-    if (item.flavors && item.flavors.length > 0) {
+    if (item.flavors && item.flavors.length > 0 && item.flavors.some(f => f.available)) {
       const hasSelectedFlavor = selectedExtras.some(extra =>
-        item.flavors?.some(flavor => flavor.name === extra)
+        item.flavors?.some(flavor => flavor.name === extra && flavor.available)
       );
 
       if (!hasSelectedFlavor) {
-        return; // Não permite envio sem sabor selecionado
+        return; // Não permite envio sem sabor disponível selecionado
       }
     }
 
@@ -118,14 +124,12 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
   const totalPrice = calculatePrice() * quantity;
 
   // Verificar se precisa selecionar sabor
-  const needsFlavorSelection = item.flavors && item.flavors.length > 0;
+  const needsFlavorSelection = item.flavors && item.flavors.length > 0 && item.flavors.some(f => f.available);
   const hasSelectedFlavor = needsFlavorSelection ? selectedExtras.some(extra =>
-    item.flavors?.some(flavor => flavor.name === extra)
+    item.flavors?.some(flavor => flavor.name === extra && flavor.available)
   ) : true;
 
-  const canAddToCart = !needsFlavorSelection || hasSelectedFlavor;
-
-  if (!item.available) {
+  const canAddToCart = !needsFlavorSelection || hasSelectedFlavor; if (!item.available) {
     // Only show header with image and description if item is unavailable
     return (
       <AnimatePresence>
@@ -282,20 +286,32 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
                     {item.flavors.map((flavor) => (
                       <motion.button
                         key={flavor.name}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        whileHover={flavor.available ? { scale: 1.02 } : {}}
+                        whileTap={flavor.available ? { scale: 0.98 } : {}}
                         type="button"
-                        onClick={() => toggleExtra(flavor.name)}
-                        className={`p-2 sm:p-3 rounded-lg border-2 transition-all text-xs sm:text-sm text-left ${selectedExtras.includes(flavor.name)
-                          ? 'border-yellow-500 bg-yellow-500/20 text-yellow-400'
-                          : 'border-gray-700 hover:border-yellow-500 text-gray-300'
+                        onClick={() => flavor.available && toggleExtra(flavor.name)}
+                        disabled={!flavor.available}
+                        className={`p-2 sm:p-3 rounded-lg border-2 transition-all text-xs sm:text-sm text-left ${!flavor.available
+                            ? 'border-gray-600 bg-gray-800 text-gray-500 cursor-not-allowed opacity-60'
+                            : selectedExtras.includes(flavor.name)
+                              ? 'border-yellow-500 bg-yellow-500/20 text-yellow-400'
+                              : 'border-gray-700 hover:border-yellow-500 text-gray-300'
                           }`}
                       >
-                        <div className="font-semibold">{flavor.name}</div>
+                        <div className="font-semibold flex items-center justify-between">
+                          <span className={flavor.available ? '' : 'line-through'}>{flavor.name}</span>
+                          {!flavor.available && (
+                            <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">
+                              Indisponível
+                            </span>
+                          )}
+                        </div>
                         {flavor.description && (
-                          <div className="text-xs opacity-80 mt-1">{flavor.description}</div>
+                          <div className={`text-xs opacity-80 mt-1 ${!flavor.available ? 'line-through' : ''}`}>
+                            {flavor.description}
+                          </div>
                         )}
-                        <div className="text-xs opacity-80 mt-1">
+                        <div className={`text-xs opacity-80 mt-1 ${!flavor.available ? 'line-through' : ''}`}>
                           R$ {flavor.price.toFixed(2)}
                         </div>
                       </motion.button>
@@ -427,7 +443,16 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
                 {needsFlavorSelection && !hasSelectedFlavor && (
                   <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-2 sm:p-3">
                     <p className="text-yellow-400 text-xs sm:text-sm text-center font-medium">
-                      ⚠️ Selecione um sabor para continuar
+                      ⚠️ Selecione um sabor disponível para continuar
+                    </p>
+                  </div>
+                )}
+
+                {/* Mensagem se todos os sabores estão indisponíveis */}
+                {item.flavors && item.flavors.length > 0 && !item.flavors.some(f => f.available) && (
+                  <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-2 sm:p-3">
+                    <p className="text-red-400 text-xs sm:text-sm text-center font-medium">
+                      ❌ Todos os sabores estão temporariamente indisponíveis
                     </p>
                   </div>
                 )}
@@ -449,8 +474,8 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
                       type="submit"
                       disabled={!canAddToCart}
                       className={`flex-1 py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg transition-all font-bold shadow-lg text-sm sm:text-base ${canAddToCart
-                          ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-gray-900 hover:from-yellow-600 hover:to-yellow-700'
-                          : 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50'
+                        ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-gray-900 hover:from-yellow-600 hover:to-yellow-700'
+                        : 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50'
                         }`}
                     >
                       Adicionar ao Carrinho
