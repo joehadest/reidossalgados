@@ -284,8 +284,11 @@ export default function MenuDisplay() {
                 if (data.success && data.data) {
                     setBusinessHours(data.data.businessHours);
                     setDeliveryFees(data.data.deliveryFees || []);
-                    // Buscar WhatsApp e PIX do banco
-                    setWhatsappNumber(data.data.establishmentInfo?.contact?.whatsapp?.replace(/\D/g, ''));
+                    // Buscar WhatsApp e PIX do banco - com debug
+                    const whatsappFromDB = data.data.establishmentInfo?.contact?.whatsapp;
+                    console.log('WhatsApp do banco:', whatsappFromDB);
+                    setWhatsappNumber(whatsappFromDB?.replace(/\D/g, '') || '');
+                    console.log('WhatsApp depois de limpar:', whatsappFromDB?.replace(/\D/g, '') || '');
                     setPixKey(data.data.establishmentInfo?.pixKey || '');
 
                     // Configurações de apresentação do cardápio
@@ -853,6 +856,15 @@ export default function MenuDisplay() {
     };
 
     const handleWhatsAppClick = () => {
+        // Debug: verificar se o número está carregado
+        console.log('WhatsApp Number:', whatsappNumber);
+
+        if (!whatsappNumber) {
+            alert('Número do WhatsApp não configurado. Entre em contato com o estabelecimento.');
+            setShowWhatsAppModal(false);
+            return;
+        }
+
         const customerName = localStorage.getItem('customerName') || '';
         const customerPhone = localStorage.getItem('customerPhone') || '';
         const customerAddress = localStorage.getItem('customerAddress') || '';
@@ -886,8 +898,57 @@ export default function MenuDisplay() {
 
         const message = `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* ${pixKey}`;
 
-        const whatsappUrl = `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent(message)}`;
-        window.open(whatsappUrl, '_blank');
+        // Formatar número do WhatsApp (garantir que tenha apenas dígitos)
+        let cleanNumber = whatsappNumber.replace(/\D/g, '');
+
+        // Se o número não começar com 55, adicionar
+        if (cleanNumber.length === 11 && !cleanNumber.startsWith('55')) {
+            cleanNumber = '55' + cleanNumber;
+        }
+
+        // Debug: verificar dados antes de enviar
+        console.log('Número original:', whatsappNumber);
+        console.log('Número limpo:', cleanNumber);
+        console.log('Mensagem:', message.substring(0, 100) + '...');
+
+        // Detectar se é dispositivo móvel
+        const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        // Criar URL do WhatsApp (sem duplicar o código de país)
+        const whatsappUrl = `https://api.whatsapp.com/send?phone=${cleanNumber}&text=${encodeURIComponent(message)}`;
+
+        console.log('URL do WhatsApp:', whatsappUrl);
+        console.log('Dispositivo móvel:', isMobile);
+
+        // Abrir WhatsApp de forma mais confiável
+        try {
+            if (isMobile) {
+                // Em dispositivos móveis, tentar o esquema whatsapp:// primeiro
+                const appUrl = `whatsapp://send?phone=${cleanNumber}&text=${encodeURIComponent(message)}`;
+                console.log('Tentando URL do app:', appUrl);
+
+                // Criar link temporário para tentar abrir o app
+                const tempLink = document.createElement('a');
+                tempLink.href = appUrl;
+                tempLink.style.display = 'none';
+                document.body.appendChild(tempLink);
+                tempLink.click();
+                document.body.removeChild(tempLink);
+
+                // Se não conseguir abrir o app, usar a web em 1.5 segundos
+                setTimeout(() => {
+                    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+                }, 1500);
+            } else {
+                // Em desktop, usar web WhatsApp diretamente
+                window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+            }
+        } catch (error) {
+            console.error('Erro ao abrir WhatsApp:', error);
+            // Fallback final - forçar abertura da URL web
+            window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+        }
+
         setShowWhatsAppModal(false);
     };
 
@@ -1350,21 +1411,21 @@ export default function MenuDisplay() {
                 <AnimatePresence>
                     {showWhatsAppModal && (
                         <motion.div
-                            className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50"
+                            className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 p-2 sm:p-4"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                         >
                             <motion.div
-                                className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full mx-4 text-center max-h-[90vh] overflow-y-auto overflow-x-hidden"
+                                className="bg-gray-900 rounded-xl shadow-xl p-3 sm:p-6 md:p-8 w-full max-w-xs sm:max-w-md md:max-w-lg text-center max-h-[95vh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden"
                                 initial={{ scale: 0.8 }}
                                 animate={{ scale: 1 }}
                                 exit={{ scale: 0.8 }}
                             >
-                                <h2 className="text-2xl font-bold text-yellow-500 mb-4">Confirme seu pedido</h2>
-                                <div className="bg-gray-800 p-4 rounded-lg mb-6 text-left">
-                                    <h3 className="text-yellow-500 font-semibold mb-2">Detalhes do seu pedido:</h3>
-                                    <pre className="text-gray-300 whitespace-pre-wrap text-sm">
+                                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-yellow-500 mb-3 sm:mb-4">Confirme seu pedido</h2>
+                                <div className="bg-gray-800 p-2 sm:p-3 md:p-4 rounded-lg mb-4 sm:mb-6 text-left">
+                                    <h3 className="text-yellow-500 font-semibold mb-2 text-sm sm:text-base">Detalhes do seu pedido:</h3>
+                                    <div className="text-gray-300 whitespace-pre-wrap text-xs sm:text-sm md:text-base leading-relaxed max-h-40 sm:max-h-60 overflow-y-auto">
                                         {(() => {
                                             const customerName = localStorage.getItem('customerName') || '';
                                             const customerPhone = localStorage.getItem('customerPhone') || '';
@@ -1402,18 +1463,18 @@ export default function MenuDisplay() {
 
                                             return `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* ${pixKey}`;
                                         })()}
-                                    </pre>
+                                    </div>
                                 </div>
 
-                                <div className="flex justify-center gap-4">
+                                <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
                                     <motion.button
                                         whileHover={{ scale: 1.03 }}
                                         whileTap={{ scale: 0.97 }}
                                         transition={{ duration: 0.1 }}
                                         onClick={handleWhatsAppClick}
-                                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 transition-colors duration-150"
+                                        className="bg-green-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 transition-colors duration-150 text-sm sm:text-base font-medium"
                                     >
-                                        <FaWhatsapp className="text-xl" />
+                                        <FaWhatsapp className="text-lg sm:text-xl" />
                                         Enviar para WhatsApp
                                     </motion.button>
                                     <motion.button
@@ -1421,7 +1482,7 @@ export default function MenuDisplay() {
                                         whileTap={{ scale: 0.97 }}
                                         transition={{ duration: 0.1 }}
                                         onClick={() => setShowWhatsAppModal(false)}
-                                        className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-150"
+                                        className="bg-gray-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-gray-700 transition-colors duration-150 text-sm sm:text-base font-medium"
                                     >
                                         Cancelar
                                     </motion.button>
