@@ -338,138 +338,149 @@ export default function AdminAddCategory() {
   };
 
   return (
-    <div className="max-w-xl w-full mx-auto bg-gray-800 rounded-xl p-3 sm:p-6 shadow-lg border border-yellow-500/30">
-      <h2 className="text-lg sm:text-xl font-bold text-yellow-500 mb-3 sm:mb-4">Gerenciar Categorias</h2>
+    <div className="w-full max-w-7xl mx-auto p-4">
+      {/* Layout em duas colunas para desktop */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
-      {success && (
-        <div className="bg-green-500/20 border border-green-500 rounded p-2 mb-3 text-green-400 text-sm">
-          {success}
-        </div>
-      )}
+        {/* Coluna da esquerda - Formulário de adicionar categoria */}
+        <div className="bg-gray-800 rounded-xl p-3 sm:p-6 shadow-lg border border-yellow-500/30">
+          <h2 className="text-lg sm:text-xl font-bold text-yellow-500 mb-3 sm:mb-4 text-center">Gerenciar Categorias</h2>
 
-      {error && (
-        <div className="bg-red-500/20 border border-red-500 rounded p-2 mb-3 text-red-400 text-sm">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <div className="mb-3">
-          <label className="block text-sm font-medium text-gray-200 mb-1">Nome da Categoria</label>
-          <input
-            type="text"
-            value={category}
-            onChange={e => setCategory(e.target.value)}
-            required
-            className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500"
-            placeholder="Ex: Salgados, Bebidas, Sobremesas..."
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-200 mb-1">Emoji da Categoria</label>
-          <div className="flex items-center">
-            <div
-              className="w-12 h-12 flex items-center justify-center bg-gray-900 border border-gray-700 rounded text-2xl cursor-pointer hover:bg-gray-800"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            >
-              {emoji}
+          {success && (
+            <div className="bg-green-500/20 border border-green-500 rounded p-2 mb-3 text-green-400 text-sm">
+              {success}
             </div>
-            <button
-              type="button"
-              className="ml-2 p-2 bg-blue-600 hover:bg-blue-500 rounded text-white flex items-center"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            >
-              <FaSmile className="mr-1" /> Escolher Emoji
-            </button>
-          </div>
+          )}
 
-          {showEmojiPicker && (
-            <div className="mt-2 p-2 bg-gray-900 border border-gray-700 rounded max-h-48 overflow-y-auto">
-              <div className="grid grid-cols-8 gap-2">
-                {foodEmojis.map((e) => (
-                  <button
-                    key={e}
-                    type="button"
-                    className={`w-8 h-8 text-xl flex items-center justify-center rounded hover:bg-gray-700 ${emoji === e ? 'bg-yellow-500/30' : ''}`}
-                    onClick={() => {
-                      setEmoji(e);
-                      setShowEmojiPicker(false);
-                    }}
-                  >
-                    {e}
-                  </button>
-                ))}
+          {error && (
+            <div className="bg-red-500/20 border border-red-500 rounded p-2 mb-3 text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-200 mb-1">Nome da Categoria</label>
+              <input
+                type="text"
+                value={category}
+                onChange={e => setCategory(e.target.value)}
+                required
+                className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500"
+                placeholder="Ex: Salgados, Bebidas, Sobremesas..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-200 mb-1">Emoji da Categoria</label>
+              <div className="flex items-center">
+                <div
+                  className="w-12 h-12 flex items-center justify-center bg-gray-900 border border-gray-700 rounded text-2xl cursor-pointer hover:bg-gray-800"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                >
+                  {emoji}
+                </div>
+                <button
+                  type="button"
+                  className="ml-2 p-2 bg-blue-600 hover:bg-blue-500 rounded text-white flex items-center"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                >
+                  <FaSmile className="mr-1" /> Escolher Emoji
+                </button>
               </div>
-            </div>
-          )}
-        </div>
 
-        <button
-          type="submit"
-          className="w-full py-2 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold rounded-lg transition-colors mt-4 disabled:opacity-60"
-          disabled={loading}
-        >
-          {loading ? 'Adicionando...' : 'Adicionar Categoria'}
-        </button>
-      </form>
-
-      <div className="mt-6 sm:mt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base sm:text-lg font-semibold text-yellow-400">Categorias cadastradas</h3>
-          {isReordering && (
-            <div className="text-sm text-yellow-400 flex items-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400 mr-2"></div>
-              Salvando ordem...
+              {showEmojiPicker && (
+                <div className="mt-2 p-2 bg-gray-900 border border-gray-700 rounded max-h-48 overflow-y-auto">
+                  <div className="grid grid-cols-8 gap-2">
+                    {foodEmojis.map((e) => (
+                      <button
+                        key={e}
+                        type="button"
+                        className={`w-8 h-8 text-xl flex items-center justify-center rounded hover:bg-gray-700 ${emoji === e ? 'bg-yellow-500/30' : ''}`}
+                        onClick={() => {
+                          setEmoji(e);
+                          setShowEmojiPicker(false);
+                        }}
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        <div className="text-xs text-gray-400 mb-3">
-          📌 Arraste as categorias para alterar sua ordem no cardápio
-        </div>
-        <div className="overflow-x-auto">
-          {categorias.length === 0 ? (
-            <div className="text-gray-400 text-sm">Nenhuma categoria cadastrada ainda.</div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
+
+            <button
+              type="submit"
+              className="w-full py-2 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold rounded-lg transition-colors mt-4 disabled:opacity-60"
+              disabled={loading}
             >
-              <SortableContext items={categorias.map(cat => cat._id)} strategy={verticalListSortingStrategy}>
-                <ul className="space-y-1 min-w-[220px]">
-                  {categorias.map((cat) => (
-                    <SortableItem
-                      key={cat._id}
-                      category={cat}
-                      editId={editId}
-                      editValue={editValue}
-                      editEmoji={editEmoji}
-                      showEditEmojiPicker={showEditEmojiPicker}
-                      removingId={removingId}
-                      onEdit={handleEdit}
-                      onEditSave={handleEditSave}
-                      onEditCancel={() => {
-                        setEditId(null);
-                        setEditValue('');
-                        setEditEmoji('');
-                        setShowEditEmojiPicker(false);
-                      }}
-                      onRemove={handleRemove}
-                      onEditValueChange={setEditValue}
-                      onToggleEmojiPicker={() => setShowEditEmojiPicker(!showEditEmojiPicker)}
-                      onEmojiSelect={(emoji) => {
-                        setEditEmoji(emoji);
-                        setShowEditEmojiPicker(false);
-                      }}
-                      foodEmojis={foodEmojis}
-                    />
-                  ))}
-                </ul>
-              </SortableContext>
-            </DndContext>
-          )}
+              {loading ? 'Adicionando...' : 'Adicionar Categoria'}
+            </button>
+          </form>
         </div>
+
+        {/* Coluna da direita - Lista de categorias cadastradas */}
+        <div className="bg-gray-800 rounded-xl p-3 sm:p-6 shadow-lg border border-yellow-500/30 xl:max-h-[calc(100vh-8rem)] xl:overflow-hidden xl:flex xl:flex-col">
+          <div className="xl:flex-1 xl:overflow-hidden xl:flex xl:flex-col">
+            <div className="flex items-center justify-between mb-4 xl:flex-shrink-0">
+              <h3 className="text-base sm:text-lg font-semibold text-yellow-400">Categorias cadastradas</h3>
+              {isReordering && (
+                <div className="text-sm text-yellow-400 flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400 mr-2"></div>
+                  Salvando ordem...
+                </div>
+              )}
+            </div>
+            <div className="text-xs text-gray-400 mb-3 xl:flex-shrink-0">
+              📌 Arraste as categorias para alterar sua ordem no cardápio
+            </div>
+            <div className="xl:flex-1 xl:overflow-y-auto xl:pr-2">
+              {categorias.length === 0 ? (
+                <div className="text-gray-400 text-sm">Nenhuma categoria cadastrada ainda.</div>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext items={categorias.map(cat => cat._id)} strategy={verticalListSortingStrategy}>
+                    <ul className="space-y-1 min-w-[220px]">
+                      {categorias.map((cat) => (
+                        <SortableItem
+                          key={cat._id}
+                          category={cat}
+                          editId={editId}
+                          editValue={editValue}
+                          editEmoji={editEmoji}
+                          showEditEmojiPicker={showEditEmojiPicker}
+                          removingId={removingId}
+                          onEdit={handleEdit}
+                          onEditSave={handleEditSave}
+                          onEditCancel={() => {
+                            setEditId(null);
+                            setEditValue('');
+                            setEditEmoji('');
+                            setShowEditEmojiPicker(false);
+                          }}
+                          onRemove={handleRemove}
+                          onEditValueChange={setEditValue}
+                          onToggleEmojiPicker={() => setShowEditEmojiPicker(!showEditEmojiPicker)}
+                          onEmojiSelect={(emoji) => {
+                            setEditEmoji(emoji);
+                            setShowEditEmojiPicker(false);
+                          }}
+                          foodEmojis={foodEmojis}
+                        />
+                      ))}
+                    </ul>
+                  </SortableContext>
+                </DndContext>
+              )}
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

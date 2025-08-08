@@ -1494,6 +1494,7 @@ export default function MenuDisplay() {
                     {miniModalItem && (
                         <MiniItemModal
                             item={miniModalItem}
+                            categories={categories}
                             onClose={() => setMiniModalItem(null)}
                             onAdd={(quantity, observation, extras) => {
                                 handleAddToCart(miniModalItem, quantity, observation, Object.keys(miniModalItem.sizes ?? {})[0] ?? 'Única', undefined, extras);

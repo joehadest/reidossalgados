@@ -36,6 +36,7 @@ export interface MenuItem {
     isMainType?: boolean; // Define se é um tipo principal (ex: "Coxinha")
     parentType?: string; // ID do tipo principal (para sabores específicos)
     flavors?: SalgadoFlavor[]; // Sabores disponíveis para este tipo
+    flavorLabel?: string; // Título personalizado para a seção de sabores/tamanhos
 }
 
 export interface SalgadoFlavor {

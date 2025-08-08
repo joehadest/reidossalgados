@@ -183,30 +183,6 @@ export default function AdminSettings() {
         }
     };
 
-    const handleSeedCategories = async () => {
-        setIsSaving(true);
-        setSaveMessage('');
-        
-        try {
-            const res = await fetch('/api/categories/seed', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            
-            const data = await res.json();
-            if (data.success) {
-                setSaveMessage(`✅ ${data.message}`);
-            } else {
-                setSaveMessage('❌ Erro ao criar categorias padrão.');
-            }
-        } catch (error) {
-            setSaveMessage('❌ Erro ao conectar com o servidor.');
-        } finally {
-            setIsSaving(false);
-            setTimeout(() => setSaveMessage(''), 5000);
-        }
-    };
-
     const handleBusinessHoursChange = async (day: keyof BusinessHoursConfig, field: 'open' | 'start' | 'end', value: string | boolean) => {
         const updatedBusinessHours = {
             ...businessHours,
@@ -663,27 +639,6 @@ export default function AdminSettings() {
             {/* Salvar Alterações */}
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-end items-center gap-3 sm:gap-4">
                 {saveMessage && <span className={`text-sm sm:text-base ${saveMessage.includes('❌') ? 'text-red-500' : 'text-green-500'}`}>{saveMessage}</span>}
-                <button
-                    onClick={() => {
-                        if (window.confirm('Criar categorias padrão do sistema (Salgados, Bebidas, Doces, etc.)? Categorias existentes não serão duplicadas.')) {
-                            handleSeedCategories();
-                        }
-                    }}
-                    disabled={isSaving}
-                    className="w-full sm:w-auto bg-purple-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors text-sm disabled:opacity-60"
-                >
-                    🏷️ Criar Categorias
-                </button>
-                <button
-                    onClick={() => {
-                        if (window.confirm('Abrir ferramenta de migração do cardápio? Isto irá abrir uma nova página.')) {
-                            window.open('/admin/migrate-menu', '_blank');
-                        }
-                    }}
-                    className="w-full sm:w-auto bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                >
-                    🔄 Migrar Cardápio
-                </button>
                 <button
                     onClick={handleSave}
                     disabled={isSaving}

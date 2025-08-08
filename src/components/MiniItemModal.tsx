@@ -8,12 +8,19 @@ interface MiniItemModalProps {
   item: MenuItem;
   onClose: () => void;
   onAdd: (quantity: number, observation: string, extras?: string[]) => void;
+  categories?: { _id: string, name: string, emoji?: string }[];
 }
 
-export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalProps) {
+export default function MiniItemModal({ item, onClose, onAdd, categories = [] }: MiniItemModalProps) {
   const [quantity, setQuantity] = useState(1);
   const [observation, setObservation] = useState('');
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
+
+  // Buscar emoji da categoria do item
+  const getCategoryEmoji = () => {
+    const category = categories.find(cat => cat._id === item.category);
+    return category?.emoji || '🍽️';
+  };
 
   useEffect(() => {
     // Função mais inteligente que permite scroll dentro do modal
@@ -277,7 +284,7 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
             {((item.extraOptions && Object.keys(item.extraOptions).length > 0) || (item.flavors && item.flavors.length > 0)) && (
               <div className="mb-4 sm:mb-6">
                 <h3 className="text-base sm:text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                  {item.flavors && item.flavors.length > 0 ? '🍽️ Sabores Disponíveis' : '🍫 Extras/Coberturas'}
+                  {item.flavors && item.flavors.length > 0 ? `${getCategoryEmoji()} ${item.flavorLabel || 'Sabores Disponíveis'}` : '🍫 Extras/Coberturas'}
                 </h3>
 
                 {/* Se tem flavors, mostrar sabores */}
@@ -292,10 +299,10 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
                         onClick={() => flavor.available && toggleExtra(flavor.name)}
                         disabled={!flavor.available}
                         className={`p-2 sm:p-3 rounded-lg border-2 transition-all text-xs sm:text-sm text-left ${!flavor.available
-                            ? 'border-gray-600 bg-gray-800 text-gray-500 cursor-not-allowed opacity-60'
-                            : selectedExtras.includes(flavor.name)
-                              ? 'border-yellow-500 bg-yellow-500/20 text-yellow-400'
-                              : 'border-gray-700 hover:border-yellow-500 text-gray-300'
+                          ? 'border-gray-600 bg-gray-800 text-gray-500 cursor-not-allowed opacity-60'
+                          : selectedExtras.includes(flavor.name)
+                            ? 'border-yellow-500 bg-yellow-500/20 text-yellow-400'
+                            : 'border-gray-700 hover:border-yellow-500 text-gray-300'
                           }`}
                       >
                         <div className="font-semibold flex items-center justify-between">
@@ -452,7 +459,7 @@ export default function MiniItemModal({ item, onClose, onAdd }: MiniItemModalPro
                 {item.flavors && item.flavors.length > 0 && !item.flavors.some(f => f.available) && (
                   <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-2 sm:p-3">
                     <p className="text-red-400 text-xs sm:text-sm text-center font-medium">
-                      ❌ Todos os sabores estão temporariamente indisponíveis
+                      ❌ {item.flavorLabel?.replace(/disponíveis|disponível/i, '').trim() || 'Sabores'} temporariamente indisponíveis
                     </p>
                   </div>
                 )}
