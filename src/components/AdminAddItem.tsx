@@ -28,12 +28,17 @@ export default function AdminAddItem() {
   const [extraOptions, setExtraOptions] = useState<{ [key: string]: number }>({});
   const [modalExtraOptions, setModalExtraOptions] = useState<{ [key: string]: number }>({});
   const [flavorLabel, setFlavorLabel] = useState('Sabores disponíveis');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
 
-  // Filtra os itens baseado no termo de busca
-  const filteredItens = itens.filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Filtra os itens baseado no termo de busca e categoria selecionada
+  const filteredItens = itens.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesCategory = selectedCategoryFilter === 'all' || item.category === selectedCategoryFilter;
+
+    return matchesSearch && matchesCategory;
+  });
 
   // Função para ordenar os itens
   const sortItems = (items: MenuItem[]) => {
@@ -421,7 +426,7 @@ export default function AdminAddItem() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
         {/* Coluna da esquerda - Formulário de adicionar item */}
-        <div className="bg-gray-800 rounded-xl p-3 sm:p-6 shadow-lg border border-yellow-500/30">
+        <div className="bg-gray-800 rounded-xl p-3 sm:p-6 shadow-lg border border-yellow-500/30 xl:h-[calc(100vh-8rem)] xl:overflow-y-auto">
           <h2 className="text-xl sm:text-2xl font-bold text-yellow-500 mb-4 sm:mb-6 text-center">Adicionar Item</h2>
 
           <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
@@ -656,11 +661,28 @@ export default function AdminAddItem() {
         </div>
 
         {/* Coluna da direita - Lista de itens cadastrados */}
-        <div className="bg-gray-800 rounded-xl p-3 sm:p-6 shadow-lg border border-yellow-500/30 xl:max-h-[calc(100vh-8rem)] xl:overflow-hidden xl:flex xl:flex-col">
+        <div className="bg-gray-800 rounded-xl p-3 sm:p-6 shadow-lg border border-yellow-500/30 xl:h-[calc(100vh-8rem)] xl:overflow-hidden xl:flex xl:flex-col">
           <h3 className="text-base sm:text-lg font-semibold text-yellow-400 mb-4">Itens cadastrados</h3>
 
           <div className="xl:flex-1 xl:overflow-hidden xl:flex xl:flex-col">
             <div className="mb-4 space-y-3 xl:flex-shrink-0">
+              {/* Filtro por Categoria */}
+              <div>
+                <label className="block text-sm font-medium text-gray-200 mb-1">Filtrar por categoria:</label>
+                <select
+                  value={selectedCategoryFilter}
+                  onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                  className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white focus:border-yellow-500"
+                >
+                  <option value="all">🌟 Todas as categorias</option>
+                  {categorias.map(cat => (
+                    <option key={cat._id} value={cat._id}>
+                      {cat.emoji || '🍽️'} {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Dropdown de Ordenação */}
               <div>
                 <label className="block text-sm font-medium text-gray-200 mb-1">Ordenar por:</label>
@@ -710,6 +732,11 @@ export default function AdminAddItem() {
                 <span>
                   Exibindo {sortedAndFilteredItens.length} de {itens.length} itens
                   {searchTerm && ` para "${searchTerm}"`}
+                  {selectedCategoryFilter !== 'all' && (
+                    <span className="text-yellow-400 ml-1">
+                      • {categorias.find(cat => cat._id === selectedCategoryFilter)?.name}
+                    </span>
+                  )}
                 </span>
                 <span className="flex items-center gap-1">
                   🔄 {
@@ -728,7 +755,13 @@ export default function AdminAddItem() {
               {itens.length === 0 ? (
                 <div className="text-gray-400 text-sm">Nenhum item cadastrado ainda.</div>
               ) : sortedAndFilteredItens.length === 0 ? (
-                <div className="text-gray-400 text-sm">Nenhum item encontrado para "{searchTerm}"</div>
+                <div className="text-gray-400 text-sm">
+                  Nenhum item encontrado
+                  {searchTerm && ` para "${searchTerm}"`}
+                  {selectedCategoryFilter !== 'all' && (
+                    <span> na categoria "{categorias.find(cat => cat._id === selectedCategoryFilter)?.name}"</span>
+                  )}
+                </div>
               ) : (
                 <div className="space-y-6">
                   {categorias.map((categoria) => {
