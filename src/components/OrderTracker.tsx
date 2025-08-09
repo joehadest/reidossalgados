@@ -183,8 +183,8 @@ export default function OrderTracker({ onClose }: OrderTrackerProps) {
                                 <button
                                     onClick={() => setSearchType('phone')}
                                     className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${searchType === 'phone'
-                                            ? 'bg-yellow-500 text-gray-900'
-                                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                        ? 'bg-yellow-500 text-gray-900'
+                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                                         }`}
                                 >
                                     Telefone
@@ -192,8 +192,8 @@ export default function OrderTracker({ onClose }: OrderTrackerProps) {
                                 <button
                                     onClick={() => setSearchType('id')}
                                     className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${searchType === 'id'
-                                            ? 'bg-yellow-500 text-gray-900'
-                                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                        ? 'bg-yellow-500 text-gray-900'
+                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                                         }`}
                                 >
                                     ID do Pedido
