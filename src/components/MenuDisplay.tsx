@@ -6,7 +6,7 @@ import ItemModal from './ItemModal';
 import Cart from './Cart';
 import { MenuItem } from '@/types/menu';
 import Image from 'next/image';
-import { FaExclamationCircle, FaWhatsapp, FaShare, FaShoppingCart, FaPlus, FaPrint, FaBars, FaTimes, FaUtensils, FaIceCream, FaCoffee, FaGlassWhiskey, FaWineGlass } from 'react-icons/fa';
+import { FaExclamationCircle, FaWhatsapp, FaShare, FaShoppingCart, FaPlus, FaPrint, FaBars, FaTimes, FaUtensils, FaIceCream, FaCoffee, FaGlassWhiskey, FaWineGlass, FaSearch } from 'react-icons/fa';
 import { useCart } from '../contexts/CartContext';
 import { CartItem } from '../types/cart';
 import PastaModal from './PastaModal';
@@ -60,6 +60,9 @@ export default function MenuDisplay() {
     const [isIPhone, setIsIPhone] = useState(false);
     const [iosVersion, setIosVersion] = useState<number | null>(null);
 
+    // Detectar se é MacBook Air 2017 ou hardware similar (baixa performance)
+    const [isLowEndDevice, setIsLowEndDevice] = useState(false);
+
     useEffect(() => {
         // Detectar iPhone e versão iOS
         const userAgent = navigator.userAgent;
@@ -75,6 +78,50 @@ export default function MenuDisplay() {
             }
         }
 
+        // Detectar hardware de baixa performance (MacBook Air 2017, etc)
+        const detectLowEndDevice = () => {
+            try {
+                const memory = (navigator as any).deviceMemory;
+                const cores = navigator.hardwareConcurrency;
+
+                // MacBook Air 2017: 8GB RAM, 4 logical cores
+                // Detectar baseado em memory limitada ou poucos cores
+                let isOldHardware = false;
+
+                if (memory && memory <= 8) {
+                    isOldHardware = true;
+                }
+
+                if (cores && cores <= 4) {
+                    isOldHardware = true;
+                }
+
+                // Teste rápido de performance
+                const start = performance.now();
+                for (let i = 0; i < 50000; i++) {
+                    Math.random();
+                }
+                const end = performance.now();
+
+                if ((end - start) > 8) {
+                    isOldHardware = true;
+                }
+
+                setIsLowEndDevice(isOldHardware);
+
+                if (isOldHardware) {
+                    console.log('Hardware de baixa performance detectado (possivelmente MacBook Air 2017) - otimizações ativadas');
+                    // Adicionar classe CSS para otimizações específicas
+                    document.body.classList.add('low-end-device');
+                }
+            } catch (error) {
+                console.warn('Erro na detecção de hardware:', error);
+                setIsLowEndDevice(false);
+            }
+        };
+
+        detectLowEndDevice();
+
         // Adicionar classe específica para iPhone no body
         if (isIPhoneDevice) {
             document.body.classList.add('iphone-device');
@@ -87,6 +134,7 @@ export default function MenuDisplay() {
 
         return () => {
             document.body.classList.remove('iphone-device');
+            document.body.classList.remove('low-end-device');
         };
     }, []);
 
@@ -114,6 +162,13 @@ export default function MenuDisplay() {
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
     const [menuTitle, setMenuTitle] = useState<string>('Cardápio Digital');
     const [showLogo, setShowLogo] = useState<boolean>(true);
+    // Animação leve na troca manual de categoria
+    const [clickedCategoryId, setClickedCategoryId] = useState<string | null>(null);
+    // Busca e modal de categorias
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const isSearching = useMemo(() => searchQuery.trim().length > 0, [searchQuery]);
+    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
     // Filtro para itens de pizza (se existirem no banco) - Memoizado para performance
     const allPizzas = useMemo(() =>
@@ -133,10 +188,42 @@ export default function MenuDisplay() {
         return grouped;
     }, [menuItems]);
 
+    // Itens filtrados pela busca
+    const filteredItemsByCategory = useMemo(() => {
+        if (!isSearching) return itemsByCategory;
+        const q = searchQuery.trim().toLowerCase();
+        const filtered: Record<string, MenuItem[]> = {};
+        Object.keys(itemsByCategory).forEach(catId => {
+            const items = itemsByCategory[catId] || [];
+            const matches = items.filter((it) => {
+                const nameMatch = it.name?.toLowerCase().includes(q);
+                const descMatch = it.description?.toLowerCase().includes(q);
+                const flavorMatch = Array.isArray((it as any).flavors)
+                    ? ((it as any).flavors as any[]).some(f => (f?.name || '').toLowerCase().includes(q) || (f?.description || '').toLowerCase().includes(q))
+                    : false;
+                return !!(nameMatch || descMatch || flavorMatch);
+            });
+            if (matches.length > 0) {
+                filtered[catId] = matches;
+            }
+        });
+        return filtered;
+    }, [isSearching, searchQuery, itemsByCategory]);
+
+    // Helper: obter nome da categoria pelo id (usado em clique e observer)
+    const getCategoryNameById = useCallback((id: string) => {
+        const c = (categories || []).find(c => c._id === id);
+        return c?.name ?? '';
+    }, [categories]);
+
     // Memoizar callbacks para evitar re-renders
     const handleCategoryClick = useCallback((categoryId: string) => {
         setIsManualScrolling(true);
         setSelectedCategory(categoryId);
+        setClickedCategoryId(categoryId);
+        if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+        setToastCategoryName(getCategoryNameById(categoryId));
+        toastTimeoutRef.current = setTimeout(() => setToastCategoryName(null), 1200);
 
         const element = document.getElementById(`category-${categoryId}`);
         if (element) {
@@ -154,17 +241,20 @@ export default function MenuDisplay() {
             const elementTop = elementRect.top + window.pageYOffset;
             const targetPosition = elementTop - headerHeight;
 
-            // Rolar diretamente para a posição calculada
-            // Usar scrollTo mais suave para iPhone
+            // Rolar diretamente para a posição calculada (sempre instantâneo para evitar travamentos)
             window.scrollTo({
-                top: Math.max(0, targetPosition), // Garantir que não role para posição negativa
-                behavior: isIPhone ? 'smooth' : 'auto' // Auto para outros dispositivos, smooth para iPhone
+                top: Math.max(0, targetPosition),
+                behavior: 'auto'
             });
         }
 
-        // Aumentar o tempo para prevenir que o observer interfira
-        setTimeout(() => setIsManualScrolling(false), isIPhone ? 3000 : 2500);
-    }, [isIPhone]);
+        // Liberar o observer rapidamente para manter a interface responsiva
+        setTimeout(() => setIsManualScrolling(false), 400);
+        // Remover classe de animação após breve período
+        setTimeout(() => {
+            setClickedCategoryId(prev => (prev === categoryId ? null : prev));
+        }, 300);
+    }, [isIPhone, isLowEndDevice, getCategoryNameById]);
 
     const handleItemClick = useCallback((item: MenuItem) => {
         if (item.category === 'pizzas') {
@@ -179,12 +269,9 @@ export default function MenuDisplay() {
     // Componente otimizado para item do menu
     const OptimizedMenuItem = React.memo(({ item }: { item: MenuItem }) => (
         <motion.div
-            variants={itemVariants}
-            className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-150 border border-yellow-500 cursor-pointer hover:bg-gray-750 hover:border-yellow-400"
-            style={{ willChange: 'transform' }} // Otimização CSS
+            className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-200 border border-yellow-500 cursor-pointer hover:bg-gray-750 hover:border-yellow-400"
+            style={{ willChange: isLowEndDevice ? 'auto' : 'transform' }}
             onClick={() => handleItemClick(item)}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
         >
             <div className="relative h-32 sm:h-48">
                 {item.image && (
@@ -224,9 +311,10 @@ export default function MenuDisplay() {
                         }
                     </span>
                     <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        className="bg-yellow-500 hover:bg-yellow-400 text-black p-2 rounded-full"
+                        whileHover={isLowEndDevice ? undefined : { scale: 1.1 }}
+                        whileTap={isLowEndDevice ? undefined : { scale: 0.9 }}
+                        transition={isLowEndDevice ? undefined : { duration: 0.15 }}
+                        className="bg-yellow-500 hover:bg-yellow-400 text-black p-2 rounded-full transition-colors duration-150"
                         disabled={!item.available}
                     >
                         <FaPlus className="text-sm" />
@@ -284,11 +372,8 @@ export default function MenuDisplay() {
                 if (data.success && data.data) {
                     setBusinessHours(data.data.businessHours);
                     setDeliveryFees(data.data.deliveryFees || []);
-                    // Buscar WhatsApp e PIX do banco - com debug
-                    const whatsappFromDB = data.data.establishmentInfo?.contact?.whatsapp;
-                    console.log('WhatsApp do banco:', whatsappFromDB);
-                    setWhatsappNumber(whatsappFromDB?.replace(/\D/g, '') || '');
-                    console.log('WhatsApp depois de limpar:', whatsappFromDB?.replace(/\D/g, '') || '');
+                    // Buscar WhatsApp e PIX do banco
+                    setWhatsappNumber(data.data.establishmentInfo?.contact?.whatsapp?.replace(/\D/g, ''));
                     setPixKey(data.data.establishmentInfo?.pixKey || '');
 
                     // Configurações de apresentação do cardápio
@@ -353,6 +438,12 @@ export default function MenuDisplay() {
     // Estado para controlar se o scroll está sendo feito por clique ou por rolagem normal
     const [isManualScrolling, setIsManualScrolling] = useState(false);
     const observerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    // Destaque visual curto quando categoria muda automaticamente
+    const [flashCategoryId, setFlashCategoryId] = useState<string | null>(null);
+    const flashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    // Toast de categoria ativa
+    const [toastCategoryName, setToastCategoryName] = useState<string | null>(null);
+    const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Debounce para o observer para melhorar performance
     const debouncedCategoryUpdate = useCallback((category: string) => {
@@ -363,13 +454,30 @@ export default function MenuDisplay() {
         observerTimeoutRef.current = setTimeout(() => {
             if (category !== selectedCategory) {
                 setSelectedCategory(category);
+                // Mostrar destaque curto no título apenas quando não for rolagem manual
+                if (!isManualScrolling) {
+                    if (flashTimeoutRef.current) {
+                        clearTimeout(flashTimeoutRef.current);
+                    }
+                    setFlashCategoryId(category);
+                    flashTimeoutRef.current = setTimeout(() => setFlashCategoryId(null), 1100);
+                    // Toast com nome da categoria
+                    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+                    setToastCategoryName(getCategoryNameById(category));
+                    toastTimeoutRef.current = setTimeout(() => setToastCategoryName(null), 1200);
+                }
             }
         }, isIPhone ? 200 : 150); // Debounce reduzido para melhor responsividade
-    }, [selectedCategory, isIPhone]);
+    }, [selectedCategory, isIPhone, isManualScrolling, getCategoryNameById]);
 
     useEffect(() => {
         // Detectar se estamos em mobile para ajustar o observer
         const isMobile = window.innerWidth < 640;
+
+        // Se estiver buscando, não atualizar categoria automaticamente
+        if (isSearching) {
+            return;
+        }
 
         const observer = new IntersectionObserver(
             (entries: IntersectionObserverEntry[]) => {
@@ -406,8 +514,8 @@ export default function MenuDisplay() {
                         }
                     }
 
-                    // Threshold mais baixo para melhor detecção, especialmente para categorias no topo
-                    const minThreshold = isIPhone ? 0.1 : 0.08; // Threshold ainda mais baixo
+                    // Threshold baixo para melhor detecção no topo (Bebidas etc.)
+                    const minThreshold = isIPhone ? 0.08 : 0.06;
 
                     if (mostVisibleEntry && maxIntersectionRatio > minThreshold) {
                         const element = mostVisibleEntry.target;
@@ -422,14 +530,14 @@ export default function MenuDisplay() {
                 // Ajustar rootMargin baseado na altura real do header sticky e iPhone
                 rootMargin: (() => {
                     const stickyHeader = document.querySelector('.sticky') as HTMLElement;
-                    let headerHeight = stickyHeader ? stickyHeader.offsetHeight + 10 : (window.innerWidth < 640 ? 110 : 130);
+                    let headerHeight = stickyHeader ? stickyHeader.offsetHeight + 12 : (window.innerWidth < 640 ? 110 : 130);
                     if (isIPhone) {
-                        headerHeight += window.innerWidth < 400 ? 34 : 10; // Reduzir margin extra para melhor detecção
+                        headerHeight += window.innerWidth < 400 ? 36 : 12;
                     }
-                    // Margin inferior menos restritivo para melhor detecção de categorias
-                    return `-${headerHeight}px 0px -30% 0px`; // Reduzido de -40% para -30%
+                    // Margin inferior mais generosa para a próxima categoria contar antes
+                    return `-${headerHeight}px 0px -20% 0px`;
                 })(),
-                threshold: isIPhone ? [0, 0.2, 0.5] : [0, 0.15, 0.4, 0.7] // Thresholds mais baixos para melhor detecção
+                threshold: isIPhone ? [0, 0.15, 0.4] : [0, 0.1, 0.3, 0.6]
             }
         );
 
@@ -448,6 +556,12 @@ export default function MenuDisplay() {
             if (observerTimeoutRef.current) {
                 clearTimeout(observerTimeoutRef.current);
             }
+            if (flashTimeoutRef.current) {
+                clearTimeout(flashTimeoutRef.current);
+            }
+            if (toastTimeoutRef.current) {
+                clearTimeout(toastTimeoutRef.current);
+            }
             (categories || []).forEach(category => {
                 const element = document.getElementById(`category-${category._id}`);
                 if (element) {
@@ -456,7 +570,7 @@ export default function MenuDisplay() {
             });
             observer.disconnect();
         };
-    }, [categories, isManualScrolling, selectedCategory]);
+    }, [categories, isManualScrolling, selectedCategory, isSearching]);
 
     // Listener de scroll para detectar quando a rolagem termina
     useEffect(() => {
@@ -617,15 +731,18 @@ export default function MenuDisplay() {
                 targetScrollLeft = Math.max(0, Math.min(targetScrollLeft, maxScroll));
             }
 
-            // Aplicar rolagem suave
+            // Aplicar rolagem instantânea
+            try {
+                (scrollContainer as HTMLElement).style.scrollBehavior = 'auto';
+            } catch { }
             scrollContainer.scrollTo({
                 left: targetScrollLeft,
-                behavior: 'smooth'
+                behavior: 'auto'
             });
         } else {
             // Fallback para o método padrão se não encontrar o container
-            btn.scrollIntoView({
-                behavior: 'smooth',
+            (btn as HTMLElement).scrollIntoView({
+                behavior: 'auto',
                 inline: 'center',
                 block: 'nearest'
             });
@@ -856,15 +973,6 @@ export default function MenuDisplay() {
     };
 
     const handleWhatsAppClick = () => {
-        // Debug: verificar se o número está carregado
-        console.log('WhatsApp Number:', whatsappNumber);
-
-        if (!whatsappNumber) {
-            alert('Número do WhatsApp não configurado. Entre em contato com o estabelecimento.');
-            setShowWhatsAppModal(false);
-            return;
-        }
-
         const customerName = localStorage.getItem('customerName') || '';
         const customerPhone = localStorage.getItem('customerPhone') || '';
         const customerAddress = localStorage.getItem('customerAddress') || '';
@@ -898,57 +1006,8 @@ export default function MenuDisplay() {
 
         const message = `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* ${pixKey}`;
 
-        // Formatar número do WhatsApp (garantir que tenha apenas dígitos)
-        let cleanNumber = whatsappNumber.replace(/\D/g, '');
-
-        // Se o número não começar com 55, adicionar
-        if (cleanNumber.length === 11 && !cleanNumber.startsWith('55')) {
-            cleanNumber = '55' + cleanNumber;
-        }
-
-        // Debug: verificar dados antes de enviar
-        console.log('Número original:', whatsappNumber);
-        console.log('Número limpo:', cleanNumber);
-        console.log('Mensagem:', message.substring(0, 100) + '...');
-
-        // Detectar se é dispositivo móvel
-        const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-        // Criar URL do WhatsApp (sem duplicar o código de país)
-        const whatsappUrl = `https://api.whatsapp.com/send?phone=${cleanNumber}&text=${encodeURIComponent(message)}`;
-
-        console.log('URL do WhatsApp:', whatsappUrl);
-        console.log('Dispositivo móvel:', isMobile);
-
-        // Abrir WhatsApp de forma mais confiável
-        try {
-            if (isMobile) {
-                // Em dispositivos móveis, tentar o esquema whatsapp:// primeiro
-                const appUrl = `whatsapp://send?phone=${cleanNumber}&text=${encodeURIComponent(message)}`;
-                console.log('Tentando URL do app:', appUrl);
-
-                // Criar link temporário para tentar abrir o app
-                const tempLink = document.createElement('a');
-                tempLink.href = appUrl;
-                tempLink.style.display = 'none';
-                document.body.appendChild(tempLink);
-                tempLink.click();
-                document.body.removeChild(tempLink);
-
-                // Se não conseguir abrir o app, usar a web em 1.5 segundos
-                setTimeout(() => {
-                    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-                }, 1500);
-            } else {
-                // Em desktop, usar web WhatsApp diretamente
-                window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-            }
-        } catch (error) {
-            console.error('Erro ao abrir WhatsApp:', error);
-            // Fallback final - forçar abertura da URL web
-            window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-        }
-
+        const whatsappUrl = `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, '_blank');
         setShowWhatsAppModal(false);
     };
 
@@ -1103,26 +1162,51 @@ export default function MenuDisplay() {
                 <div className={`sticky top-0 z-30 w-full bg-gray-900 shadow-lg border-b border-yellow-500/30 ${isIPhone ? 'safe-area-top' : ''}`}>
                     <div className="w-full flex flex-col">
 
+                        {/* Barra de ações: busca e hambúrguer */}
+                        <div className="w-full px-4 sm:px-6 pt-3 pb-1 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-1">
+                                <button
+                                    aria-label="Buscar itens"
+                                    onClick={() => setIsSearchOpen(v => !v)}
+                                    className="p-2 rounded-lg bg-gray-800 text-gray-300 hover:text-yellow-400 border border-gray-700"
+                                >
+                                    <FaSearch />
+                                </button>
+                                {isSearchOpen && (
+                                    <input
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Buscar item..."
+                                        className="flex-1 min-w-0 bg-gray-800 text-gray-100 placeholder-gray-400 border border-gray-700 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-yellow-500"
+                                    />
+                                )}
+                            </div>
+                            <button
+                                aria-label="Abrir lista de categorias"
+                                onClick={() => setIsCategoryModalOpen(true)}
+                                className="p-2 rounded-lg bg-gray-800 text-gray-300 hover:text-yellow-400 border border-gray-700"
+                            >
+                                <FaBars />
+                            </button>
+                        </div>
+
                         {/* Barra de Categorias Scrollável - Otimizada para mobile e iPhone */}
-                        <div className="relative pt-3 pb-1">
+                        <div className="relative pb-1">
                             <div className={`w-full overflow-x-auto scrollbar-hide category-bar-container py-1 ${isIPhone ? 'ios-scroll-smooth' : ''}`}>
                                 <div className="flex justify-start sm:justify-center space-x-2 sm:space-x-3 min-w-min px-4 sm:px-6 mx-auto">
                                     {categories.map((cat) => {
                                         // Usar contagem memoizada em vez de filtro direto
                                         const itemCount = itemsByCategory[cat._id]?.length || 0;
                                         return (
-                                            <motion.button
+                                            <button
                                                 key={cat._id}
-                                                whileHover={{ scale: 1.03 }}
-                                                whileTap={{ scale: 0.97 }}
-                                                transition={{ duration: 0.15 }}
                                                 onClick={() => handleCategoryClick(cat._id)}
                                                 data-category={cat._id}
                                                 aria-selected={selectedCategory === cat._id}
                                                 className={`
                                                     relative flex items-center gap-1.5 sm:gap-2
                                                     px-2.5 sm:px-4 py-1.5 sm:py-2.5
-                                                    rounded-lg transition-all duration-150
+                                                    rounded-lg
                                                     ${isIPhone ? 'touch-manipulation min-h-[44px]' : ''} 
                                                     ${selectedCategory === cat._id
                                                         ? 'bg-yellow-500 text-gray-900 font-medium shadow-lg active'
@@ -1130,7 +1214,7 @@ export default function MenuDisplay() {
                                                 `}
                                             >
                                                 <span
-                                                    className={`text-base sm:text-lg ${selectedCategory === cat._id ? 'text-gray-900' : ''} transition-transform duration-200 ${selectedCategory === cat._id ? 'scale-110' : ''}`}
+                                                    className={`text-base sm:text-lg ${selectedCategory === cat._id ? 'text-gray-900' : ''}`}
                                                     role="img"
                                                     aria-label={`Emoji para ${cat.name}`}
                                                 >
@@ -1141,18 +1225,11 @@ export default function MenuDisplay() {
                                                     <span className="text-2xs sm:text-xs font-medium whitespace-normal break-normal leading-tight">{cat.name}</span>
                                                     <span className="text-[9px] sm:text-[10px] opacity-75 whitespace-normal">{itemCount} {itemCount === 1 ? 'item' : 'itens'}</span>
                                                 </div>
-                                                {/* Efeito de toque otimizado para iPhone */}
-                                                <div className={`absolute inset-0 bg-white/10 opacity-0 rounded-lg ${isIPhone ? 'ios-touch-feedback' : 'touch-ripple-effect'}`}></div>
+                                                {/* Overlay de toque removido para reduzir custo de pintura */}
                                                 {selectedCategory === cat._id && (
-                                                    <motion.div
-                                                        layoutId="categoryIndicator"
-                                                        className="absolute -bottom-1 left-0 w-full h-0.5 bg-yellow-300"
-                                                        initial={{ opacity: 0 }}
-                                                        animate={{ opacity: 1 }}
-                                                        transition={{ duration: 0.2 }}
-                                                    />
+                                                    <div className="absolute -bottom-1 left-0 w-full h-0.5 bg-yellow-300" />
                                                 )}
-                                            </motion.button>
+                                            </button>
                                         );
                                     })}
                                 </div>
@@ -1169,29 +1246,30 @@ export default function MenuDisplay() {
                         </div>
                     ) : (
                         <motion.div
-                            variants={containerVariants}
-                            initial="hidden"
-                            animate="visible"
                             className="space-y-8"
                         >
                             {(categories || []).map(cat => {
-                                const itemsInCategory = itemsByCategory[cat._id] || [];
+                                const source = isSearching ? filteredItemsByCategory : itemsByCategory;
+                                const itemsInCategory = source[cat._id] || [];
                                 return (
-                                    <div key={cat._id} id={`category-${cat._id}`} className="space-y-3 transition-colors duration-300 ease-in-out">
-                                        <h2 className="text-base sm:text-lg font-semibold text-white capitalize mb-2 sm:mb-4 mt-6 sm:mt-8 pl-3 sm:pl-4 tracking-wide flex items-center">
-                                            <span className="w-1.5 h-6 bg-yellow-500 rounded-r-md mr-2.5 opacity-70"></span>
+                                    <div
+                                        key={cat._id}
+                                        id={`category-${cat._id}`}
+                                        className={`space-y-3 transition-colors duration-300 ease-in-out ${clickedCategoryId === cat._id ? 'animate-category-fade' : ''}`}
+                                    >
+                                        <h2 className={`text-base sm:text-lg font-semibold text-white capitalize mb-2 sm:mb-4 mt-6 sm:mt-8 pl-3 sm:pl-4 tracking-wide flex items-center transition-colors duration-300 ${flashCategoryId === cat._id ? 'bg-yellow-500/10 ring-1 ring-yellow-400/40 rounded-md py-2 pr-3' : ''}`}
+                                            aria-live={flashCategoryId === cat._id ? 'polite' : undefined}
+                                        >
+                                            <span className={`w-1.5 h-6 rounded-r-md mr-2.5 ${flashCategoryId === cat._id ? 'bg-yellow-300' : 'bg-yellow-500 opacity-70'}`}></span>
                                             {cat.name}
                                         </h2>
                                         <div className="flex flex-col gap-4">
                                             {itemsInCategory.length === 0 ? (
-                                                <div className="text-gray-500 text-sm italic px-4 py-6">Nenhum item nesta categoria</div>
+                                                <div className="text-gray-500 text-sm italic px-4 py-6">{isSearching ? 'Nenhum item corresponde à sua busca' : 'Nenhum item nesta categoria'}</div>
                                             ) : (
                                                 itemsInCategory.map((item: MenuItem) => (
                                                     <motion.div
                                                         key={item._id}
-                                                        variants={itemVariants}
-                                                        initial="hidden"
-                                                        animate="visible"
                                                         className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-150 border border-yellow-500 hover:bg-gray-750 hover:border-yellow-400"
                                                         style={{ willChange: 'transform' }}
                                                         onClick={() => handleItemClick(item)}
@@ -1199,7 +1277,7 @@ export default function MenuDisplay() {
                                                         {item.isMainType ? (
                                                             // Exibição para tipos de salgados com sabores
                                                             <div className="p-4">
-                                                                <div className="flex items-center gap-3 mb-3">
+                                                                <div className="flex items-center gap-3 mb-3 min-w-0">
                                                                     <div className="flex-shrink-0 w-16 h-16 bg-gray-900 rounded-lg">
                                                                         <Image
                                                                             src={item.image || '/placeholder.jpg'}
@@ -1209,9 +1287,9 @@ export default function MenuDisplay() {
                                                                             className="object-cover w-full h-full rounded-lg"
                                                                         />
                                                                     </div>
-                                                                    <div className="flex-1">
-                                                                        <div className="flex items-center gap-2 mb-1">
-                                                                            <h3 className="text-lg font-bold text-yellow-400">
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center gap-2 mb-1 min-w-0">
+                                                                            <h3 className="text-lg font-bold text-yellow-400 min-w-0 line-clamp-2 overflow-hidden break-normal hyphens-auto">
                                                                                 {cat.emoji || '🍽️'} {item.name}
                                                                             </h3>
                                                                             {item.available === false && (
@@ -1220,7 +1298,7 @@ export default function MenuDisplay() {
                                                                                 </span>
                                                                             )}
                                                                         </div>
-                                                                        <p className="text-gray-400 text-sm">{item.description}</p>
+                                                                        <p className="text-gray-400 text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 overflow-hidden break-normal hyphens-auto">{item.description}</p>
                                                                     </div>
                                                                 </div>
 
@@ -1271,8 +1349,9 @@ export default function MenuDisplay() {
                                                                                             </span>
                                                                                             {flavor.available && (
                                                                                                 <motion.button
-                                                                                                    whileHover={{ scale: 1.05 }}
-                                                                                                    whileTap={{ scale: 0.95 }}
+                                                                                                    whileHover={isLowEndDevice ? undefined : { scale: 1.03 }}
+                                                                                                    whileTap={isLowEndDevice ? undefined : { scale: 0.97 }}
+                                                                                                    transition={isLowEndDevice ? undefined : { duration: 0.1 }}
                                                                                                     onClick={(e) => {
                                                                                                         e.stopPropagation();
                                                                                                         setMiniModalItem({
@@ -1316,35 +1395,35 @@ export default function MenuDisplay() {
                                                                     </div>
 
                                                                     {/* Conteúdo */}
-                                                                    <div className="flex-1 p-3 md:p-4 flex flex-col justify-between min-h-0 w-full">
+                                                                    <div className="flex-1 p-3 md:p-4 flex flex-col justify-between min-h-0 min-w-0 w-full">
                                                                         <div className="flex-1">
-                                                                            <div className="flex items-center gap-2 mb-2">
-                                                                                <h3 className="text-base md:text-lg font-semibold text-white break-words line-clamp-2 leading-tight" title={item.name}>
+                                                                            <div className="flex items-center gap-2 mb-2 min-w-0">
+                                                                                <h3 className="flex-1 min-w-0 text-base md:text-lg font-semibold text-white line-clamp-2 overflow-hidden break-normal hyphens-auto leading-tight" title={item.name}>
                                                                                     {item.name}
                                                                                 </h3>
                                                                                 {item.available === false && (
-                                                                                    <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded whitespace-nowrap">
+                                                                                    <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded whitespace-nowrap flex-shrink-0">
                                                                                         Indisponível
                                                                                     </span>
                                                                                 )}
                                                                             </div>
-                                                                            <p className="text-gray-400 text-xs md:text-sm mb-3 line-clamp-2 sm:line-clamp-3 break-words leading-relaxed" title={item.description}>
+                                                                            <p className="text-gray-400 text-xs md:text-sm mb-3 line-clamp-2 sm:line-clamp-3 overflow-hidden break-normal hyphens-auto leading-relaxed" title={item.description}>
                                                                                 {item.description}
                                                                             </p>
                                                                         </div>
 
                                                                         {/* Preço e Botão */}
-                                                                        <div className="flex items-center justify-between mt-auto w-full">
-                                                                            <span className="text-yellow-500 font-bold text-lg md:text-xl">R$ {item.price.toFixed(2)}</span>
+                                                                        <div className="flex items-center justify-between mt-auto w-full min-w-0 gap-3">
+                                                                            <span className="text-yellow-500 font-bold text-lg md:text-xl whitespace-nowrap flex-shrink-0">R$ {item.price.toFixed(2)}</span>
                                                                             {item.available === false ? (
                                                                                 <span className="text-sm text-red-400 font-medium">
                                                                                     Item indisponível
                                                                                 </span>
                                                                             ) : (
                                                                                 <motion.button
-                                                                                    whileHover={{ scale: 1.03 }}
-                                                                                    whileTap={{ scale: 0.97 }}
-                                                                                    transition={{ duration: 0.1 }}
+                                                                                    whileHover={isLowEndDevice ? undefined : { scale: 1.02 }}
+                                                                                    whileTap={isLowEndDevice ? undefined : { scale: 0.98 }}
+                                                                                    transition={isLowEndDevice ? undefined : { duration: 0.1 }}
                                                                                     onClick={(e) => {
                                                                                         e.stopPropagation();
                                                                                         setMiniModalItem(item);
@@ -1411,21 +1490,21 @@ export default function MenuDisplay() {
                 <AnimatePresence>
                     {showWhatsAppModal && (
                         <motion.div
-                            className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 p-2 sm:p-4"
+                            className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                         >
                             <motion.div
-                                className="bg-gray-900 rounded-xl shadow-xl p-3 sm:p-6 md:p-8 w-full max-w-xs sm:max-w-md md:max-w-lg text-center max-h-[95vh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden"
+                                className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full mx-4 text-center max-h-[90vh] overflow-y-auto overflow-x-hidden"
                                 initial={{ scale: 0.8 }}
                                 animate={{ scale: 1 }}
                                 exit={{ scale: 0.8 }}
                             >
-                                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-yellow-500 mb-3 sm:mb-4">Confirme seu pedido</h2>
-                                <div className="bg-gray-800 p-2 sm:p-3 md:p-4 rounded-lg mb-4 sm:mb-6 text-left">
-                                    <h3 className="text-yellow-500 font-semibold mb-2 text-sm sm:text-base">Detalhes do seu pedido:</h3>
-                                    <div className="text-gray-300 whitespace-pre-wrap text-xs sm:text-sm md:text-base leading-relaxed max-h-40 sm:max-h-60 overflow-y-auto">
+                                <h2 className="text-2xl font-bold text-yellow-500 mb-4">Confirme seu pedido</h2>
+                                <div className="bg-gray-800 p-4 rounded-lg mb-6 text-left">
+                                    <h3 className="text-yellow-500 font-semibold mb-2">Detalhes do seu pedido:</h3>
+                                    <pre className="text-gray-300 whitespace-pre-wrap text-sm">
                                         {(() => {
                                             const customerName = localStorage.getItem('customerName') || '';
                                             const customerPhone = localStorage.getItem('customerPhone') || '';
@@ -1463,26 +1542,26 @@ export default function MenuDisplay() {
 
                                             return `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* ${pixKey}`;
                                         })()}
-                                    </div>
+                                    </pre>
                                 </div>
 
-                                <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
+                                <div className="flex justify-center gap-4">
                                     <motion.button
-                                        whileHover={{ scale: 1.03 }}
-                                        whileTap={{ scale: 0.97 }}
-                                        transition={{ duration: 0.1 }}
+                                        whileHover={isLowEndDevice ? undefined : { scale: 1.02 }}
+                                        whileTap={isLowEndDevice ? undefined : { scale: 0.98 }}
+                                        transition={isLowEndDevice ? undefined : { duration: 0.1 }}
                                         onClick={handleWhatsAppClick}
-                                        className="bg-green-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 transition-colors duration-150 text-sm sm:text-base font-medium"
+                                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 transition-colors duration-150"
                                     >
-                                        <FaWhatsapp className="text-lg sm:text-xl" />
+                                        <FaWhatsapp className="text-xl" />
                                         Enviar para WhatsApp
                                     </motion.button>
                                     <motion.button
-                                        whileHover={{ scale: 1.03 }}
-                                        whileTap={{ scale: 0.97 }}
-                                        transition={{ duration: 0.1 }}
+                                        whileHover={isLowEndDevice ? undefined : { scale: 1.02 }}
+                                        whileTap={isLowEndDevice ? undefined : { scale: 0.98 }}
+                                        transition={isLowEndDevice ? undefined : { duration: 0.1 }}
                                         onClick={() => setShowWhatsAppModal(false)}
-                                        className="bg-gray-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-gray-700 transition-colors duration-150 text-sm sm:text-base font-medium"
+                                        className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-150"
                                     >
                                         Cancelar
                                     </motion.button>
@@ -1513,9 +1592,9 @@ export default function MenuDisplay() {
 
                                 <div className="flex justify-center">
                                     <motion.button
-                                        whileHover={{ scale: 1.03 }}
-                                        whileTap={{ scale: 0.97 }}
-                                        transition={{ duration: 0.1 }}
+                                        whileHover={isLowEndDevice ? undefined : { scale: 1.02 }}
+                                        whileTap={isLowEndDevice ? undefined : { scale: 0.98 }}
+                                        transition={isLowEndDevice ? undefined : { duration: 0.1 }}
                                         className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors duration-150"
                                         onClick={() => {
                                             setOrderSuccessId(null);
@@ -1528,6 +1607,15 @@ export default function MenuDisplay() {
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Toast de categoria ativa */}
+                {toastCategoryName && (
+                    <div className={`fixed left-1/2 -translate-x-1/2 z-40 ${isIPhone ? 'top-16' : 'top-14'}`}>
+                        <div className="animate-category-toast bg-gray-900/90 text-yellow-400 border border-yellow-500/40 rounded-full px-3 py-1 text-xs shadow-lg">
+                            Categoria: {toastCategoryName}
+                        </div>
+                    </div>
+                )}
 
                 {/* Botão flutuante do carrinho - Otimizado para iPhone */}
                 {cartItems.length > 0 && (
@@ -1562,6 +1650,53 @@ export default function MenuDisplay() {
                                 setMiniModalItem(null);
                             }}
                         />
+                    )}
+                </AnimatePresence>
+
+                {/* Modal de categorias (hambúrguer) */}
+                <AnimatePresence>
+                    {isCategoryModalOpen && (
+                        <motion.div
+                            className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/70"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsCategoryModalOpen(false)}
+                        >
+                            <motion.div
+                                className="bg-gray-900 rounded-xl shadow-xl p-5 w-full max-w-md mx-4 border border-yellow-500/30"
+                                initial={{ scale: 0.95 }}
+                                animate={{ scale: 1 }}
+                                exit={{ scale: 0.95 }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-yellow-500 font-semibold text-lg">Categorias</h3>
+                                    <button className="p-2 rounded-lg bg-gray-800 text-gray-300 hover:text-yellow-400 border border-gray-700" onClick={() => setIsCategoryModalOpen(false)}>
+                                        <FaTimes />
+                                    </button>
+                                </div>
+                                <div className="max-h-[60vh] overflow-y-auto divide-y divide-gray-800">
+                                    {(categories || []).map(cat => {
+                                        const source = isSearching ? filteredItemsByCategory : itemsByCategory;
+                                        const count = (source[cat._id] || []).length;
+                                        return (
+                                            <button
+                                                key={cat._id}
+                                                onClick={() => { setIsCategoryModalOpen(false); handleCategoryClick(cat._id); }}
+                                                className="w-full text-left px-3 py-3 hover:bg-gray-800 rounded-md flex items-center justify-between"
+                                            >
+                                                <span className="flex items-center gap-2">
+                                                    <span role="img" aria-label={`Emoji para ${cat.name}`}>{cat.emoji || '🍽️'}</span>
+                                                    <span className="text-white">{cat.name}</span>
+                                                </span>
+                                                <span className="text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded-full border border-gray-700">{count}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </motion.div>
+                        </motion.div>
                     )}
                 </AnimatePresence>
             </div>

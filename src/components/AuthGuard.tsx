@@ -17,10 +17,11 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         type: 'warning' | 'info' | 'error';
         show: boolean;
     }>({ message: '', type: 'info', show: false });
-    
+
     // Páginas que não precisam de autenticação
     const publicPages = ['/admin/login', '/admin/init'];
-    const isPublicPage = publicPages.includes(pathname);
+    const currentPath = pathname ?? '';
+    const isPublicPage = publicPages.includes(currentPath);
 
     const showNotification = (message: string, type: 'warning' | 'info' | 'error' = 'info') => {
         setNotification({ message, type, show: true });
@@ -38,28 +39,28 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
         const checkAuth = () => {
             const isAuth = AuthCookieManager.isAuthenticated();
-            
+
             console.log('Verificação de autenticação:', {
                 pathname,
                 isAuth,
                 cookie: AuthCookieManager.getAuthCookie(),
                 timestamp: new Date().toISOString()
             });
-            
+
             if (!isAuth) {
                 console.log('Usuário não autenticado, redirecionando para login...');
                 showNotification('Sessão expirada. Redirecionando para login...', 'warning');
-                
+
                 // Limpar cookie inválido
                 AuthCookieManager.removeAuthCookie();
-                
+
                 setTimeout(() => {
                     router.push('/admin/login');
                 }, 2000); // Aguardar 2 segundos para mostrar a notificação
-                
+
                 return false;
             }
-            
+
             // Renovar cookie para manter sessão ativa
             AuthCookieManager.renewAuthCookie();
             return true;
@@ -67,7 +68,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
         // Verificação inicial
         const initialCheck = checkAuth();
-        
+
         if (initialCheck) {
             // Configurar verificação periódica a cada 30 segundos
             intervalRef.current = setInterval(() => {
@@ -81,7 +82,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
                 clearInterval(intervalRef.current);
             }
         };
-    }, [pathname, isPublicPage, router]);
+    }, [currentPath, isPublicPage, router]);
 
     // Verificar quando a página ganha foco (usuário volta para a aba)
     useEffect(() => {
@@ -92,13 +93,13 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         const handleFocus = () => {
             console.log('Página ganhou foco, verificando autenticação...');
             const isAuth = AuthCookieManager.isAuthenticated();
-            
+
             if (!isAuth) {
                 console.log('Sessão expirada durante inatividade');
                 showNotification('Sessão expirada por inatividade. Redirecionando...', 'error');
-                
+
                 AuthCookieManager.removeAuthCookie();
-                
+
                 setTimeout(() => {
                     router.push('/admin/login');
                 }, 2000);

@@ -170,6 +170,33 @@ body {
     background: rgb(var(--background-rgb));
 }
 
+/* Ocultar qualquer toast antigo de categoria gerado por versões anteriores */
+.animate-category-toast {
+    display: none !important;
+}
+
+/* Modo otimizado para dispositivos de baixa performance */
+body.low-end-device * {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+}
+
+body.low-end-device button[data-category] {
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+body.low-end-device .shadow-lg,
+body.low-end-device .shadow-xl,
+body.low-end-device .shadow-2xl {
+    box-shadow: none !important;
+}
+
+body.low-end-device .hover\:shadow-xl:hover {
+    box-shadow: none !important;
+}
+
 @layer components {
     .menu-item {
         @apply transform transition-all duration-200 hover:scale-[1.02];
