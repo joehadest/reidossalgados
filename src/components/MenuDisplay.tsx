@@ -162,8 +162,6 @@ export default function MenuDisplay() {
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
     const [menuTitle, setMenuTitle] = useState<string>('Cardápio Digital');
     const [showLogo, setShowLogo] = useState<boolean>(true);
-    // Animação leve na troca manual de categoria
-    const [clickedCategoryId, setClickedCategoryId] = useState<string | null>(null);
     // Busca e modal de categorias
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -210,20 +208,10 @@ export default function MenuDisplay() {
         return filtered;
     }, [isSearching, searchQuery, itemsByCategory]);
 
-    // Helper: obter nome da categoria pelo id (usado em clique e observer)
-    const getCategoryNameById = useCallback((id: string) => {
-        const c = (categories || []).find(c => c._id === id);
-        return c?.name ?? '';
-    }, [categories]);
-
     // Memoizar callbacks para evitar re-renders
     const handleCategoryClick = useCallback((categoryId: string) => {
         setIsManualScrolling(true);
         setSelectedCategory(categoryId);
-        setClickedCategoryId(categoryId);
-        if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-        setToastCategoryName(getCategoryNameById(categoryId));
-        toastTimeoutRef.current = setTimeout(() => setToastCategoryName(null), 1200);
 
         const element = document.getElementById(`category-${categoryId}`);
         if (element) {
@@ -250,11 +238,7 @@ export default function MenuDisplay() {
 
         // Liberar o observer rapidamente para manter a interface responsiva
         setTimeout(() => setIsManualScrolling(false), 400);
-        // Remover classe de animação após breve período
-        setTimeout(() => {
-            setClickedCategoryId(prev => (prev === categoryId ? null : prev));
-        }, 300);
-    }, [isIPhone, isLowEndDevice, getCategoryNameById]);
+    }, [isIPhone, isLowEndDevice]);
 
     const handleItemClick = useCallback((item: MenuItem) => {
         if (item.category === 'pizzas') {
@@ -441,9 +425,6 @@ export default function MenuDisplay() {
     // Destaque visual curto quando categoria muda automaticamente
     const [flashCategoryId, setFlashCategoryId] = useState<string | null>(null);
     const flashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    // Toast de categoria ativa
-    const [toastCategoryName, setToastCategoryName] = useState<string | null>(null);
-    const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Debounce para o observer para melhorar performance
     const debouncedCategoryUpdate = useCallback((category: string) => {
@@ -461,14 +442,10 @@ export default function MenuDisplay() {
                     }
                     setFlashCategoryId(category);
                     flashTimeoutRef.current = setTimeout(() => setFlashCategoryId(null), 1100);
-                    // Toast com nome da categoria
-                    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-                    setToastCategoryName(getCategoryNameById(category));
-                    toastTimeoutRef.current = setTimeout(() => setToastCategoryName(null), 1200);
                 }
             }
         }, isIPhone ? 200 : 150); // Debounce reduzido para melhor responsividade
-    }, [selectedCategory, isIPhone, isManualScrolling, getCategoryNameById]);
+    }, [selectedCategory, isIPhone, isManualScrolling]);
 
     useEffect(() => {
         // Detectar se estamos em mobile para ajustar o observer
@@ -558,9 +535,6 @@ export default function MenuDisplay() {
             }
             if (flashTimeoutRef.current) {
                 clearTimeout(flashTimeoutRef.current);
-            }
-            if (toastTimeoutRef.current) {
-                clearTimeout(toastTimeoutRef.current);
             }
             (categories || []).forEach(category => {
                 const element = document.getElementById(`category-${category._id}`);
@@ -1252,11 +1226,7 @@ export default function MenuDisplay() {
                                 const source = isSearching ? filteredItemsByCategory : itemsByCategory;
                                 const itemsInCategory = source[cat._id] || [];
                                 return (
-                                    <div
-                                        key={cat._id}
-                                        id={`category-${cat._id}`}
-                                        className={`space-y-3 transition-colors duration-300 ease-in-out ${clickedCategoryId === cat._id ? 'animate-category-fade' : ''}`}
-                                    >
+                                    <div key={cat._id} id={`category-${cat._id}`} className="space-y-3 transition-colors duration-300 ease-in-out">
                                         <h2 className={`text-base sm:text-lg font-semibold text-white capitalize mb-2 sm:mb-4 mt-6 sm:mt-8 pl-3 sm:pl-4 tracking-wide flex items-center transition-colors duration-300 ${flashCategoryId === cat._id ? 'bg-yellow-500/10 ring-1 ring-yellow-400/40 rounded-md py-2 pr-3' : ''}`}
                                             aria-live={flashCategoryId === cat._id ? 'polite' : undefined}
                                         >
@@ -1496,75 +1466,85 @@ export default function MenuDisplay() {
                             exit={{ opacity: 0 }}
                         >
                             <motion.div
-                                className="bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full mx-4 text-center max-h-[90vh] overflow-y-auto overflow-x-hidden"
+                                className="bg-gray-900 rounded-xl shadow-xl max-w-md w-full mx-4 text-center max-h-[90vh] flex flex-col"
                                 initial={{ scale: 0.8 }}
                                 animate={{ scale: 1 }}
                                 exit={{ scale: 0.8 }}
                             >
-                                <h2 className="text-2xl font-bold text-yellow-500 mb-4">Confirme seu pedido</h2>
-                                <div className="bg-gray-800 p-4 rounded-lg mb-6 text-left">
-                                    <h3 className="text-yellow-500 font-semibold mb-2">Detalhes do seu pedido:</h3>
-                                    <pre className="text-gray-300 whitespace-pre-wrap text-sm">
-                                        {(() => {
-                                            const customerName = localStorage.getItem('customerName') || '';
-                                            const customerPhone = localStorage.getItem('customerPhone') || '';
-                                            const customerAddress = localStorage.getItem('customerAddress') || '';
-                                            const customerNeighborhood = localStorage.getItem('customerNeighborhood') || '';
-                                            const customerComplement = localStorage.getItem('customerComplement') || '';
-                                            const customerReferencePoint = localStorage.getItem('customerReferencePoint') || '';
-                                            const customerNumber = localStorage.getItem('customerNumber') || '';
-                                            const troco = localStorage.getItem('troco') || '';
-
-                                            const deliveryFee = calculateDeliveryFee(customerNeighborhood, tipoEntrega);
-                                            const subtotal = cartItems.reduce((sum, item) => sum + calculateItemPrice(item), 0);
-                                            const valorFinal = subtotal + deliveryFee;
-
-                                            const customerInfo = `\nNome: ${customerName}\nTelefone: ${customerPhone}`;
-                                            const addressInfo = tipoEntrega === 'entrega' ? `\nEndereço: ${customerAddress}, ${customerNumber}${customerComplement ? `, ${customerComplement}` : ''}\nBairro: ${customerNeighborhood}\nPonto de Referência: ${customerReferencePoint}` : '';
-                                            const paymentInfo = formaPagamento === 'pix' ? '\nForma de Pagamento: PIX\n' :
-                                                formaPagamento === 'dinheiro' ? `\nForma de Pagamento: Dinheiro${troco ? `\nTroco para: R$ ${troco}` : ''}\n` :
-                                                    formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
-
-                                            const itemsInfo = cartItems.map(item => {
-                                                let itemName = item.item.name;
-
-                                                // Adicionar sabor se houver extras para itens não-pizza/massa
-                                                if (item.extras && item.extras.length > 0 && item.item.category !== 'pizzas' && item.item.category !== 'massas') {
-                                                    itemName += ` - ${item.extras.join(', ')}`;
-                                                }
-
-                                                const sizeInfo = item.size ? ` (${item.size})` : '';
-                                                const obsInfo = item.observation ? ` - Obs: ${item.observation}` : '';
-                                                const priceInfo = ` - R$ ${calculateItemPrice(item).toFixed(2)}`;
-
-                                                return `${item.quantity}x ${itemName}${sizeInfo}${obsInfo}${priceInfo}`;
-                                            }).join('\n');
-
-                                            return `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* ${pixKey}`;
-                                        })()}
-                                    </pre>
+                                {/* Cabeçalho fixo */}
+                                <div className="p-6 pb-4 flex-shrink-0">
+                                    <h2 className="text-2xl font-bold text-yellow-500">Confirme seu pedido</h2>
                                 </div>
 
-                                <div className="flex justify-center gap-4">
-                                    <motion.button
-                                        whileHover={isLowEndDevice ? undefined : { scale: 1.02 }}
-                                        whileTap={isLowEndDevice ? undefined : { scale: 0.98 }}
-                                        transition={isLowEndDevice ? undefined : { duration: 0.1 }}
-                                        onClick={handleWhatsAppClick}
-                                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 transition-colors duration-150"
-                                    >
-                                        <FaWhatsapp className="text-xl" />
-                                        Enviar para WhatsApp
-                                    </motion.button>
-                                    <motion.button
-                                        whileHover={isLowEndDevice ? undefined : { scale: 1.02 }}
-                                        whileTap={isLowEndDevice ? undefined : { scale: 0.98 }}
-                                        transition={isLowEndDevice ? undefined : { duration: 0.1 }}
-                                        onClick={() => setShowWhatsAppModal(false)}
-                                        className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-150"
-                                    >
-                                        Cancelar
-                                    </motion.button>
+                                {/* Conteúdo scrollável */}
+                                <div className="flex-1 min-h-0 overflow-y-auto px-6">
+                                    <div className="bg-gray-800 p-4 rounded-lg text-left">
+                                        <h3 className="text-yellow-500 font-semibold mb-2">Detalhes do seu pedido:</h3>
+                                        <pre className="text-gray-300 whitespace-pre-wrap text-sm">
+                                            {(() => {
+                                                const customerName = localStorage.getItem('customerName') || '';
+                                                const customerPhone = localStorage.getItem('customerPhone') || '';
+                                                const customerAddress = localStorage.getItem('customerAddress') || '';
+                                                const customerNeighborhood = localStorage.getItem('customerNeighborhood') || '';
+                                                const customerComplement = localStorage.getItem('customerComplement') || '';
+                                                const customerReferencePoint = localStorage.getItem('customerReferencePoint') || '';
+                                                const customerNumber = localStorage.getItem('customerNumber') || '';
+                                                const troco = localStorage.getItem('troco') || '';
+
+                                                const deliveryFee = calculateDeliveryFee(customerNeighborhood, tipoEntrega);
+                                                const subtotal = cartItems.reduce((sum, item) => sum + calculateItemPrice(item), 0);
+                                                const valorFinal = subtotal + deliveryFee;
+
+                                                const customerInfo = `\nNome: ${customerName}\nTelefone: ${customerPhone}`;
+                                                const addressInfo = tipoEntrega === 'entrega' ? `\nEndereço: ${customerAddress}, ${customerNumber}${customerComplement ? `, ${customerComplement}` : ''}\nBairro: ${customerNeighborhood}\nPonto de Referência: ${customerReferencePoint}` : '';
+                                                const paymentInfo = formaPagamento === 'pix' ? '\nForma de Pagamento: PIX\n' :
+                                                    formaPagamento === 'dinheiro' ? `\nForma de Pagamento: Dinheiro${troco ? `\nTroco para: R$ ${troco}` : ''}\n` :
+                                                        formaPagamento === 'cartao' ? '\nForma de Pagamento: Cartão\n' : '';
+
+                                                const itemsInfo = cartItems.map(item => {
+                                                    let itemName = item.item.name;
+
+                                                    // Adicionar sabor se houver extras para itens não-pizza/massa
+                                                    if (item.extras && item.extras.length > 0 && item.item.category !== 'pizzas' && item.item.category !== 'massas') {
+                                                        itemName += ` - ${item.extras.join(', ')}`;
+                                                    }
+
+                                                    const sizeInfo = item.size ? ` (${item.size})` : '';
+                                                    const obsInfo = item.observation ? ` - Obs: ${item.observation}` : '';
+                                                    const priceInfo = ` - R$ ${calculateItemPrice(item).toFixed(2)}`;
+
+                                                    return `${item.quantity}x ${itemName}${sizeInfo}${obsInfo}${priceInfo}`;
+                                                }).join('\n');
+
+                                                return `*Novo Pedido*\n${customerInfo}${addressInfo}${paymentInfo}\n*Itens:*\n${itemsInfo}\n\n*Valor Final: R$ ${valorFinal.toFixed(2)}*\n\n*Chave PIX do estabelecimento:* ${pixKey}`;
+                                            })()}
+                                        </pre>
+                                    </div>
+                                </div>
+
+                                {/* Botões fixos na parte inferior */}
+                                <div className="p-6 pt-4 flex-shrink-0 border-t border-gray-800">
+                                    <div className="flex justify-center gap-4">
+                                        <motion.button
+                                            whileHover={isLowEndDevice ? undefined : { scale: 1.02 }}
+                                            whileTap={isLowEndDevice ? undefined : { scale: 0.98 }}
+                                            transition={isLowEndDevice ? undefined : { duration: 0.1 }}
+                                            onClick={handleWhatsAppClick}
+                                            className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 transition-colors duration-150"
+                                        >
+                                            <FaWhatsapp className="text-xl" />
+                                            Enviar para WhatsApp
+                                        </motion.button>
+                                        <motion.button
+                                            whileHover={isLowEndDevice ? undefined : { scale: 1.02 }}
+                                            whileTap={isLowEndDevice ? undefined : { scale: 0.98 }}
+                                            transition={isLowEndDevice ? undefined : { duration: 0.1 }}
+                                            onClick={() => setShowWhatsAppModal(false)}
+                                            className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-150"
+                                        >
+                                            Cancelar
+                                        </motion.button>
+                                    </div>
                                 </div>
                             </motion.div>
                         </motion.div>
@@ -1607,15 +1587,6 @@ export default function MenuDisplay() {
                         </motion.div>
                     )}
                 </AnimatePresence>
-
-                {/* Toast de categoria ativa */}
-                {toastCategoryName && (
-                    <div className={`fixed left-1/2 -translate-x-1/2 z-40 ${isIPhone ? 'top-16' : 'top-14'}`}>
-                        <div className="animate-category-toast bg-gray-900/90 text-yellow-400 border border-yellow-500/40 rounded-full px-3 py-1 text-xs shadow-lg">
-                            Categoria: {toastCategoryName}
-                        </div>
-                    </div>
-                )}
 
                 {/* Botão flutuante do carrinho - Otimizado para iPhone */}
                 {cartItems.length > 0 && (
