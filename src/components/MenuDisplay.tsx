@@ -186,6 +186,9 @@ export default function MenuDisplay() {
         return grouped;
     }, [menuItems]);
 
+    // Categorias para exibição (apenas as do backend)
+    const displayCategories = useMemo(() => categories, [categories]);
+
     // Itens filtrados pela busca
     const filteredItemsByCategory = useMemo(() => {
         if (!isSearching) return itemsByCategory;
@@ -247,6 +250,16 @@ export default function MenuDisplay() {
             setSelectedPasta(item);
         } else {
             setMiniModalItem(item);
+        }
+    }, []);
+
+    // Formatação monetária pt-BR
+    const formatBRL = useCallback((n: number) => {
+        try {
+            return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        } catch {
+            // Fallback para ambientes sem Intl configurado
+            return (Math.round(n * 100) / 100).toFixed(2).replace('.', ',');
         }
     }, []);
 
@@ -520,7 +533,7 @@ export default function MenuDisplay() {
 
         // Aguardar menos tempo para melhor responsividade
         const timeoutId = setTimeout(() => {
-            (categories || []).forEach(category => {
+            (displayCategories || []).forEach(category => {
                 const element = document.getElementById(`category-${category._id}`);
                 if (element) {
                     observer.observe(element);
@@ -536,7 +549,7 @@ export default function MenuDisplay() {
             if (flashTimeoutRef.current) {
                 clearTimeout(flashTimeoutRef.current);
             }
-            (categories || []).forEach(category => {
+            (displayCategories || []).forEach(category => {
                 const element = document.getElementById(`category-${category._id}`);
                 if (element) {
                     observer.unobserve(element);
@@ -544,7 +557,7 @@ export default function MenuDisplay() {
             });
             observer.disconnect();
         };
-    }, [categories, isManualScrolling, selectedCategory, isSearching]);
+    }, [displayCategories, isManualScrolling, selectedCategory, isSearching]);
 
     // Listener de scroll para detectar quando a rolagem termina
     useEffect(() => {
@@ -577,9 +590,9 @@ export default function MenuDisplay() {
 
     // Definir categoria inicial e garantir visualização correta
     useEffect(() => {
-        if ((categories || []).length > 0 && !selectedCategory) {
+        if ((displayCategories || []).length > 0 && !selectedCategory) {
             // Usar a primeira categoria da lista ordenada
-            const firstCategory = categories[0];
+            const firstCategory = displayCategories[0];
             const categoryId = firstCategory._id;
             setSelectedCategory(categoryId);
 
@@ -624,7 +637,7 @@ export default function MenuDisplay() {
                 }
             }, 300);
         }
-    }, [categories, selectedCategory]);    // Fechar menu com tecla Escape e swipe
+    }, [displayCategories, selectedCategory]);    // Fechar menu com tecla Escape e swipe
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
@@ -1018,9 +1031,9 @@ export default function MenuDisplay() {
 
         const handleScroll = () => {
             // Só realizar esta ação se não estiver em rolagem manual
-            if (!isManualScrolling && window.scrollY < 30 && categories.length > 0) {
-                const salgadosCategory = categories.find(cat => cat.name.toLowerCase().includes('salgado'));
-                const firstCategoryId = salgadosCategory ? salgadosCategory._id : categories[0]._id;
+            if (!isManualScrolling && window.scrollY < 30 && displayCategories.length > 0) {
+                const salgadosCategory = displayCategories.find(cat => cat.name.toLowerCase().includes('salgado'));
+                const firstCategoryId = salgadosCategory ? salgadosCategory._id : displayCategories[0]._id;
                 if (selectedCategory !== firstCategoryId) {
                     setSelectedCategory(firstCategoryId);
                 }
@@ -1041,7 +1054,7 @@ export default function MenuDisplay() {
             window.removeEventListener('scroll', handleScroll);
             clearTimeout(scrollTimeout);
         };
-    }, [categories, selectedCategory, isManualScrolling]);
+    }, [displayCategories, selectedCategory, isManualScrolling]);
 
     if (!restaurantIsOpen) {
         return (
@@ -1168,9 +1181,10 @@ export default function MenuDisplay() {
                         <div className="relative pb-1">
                             <div className={`w-full overflow-x-auto scrollbar-hide category-bar-container py-1 ${isIPhone ? 'ios-scroll-smooth' : ''}`}>
                                 <div className="flex justify-start sm:justify-center space-x-2 sm:space-x-3 min-w-min px-4 sm:px-6 mx-auto">
-                                    {categories.map((cat) => {
-                                        // Usar contagem memoizada em vez de filtro direto
-                                        const itemCount = itemsByCategory[cat._id]?.length || 0;
+                                    {displayCategories.map((cat) => {
+                                        // Usar contagem de acordo com busca
+                                        const sourceCount = isSearching ? filteredItemsByCategory : itemsByCategory;
+                                        const itemCount = sourceCount[cat._id]?.length || 0;
                                         return (
                                             <button
                                                 key={cat._id}
@@ -1214,7 +1228,7 @@ export default function MenuDisplay() {
 
                 {/* Conteúdo Principal */}
                 <div className="py-4">
-                    {(categories || []).length === 0 ? (
+                    {(displayCategories || []).length === 0 ? (
                         <div className="text-center text-gray-400 py-16 text-lg font-semibold">
                             Sem itens e categorias adicionadas
                         </div>
@@ -1222,7 +1236,7 @@ export default function MenuDisplay() {
                         <motion.div
                             className="space-y-8"
                         >
-                            {(categories || []).map(cat => {
+                            {(displayCategories || []).map(cat => {
                                 const source = isSearching ? filteredItemsByCategory : itemsByCategory;
                                 const itemsInCategory = source[cat._id] || [];
                                 return (
@@ -1233,14 +1247,14 @@ export default function MenuDisplay() {
                                             <span className={`w-1.5 h-6 rounded-r-md mr-2.5 ${flashCategoryId === cat._id ? 'bg-yellow-300' : 'bg-yellow-500 opacity-70'}`}></span>
                                             {cat.name}
                                         </h2>
-                                        <div className="flex flex-col gap-4">
+                                        <div className="space-y-2">
                                             {itemsInCategory.length === 0 ? (
                                                 <div className="text-gray-500 text-sm italic px-4 py-6">{isSearching ? 'Nenhum item corresponde à sua busca' : 'Nenhum item nesta categoria'}</div>
                                             ) : (
                                                 itemsInCategory.map((item: MenuItem) => (
                                                     <motion.div
                                                         key={item._id}
-                                                        className="bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-150 border border-yellow-500 hover:bg-gray-750 hover:border-yellow-400"
+                                                        className={`bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-150 border border-yellow-500 hover:bg-gray-750 hover:border-yellow-400 w-full ${item.isMainType ? 'mb-4' : ''}`}
                                                         style={{ willChange: 'transform' }}
                                                         onClick={() => handleItemClick(item)}
                                                     >
@@ -1315,7 +1329,7 @@ export default function MenuDisplay() {
                                                                                         </div>
                                                                                         <div className="flex items-center gap-2">
                                                                                             <span className={`font-bold text-lg ${flavor.available ? 'text-green-400' : 'text-gray-500'}`}>
-                                                                                                R$ {flavor.price.toFixed(2)}
+                                                                                                R$ {formatBRL(flavor.price)}
                                                                                             </span>
                                                                                             {flavor.available && (
                                                                                                 <motion.button
@@ -1347,63 +1361,95 @@ export default function MenuDisplay() {
                                                                 )}
                                                             </div>
                                                         ) : (
-                                                            // Exibição para itens simples (original)
+                                                            // Card horizontal estilo site de referência
                                                             <div
                                                                 onClick={() => setMiniModalItem(item)}
-                                                                className="cursor-pointer"
+                                                                className="cursor-pointer p-4 hover:bg-gray-750 transition-colors duration-150"
                                                             >
-                                                                <div className="flex flex-col sm:flex-row w-full">
-                                                                    {/* Imagem */}
-                                                                    <div className="flex-shrink-0 w-full sm:w-24 md:w-28 h-32 sm:h-24 md:h-28 bg-gray-900">
+                                                                <div className="flex items-center gap-4 w-full">
+                                                                    {/* Imagem redonda */}
+                                                                    <div className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 bg-gray-700 rounded-lg overflow-hidden">
                                                                         <Image
                                                                             src={item.image || '/placeholder.jpg'}
                                                                             alt={item.name}
-                                                                            width={112}
-                                                                            height={112}
+                                                                            width={80}
+                                                                            height={80}
                                                                             className="object-cover w-full h-full"
                                                                         />
                                                                     </div>
 
-                                                                    {/* Conteúdo */}
-                                                                    <div className="flex-1 p-3 md:p-4 flex flex-col justify-between min-h-0 min-w-0 w-full">
-                                                                        <div className="flex-1">
-                                                                            <div className="flex items-center gap-2 mb-2 min-w-0">
-                                                                                <h3 className="flex-1 min-w-0 text-base md:text-lg font-semibold text-white line-clamp-2 overflow-hidden break-normal hyphens-auto leading-tight" title={item.name}>
-                                                                                    {item.name}
-                                                                                </h3>
-                                                                                {item.available === false && (
-                                                                                    <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded whitespace-nowrap flex-shrink-0">
-                                                                                        Indisponível
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-                                                                            <p className="text-gray-400 text-xs md:text-sm mb-3 line-clamp-2 sm:line-clamp-3 overflow-hidden break-normal hyphens-auto leading-relaxed" title={item.description}>
-                                                                                {item.description}
-                                                                            </p>
-                                                                        </div>
-
-                                                                        {/* Preço e Botão */}
-                                                                        <div className="flex items-center justify-between mt-auto w-full min-w-0 gap-3">
-                                                                            <span className="text-yellow-500 font-bold text-lg md:text-xl whitespace-nowrap flex-shrink-0">R$ {item.price.toFixed(2)}</span>
-                                                                            {item.available === false ? (
-                                                                                <span className="text-sm text-red-400 font-medium">
-                                                                                    Item indisponível
+                                                                    {/* Conteúdo central */}
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                            <h3 className="text-base md:text-lg font-semibold text-white truncate" title={item.name}>
+                                                                                {item.name}
+                                                                            </h3>
+                                                                            {item.available === false && (
+                                                                                <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded whitespace-nowrap flex-shrink-0">
+                                                                                    Indisponível
                                                                                 </span>
-                                                                            ) : (
-                                                                                <motion.button
-                                                                                    whileHover={isLowEndDevice ? undefined : { scale: 1.02 }}
-                                                                                    whileTap={isLowEndDevice ? undefined : { scale: 0.98 }}
-                                                                                    transition={isLowEndDevice ? undefined : { duration: 0.1 }}
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        setMiniModalItem(item);
-                                                                                    }}
-                                                                                    className={`bg-yellow-500 text-gray-900 rounded-lg font-medium hover:bg-yellow-400 transition-colors duration-150 flex-shrink-0 ${isIPhone ? 'p-3 touch-manipulation min-h-[44px] min-w-[44px]' : 'p-2 md:p-3'}`}
-                                                                                >
-                                                                                    <FaPlus className={`${isIPhone ? 'text-base' : 'text-sm md:text-base'}`} />
-                                                                                </motion.button>
                                                                             )}
                                                                         </div>
+
+                                                                        <p className="text-gray-400 text-sm mb-2 line-clamp-2" title={item.description}>
+                                                                            {item.description}
+                                                                        </p>
+
+                                                                        {/* Preço com badge de desconto */}
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="flex items-center gap-2">
+                                                                                {/* Badge de desconto */}
+                                                                                {typeof item.originalPrice === 'number' && item.originalPrice > (item.price || 0) && item.originalPrice > 0 && (
+                                                                                    <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                                                                        -{Math.round(100 - (item.price / item.originalPrice) * 100)}%
+                                                                                    </span>
+                                                                                )}
+
+                                                                                {/* Preços */}
+                                                                                <div className="flex flex-col">
+                                                                                    {item.sizes && Object.keys(item.sizes).length > 0 && (
+                                                                                        <span className="text-xs text-gray-400">A partir de</span>
+                                                                                    )}
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <span className="text-yellow-500 font-bold text-lg">
+                                                                                            {(() => {
+                                                                                                const base = item.sizes && Object.keys(item.sizes).length > 0
+                                                                                                    ? Math.min(...(Object.values(item.sizes).filter(v => v !== undefined) as number[]))
+                                                                                                    : item.price;
+                                                                                                return `R$ ${formatBRL(base)}`;
+                                                                                            })()}
+                                                                                        </span>
+                                                                                        {typeof item.originalPrice === 'number' && item.originalPrice > (item.price || 0) && (
+                                                                                            <span className="text-sm text-gray-400 line-through">
+                                                                                                R$ {formatBRL(item.originalPrice)}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Botão circular à direita */}
+                                                                    <div className="flex-shrink-0">
+                                                                        {item.available === false ? (
+                                                                            <div className="text-xs text-red-400 text-center">
+                                                                                Indisponível
+                                                                            </div>
+                                                                        ) : (
+                                                                            <motion.button
+                                                                                whileHover={isLowEndDevice ? undefined : { scale: 1.05 }}
+                                                                                whileTap={isLowEndDevice ? undefined : { scale: 0.95 }}
+                                                                                transition={isLowEndDevice ? undefined : { duration: 0.1 }}
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setMiniModalItem(item);
+                                                                                }}
+                                                                                className="w-10 h-10 bg-yellow-500 hover:bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center font-bold text-lg transition-colors duration-150"
+                                                                            >
+                                                                                +
+                                                                            </motion.button>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1648,7 +1694,7 @@ export default function MenuDisplay() {
                                     </button>
                                 </div>
                                 <div className="max-h-[60vh] overflow-y-auto divide-y divide-gray-800">
-                                    {(categories || []).map(cat => {
+                                    {(displayCategories || []).map(cat => {
                                         const source = isSearching ? filteredItemsByCategory : itemsByCategory;
                                         const count = (source[cat._id] || []).length;
                                         return (

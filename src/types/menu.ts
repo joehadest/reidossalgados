@@ -10,6 +10,8 @@ export interface MenuItem {
     name: string;
     description: string;
     price: number;
+    /** Preço original (para exibir desconto/valor riscado). Opcional. */
+    originalPrice?: number;
     category: string;
     image: string;
     destaque: boolean;
