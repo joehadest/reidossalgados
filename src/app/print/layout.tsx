@@ -38,6 +38,26 @@ export default function PrintLayout({
                         header, footer, nav, aside {
                             display: none !important;
                         }
+
+                        .no-print {
+                            display: none !important;
+                        }
+                    }
+
+                    /* Estilos para tela */
+                    body {
+                        background: white;
+                        color: black;
+                        font-family: 'Courier New', monospace;
+                        margin: 0;
+                        padding: 0;
+                    }
+
+                    .print-container {
+                        max-width: 80mm;
+                        margin: 0 auto;
+                        background: white;
+                        color: black;
                     }
                 `}</style>
             </head>

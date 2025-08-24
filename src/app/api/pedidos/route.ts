@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Pedido } from '@/types';
+import { Pedido } from '@/types/cart';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 

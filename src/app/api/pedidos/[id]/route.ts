@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Pedido } from '@/types';
+import { Pedido } from '@/types/cart';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
@@ -9,10 +9,13 @@ export async function GET(
 ) {
     try {
         console.log('API: Buscando pedido com ID:', params.id);
+        console.log('API: URL da requisição:', request.url);
         
         const { db } = await connectToDatabase();
         const collection = db.collection('pedidos');
 
+        console.log('API: Conectado ao banco de dados');
+        
         const pedido = await collection.findOne({ _id: new ObjectId(params.id) });
 
         console.log('API: Pedido encontrado:', pedido);
