@@ -461,99 +461,38 @@ export default function MenuDisplay() {
     }, [selectedCategory, isIPhone, isManualScrolling]);
 
     useEffect(() => {
-        // Detectar se estamos em mobile para ajustar o observer
-        const isMobile = window.innerWidth < 640;
+        // Não atualiza categoria se estiver buscando
+        if (isSearching) return;
 
-        // Se estiver buscando, não atualizar categoria automaticamente
-        if (isSearching) {
-            return;
-        }
-
-        const observer = new IntersectionObserver(
-            (entries: IntersectionObserverEntry[]) => {
-                // Só atualizar categoria automaticamente se NÃO estiver em rolagem manual
-                if (!isManualScrolling) {
-                    // Encontrar a entrada que está mais visível na tela
-                    let mostVisibleEntry: IntersectionObserverEntry | null = null;
-                    let maxIntersectionRatio = 0;
-
-                    // Separar entradas por posição para priorizar categorias no topo
-                    const visibleEntries = entries.filter(entry => entry.isIntersecting);
-
-                    if (visibleEntries.length > 0) {
-                        // Se múltiplas categorias estão visíveis, priorizar a que está mais no topo
-                        visibleEntries.sort((a, b) => {
-                            const aRect = a.boundingClientRect;
-                            const bRect = b.boundingClientRect;
-                            return aRect.top - bRect.top;
-                        });
-
-                        // Pegar a primeira categoria visível (mais no topo) se tiver intersection ratio razoável
-                        const topEntry = visibleEntries[0];
-                        if (topEntry.intersectionRatio > 0.1) { // Threshold muito baixo para categorias no topo
-                            mostVisibleEntry = topEntry;
-                            maxIntersectionRatio = topEntry.intersectionRatio;
-                        } else {
-                            // Se a primeira não tem ratio suficiente, usar a lógica normal
-                            for (const entry of visibleEntries) {
-                                if (entry.intersectionRatio > maxIntersectionRatio) {
-                                    maxIntersectionRatio = entry.intersectionRatio;
-                                    mostVisibleEntry = entry;
-                                }
-                            }
-                        }
-                    }
-
-                    // Threshold baixo para melhor detecção no topo (Bebidas etc.)
-                    const minThreshold = isIPhone ? 0.08 : 0.06;
-
-                    if (mostVisibleEntry && maxIntersectionRatio > minThreshold) {
-                        const element = mostVisibleEntry.target;
-                        if (element instanceof HTMLElement && element.id) {
-                            const category = element.id.replace('category-', '');
-                            debouncedCategoryUpdate(category);
-                        }
-                    }
+        // Observer simplificado: só detecta o primeiro elemento visível e atualiza categoria
+        const observer = new IntersectionObserver((entries) => {
+            if (!isManualScrolling) {
+                const firstVisible = entries.find(entry => entry.isIntersecting);
+                if (firstVisible && firstVisible.target instanceof HTMLElement && firstVisible.target.id) {
+                    const category = firstVisible.target.id.replace('category-', '');
+                    debouncedCategoryUpdate(category);
                 }
-            },
-            {
-                // Ajustar rootMargin baseado na altura real do header sticky e iPhone
-                rootMargin: (() => {
-                    const stickyHeader = document.querySelector('.sticky') as HTMLElement;
-                    let headerHeight = stickyHeader ? stickyHeader.offsetHeight + 12 : (window.innerWidth < 640 ? 110 : 130);
-                    if (isIPhone) {
-                        headerHeight += window.innerWidth < 400 ? 36 : 12;
-                    }
-                    // Margin inferior mais generosa para a próxima categoria contar antes
-                    return `-${headerHeight}px 0px -20% 0px`;
-                })(),
-                threshold: isIPhone ? [0, 0.15, 0.4] : [0, 0.1, 0.3, 0.6]
             }
-        );
+        }, {
+            rootMargin: '-100px 0px -20% 0px',
+            threshold: [0, 0.15]
+        });
 
-        // Aguardar menos tempo para melhor responsividade
+        // Observa todos os elementos de categoria
         const timeoutId = setTimeout(() => {
             (displayCategories || []).forEach(category => {
                 const element = document.getElementById(`category-${category._id}`);
-                if (element) {
-                    observer.observe(element);
-                }
+                if (element) observer.observe(element);
             });
-        }, 300); // Reduzido de 1000ms para 300ms
+        }, 200);
 
         return () => {
             clearTimeout(timeoutId);
-            if (observerTimeoutRef.current) {
-                clearTimeout(observerTimeoutRef.current);
-            }
-            if (flashTimeoutRef.current) {
-                clearTimeout(flashTimeoutRef.current);
-            }
+            if (observerTimeoutRef.current) clearTimeout(observerTimeoutRef.current);
+            if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
             (displayCategories || []).forEach(category => {
                 const element = document.getElementById(`category-${category._id}`);
-                if (element) {
-                    observer.unobserve(element);
-                }
+                if (element) observer.unobserve(element);
             });
             observer.disconnect();
         };
@@ -1257,6 +1196,10 @@ export default function MenuDisplay() {
                                                         className={`bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-150 border border-yellow-500 hover:bg-gray-750 hover:border-yellow-400 w-full ${item.isMainType ? 'mb-4' : ''}`}
                                                         style={{ willChange: 'transform' }}
                                                         onClick={() => handleItemClick(item)}
+                                                        initial={{ opacity: 0, y: 30 }}
+                                                        whileInView={{ opacity: 1, y: 0 }}
+                                                        viewport={{ once: true, amount: 0.2 }}
+                                                        transition={{ duration: 0.4, ease: 'easeOut' }}
                                                     >
                                                         {item.isMainType ? (
                                                             // Exibição para tipos de salgados com sabores
@@ -1470,7 +1413,14 @@ export default function MenuDisplay() {
                         <ItemModal
                             item={selectedItem}
                             onClose={() => setSelectedItem(null)}
-                            onAddToCart={(quantity, observation, size, border, extras) => {
+                            // CORREÇÃO: Adicionamos os tipos corretos aos parâmetros da função
+                            onAddToCart={(
+                                quantity: number,
+                                observation: string,
+                                size?: string,
+                                border?: string,
+                                extras?: string[]
+                            ) => {
                                 handleAddToCart(selectedItem!, quantity, observation, size, border, extras);
                                 setSelectedItem(null);
                             }}

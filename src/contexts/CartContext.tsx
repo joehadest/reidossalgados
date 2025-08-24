@@ -4,6 +4,8 @@ import { MenuItem } from '../types/menu';
 import { CartItem, CartContextType } from '../types/cart';
 import { menuItems } from '../data/menu';
 
+
+export type { CartItem } from '../types/cart';
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
