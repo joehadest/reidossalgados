@@ -1212,6 +1212,7 @@ export default function MenuDisplay() {
                                                                             width={64}
                                                                             height={64}
                                                                             className="object-cover w-full h-full rounded-lg"
+                                                                            quality={75}
                                                                         />
                                                                     </div>
                                                                     <div className="flex-1 min-w-0">

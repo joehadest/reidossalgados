@@ -104,6 +104,7 @@ const ItemModal: React.FC<ItemModalProps> = ({ item, onClose, onAddToCart, allPi
                             className="w-full h-48 object-cover"
                             sizes="(max-width: 768px) 100vw, 50vw"
                             priority
+                            quality={75}
                         />
                         <button
                             onClick={onClose}

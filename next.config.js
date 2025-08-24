@@ -10,8 +10,21 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: 'i.imgur.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'i.ibb.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.supaimg.com',
+      },
+      // Adicione outros domínios conforme necessário
     ],
   },
   // Configurações para evitar problemas de cookies em mobile
