@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMenu } from '@/contexts/MenuContext';
-import { FaExclamationCircle, FaSearch } from 'react-icons/fa';
+import { FaExclamationCircle, FaSearch, FaShoppingCart } from 'react-icons/fa';
 import { useCart } from '@/contexts/CartContext';
 import { useRestaurantStatus } from '@/contexts/RestaurantStatusContext';
 import Cart from './Cart';
@@ -12,7 +12,7 @@ import Image from 'next/image';
 export default function Header() {
     const [showInfo, setShowInfo] = useState(false);
     const [showOrderTracker, setShowOrderTracker] = useState(false);
-    const { items, updateQuantity, removeFromCart } = useCart();
+    const { items } = useCart();
     const [isCartOpen, setIsCartOpen] = useState(false);
     const { isOpen, loading } = useRestaurantStatus();
 
@@ -31,9 +31,10 @@ export default function Header() {
         return () => document.body.classList.remove('overflow-hidden');
     }, [showInfo, showOrderTracker, isCartOpen]);
 
-    const handleCheckout = (orderId: string) => {
+    const handleCheckout = (orderDetails: any) => {
         // Implementar checkout
-        console.log('Checkout:', orderId);
+        console.log('Checkout:', orderDetails);
+        setIsCartOpen(false);
     };
 
     return (
@@ -65,6 +66,23 @@ export default function Header() {
                     animate={{ opacity: 1, x: 0 }}
                     className="flex items-center gap-4"
                 >
+                    {/* Botão do Carrinho */}
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setIsCartOpen(true)}
+                        className="bg-yellow-500 hover:bg-yellow-400 text-black px-4 py-2 rounded-lg flex items-center gap-2 transition-colors relative"
+                    >
+                        <FaShoppingCart className="w-4 h-4" />
+                        <span className="hidden xs:inline sm:inline md:inline">Carrinho</span>
+                        <span className="inline xs:hidden sm:hidden md:hidden">Carrinho</span>
+                        {totalItems > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                                {totalItems}
+                            </span>
+                        )}
+                    </motion.button>
+
                     {/* Botão de Acompanhar Pedido */}
                     <motion.button
                         whileHover={{ scale: 1.05 }}
@@ -164,9 +182,6 @@ export default function Header() {
 
             {isCartOpen && (
                 <Cart
-                    items={items}
-                    onUpdateQuantity={updateQuantity}
-                    onRemoveItem={removeFromCart}
                     onCheckout={handleCheckout}
                     onClose={() => setIsCartOpen(false)}
                 />
