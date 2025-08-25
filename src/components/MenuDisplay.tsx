@@ -14,15 +14,40 @@ import PastaModal from './PastaModal';
 import MiniItemModal from './MiniItemModal';
 
 const OptimizedMenuItem = React.memo(({ item, onClick }: { item: MenuItem; onClick: (item: MenuItem) => void }) => (
-    <motion.div className="bg-gray-800 rounded-xl shadow-lg overflow-hidden cursor-pointer border border-transparent hover:border-yellow-500 transition-colors group" onClick={() => onClick(item)} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.3, ease: "easeOut" }}>
+    <motion.div
+        className="bg-gray-800 rounded-xl shadow-lg overflow-hidden cursor-pointer border border-transparent hover:border-yellow-500 transition-colors group"
+        onClick={() => onClick(item)}
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.2 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+    >
         <div className="relative h-40 overflow-hidden">
-            {item.image && <Image src={item.image} alt={item.name} fill sizes="(max-width: 640px) 100vw, 50vw" className="object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" quality={75} />}
-            {!item.available && <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center"><span className="text-red-400 font-bold text-sm bg-red-900/80 px-2 py-1 rounded">Indisponível</span></div>}
+            {item.image && (
+                <Image
+                    src={item.image}
+                    alt={item.name}
+                    fill
+                    sizes="(max-width: 640px) 100vw, 50vw"
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                    quality={75}
+                />
+            )}
+            {!item.available && (
+                <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+                    <span className="text-red-400 font-bold text-sm bg-red-900/80 px-2 py-1 rounded">Indisponível</span>
+                </div>
+            )}
         </div>
         <div className="p-4">
             <h3 className="font-bold text-white text-lg mb-1 truncate">{item.name}</h3>
             {item.description && <p className="text-gray-400 text-sm mb-2 line-clamp-2">{item.description}</p>}
-            <div className="flex justify-between items-center mt-3"><span className="text-yellow-500 font-bold text-lg">R$ {(item.price || 0).toFixed(2).replace('.', ',')}</span></div>
+            <div className="flex justify-between items-center mt-3">
+                <span className="text-yellow-500 font-bold text-lg">
+                    R$ {(item.price || 0).toFixed(2).replace('.', ',')}
+                </span>
+            </div>
         </div>
     </motion.div>
 ));
@@ -58,9 +83,9 @@ export default function MenuDisplay() {
                 const settingsData = await settingsRes.json();
                 if (menuData.success) setMenuItems(menuData.data);
                 if (catData.success && catData.data.length > 0) {
-                    const sortedCategories = catData.data.sort((a: any, b: any) => (a.orderIndex || 0) - (b.orderIndex || 0));
-                    setCategories(sortedCategories);
-                    if (!selectedCategory) setSelectedCategory(sortedCategories[0]._id);
+                    const sorted = catData.data.sort((a: any, b: any) => (a.orderIndex || 0) - (b.orderIndex || 0));
+                    setCategories(sorted);
+                    if (!selectedCategory) setSelectedCategory(sorted[0]._id);
                 }
                 if (settingsData.success) setSettings(settingsData.data);
             } catch (error) { console.error("Falha ao buscar dados:", error); }
@@ -72,95 +97,70 @@ export default function MenuDisplay() {
     const handleCheckout = async (details: any) => {
         setIsCartOpen(false);
         try {
-            // Estruturar corretamente os dados do endereço
-            let endereco = undefined;
-            if (details.tipoEntrega === 'entrega' && details.address) {
-                endereco = {
-                    address: {
-                        street: details.address.street,
-                        number: details.address.number,
-                        complement: details.address.complement,
-                        neighborhood: details.address.neighborhood,
-                        referencePoint: details.address.referencePoint
-                    },
-                    deliveryFee: details.deliveryFee || 0,
-                    estimatedTime: '30-45 minutos'
-                };
-            }
-
             const pedidoParaAPI = {
-                itens: details.itens.map((item: any) => ({ 
-                    nome: item.name, 
-                    quantidade: item.quantity, 
-                    preco: item.price, 
-                    observacao: item.observation, 
-                    size: item.size, 
-                    border: item.border, 
-                    extras: item.extras 
+                itens: details.items.map((item: any) => ({ 
+                    nome: item.name, quantidade: item.quantity, preco: item.price,
+                    observacao: item.observation, size: item.size, border: item.border, extras: item.extras 
                 })),
-                total: details.total, 
-                tipoEntrega: details.tipoEntrega, 
-                endereco: endereco, 
-                cliente: details.cliente, 
-                observacoes: details.observacoes, 
+                total: details.total, tipoEntrega: details.tipoEntrega, 
+                endereco: details.tipoEntrega === 'entrega' ? details.address : undefined, 
+                cliente: details.cliente, observacoes: details.observacoes, 
                 formaPagamento: details.formaPagamento, 
-                troco: details.formaPagamento === 'dinheiro' ? details.troco : undefined,
-                status: 'pendente',
-                data: new Date().toISOString()
+                troco: details.formaPagamento === 'dinheiro' ? details.troco : undefined
             };
-            
-            console.log('Dados do pedido sendo enviados:', pedidoParaAPI);
-            
-            const response = await fetch('/api/pedidos', { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(pedidoParaAPI) 
-            });
+
+            const response = await fetch('/api/pedidos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pedidoParaAPI) });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Falha ao registrar o pedido.');
+            
             setOrderDetails(details);
             setShowWhatsAppModal(true);
             clearCart();
         } catch (error) { 
             console.error("Erro no checkout:", error); 
-            alert("Houve um erro ao enviar seu pedido. Tente novamente."); 
+            alert("Houve um erro ao enviar seu pedido."); 
         }
     };
-
+    
     const isSearching = useMemo(() => searchQuery.trim().length > 0, [searchQuery]);
     const itemsByCategory = useMemo(() => menuItems.reduce((acc, item) => { const catId = item.category.toString(); if (!acc[catId]) acc[catId] = []; acc[catId].push(item); return acc; }, {} as Record<string, MenuItem[]>), [menuItems]);
     const filteredItemsByCategory = useMemo(() => { if (!isSearching) return itemsByCategory; const q = searchQuery.trim().toLowerCase(); const filtered: Record<string, MenuItem[]> = {}; Object.keys(itemsByCategory).forEach(catId => { const matches = itemsByCategory[catId].filter(it => it.name?.toLowerCase().includes(q) || it.description?.toLowerCase().includes(q)); if (matches.length > 0) filtered[catId] = matches; }); return filtered; }, [isSearching, searchQuery, itemsByCategory]);
     const displayCategories = useMemo(() => { const source = isSearching ? filteredItemsByCategory : itemsByCategory; return categories.filter(cat => source[cat._id] && source[cat._id].length > 0); }, [categories, itemsByCategory, filteredItemsByCategory, isSearching]);
-    const handleItemClick = useCallback((item: MenuItem) => { const catName = categories.find(c => c._id === item.category.toString())?.name.toLowerCase() || ''; if (catName.includes('pizza')) setSelectedItem(item); else if (catName.includes('massa')) setSelectedPasta(item); else setMiniModalItem(item); }, [categories]);
+    
+    const handleItemClick = useCallback((item: MenuItem) => {
+        const categoryName = categories.find(c => c._id === item.category.toString())?.name.toLowerCase() || '';
+        if (categoryName.includes('pizza')) setSelectedItem(item);
+        else if (categoryName.includes('massa')) setSelectedPasta(item);
+        else setMiniModalItem(item);
+    }, [categories]);
+    
     const handleCategoryClick = useCallback((catId: string) => { setIsManualScrolling(true); setSelectedCategory(catId); const el = categorySectionRefs.current[catId]; if (el) { const headerHeight = (document.querySelector('.sticky-header') as HTMLElement)?.offsetHeight || 120; const elPos = el.getBoundingClientRect().top + window.scrollY; const offset = elPos - headerHeight - 16; window.scrollTo({ top: offset, behavior: 'smooth' }); if (manualScrollTimeoutRef.current) clearTimeout(manualScrollTimeoutRef.current); manualScrollTimeoutRef.current = setTimeout(() => setIsManualScrolling(false), 1000); } }, []);
+    
     useEffect(() => { if (isManualScrolling || displayCategories.length === 0) return; const obs = new IntersectionObserver((entries) => { if (isManualScrolling) return; const visible = entries.filter(e => e.isIntersecting); if (visible.length > 0) { visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top); const catId = visible[0].target.id.replace('category-', ''); setSelectedCategory(catId); } }, { rootMargin: '-140px 0px -40% 0px', threshold: 0.1 }); displayCategories.forEach(cat => { const el = document.getElementById(`category-${cat._id}`); if (el) obs.observe(el); }); return () => obs.disconnect(); }, [displayCategories, isManualScrolling]);
+    
     useEffect(() => { if (!selectedCategory || !categoryBarRef.current) return; const btn = categoryButtonRefs.current[selectedCategory]; const cont = categoryBarRef.current; if (btn && cont) { const contWidth = cont.offsetWidth; const btnWidth = btn.offsetWidth; const btnLeft = btn.offsetLeft; const scroll = btnLeft - (contWidth / 2) + (btnWidth / 2); cont.scrollTo({ left: scroll, behavior: 'smooth' }); } }, [selectedCategory]);
 
-    const handleWhatsAppClick = () => { /* ... sua lógica de abrir whatsapp ... */ };
+    const handleWhatsAppClick = () => {
+        if (!orderDetails || !settings) return alert("Erro: Detalhes do pedido ou configurações não encontrados.");
+        const whatsappNumber = settings.establishmentInfo?.contact?.whatsapp?.replace(/\D/g, '');
+        if (!whatsappNumber) return alert("O número de WhatsApp não foi configurado.");
+        const { cliente, address, tipoEntrega, items, total, formaPagamento, troco, observacoes } = orderDetails;
+        const itemsText = items.map((item: any) => `${item.quantity}x ${item.name} ${item.size ? `(${item.size})` : ''}`).join('\n');
+        const addressText = tipoEntrega === 'entrega' ? `\n*Endereço:* ${address.street}, ${address.number} - ${address.neighborhood}` : `\n*Tipo:* Retirada`;
+        const message = `*Novo Pedido*\n\n*Cliente:* ${cliente.nome}\n${addressText}\n\n*Itens:*\n${itemsText}\n\n*Pagamento:* ${formaPagamento}\n${troco ? `*Troco para:* ${troco}\n` : ''}${observacoes ? `*Observações:* ${observacoes}\n` : ''}*Total:* R$ ${total.toFixed(2)}`;
+        window.open(`https://wa.me/55${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
+        setShowWhatsAppModal(false);
+    };
 
-    if (isLoading) {
-        return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">Carregando Cardápio...</div>;
-    }
-
-    if (!restaurantIsOpen) {
-        return <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4"><div className="text-center max-w-md mx-auto"><div className="bg-gray-800 rounded-2xl shadow-2xl border border-yellow-500/30 p-8"><div className="mb-6"><div className="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4"><svg className="w-8 h-8 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><h2 className="text-2xl font-bold text-yellow-500 mb-3">Estabelecimento Fechado</h2><p className="text-gray-300 text-lg">Desculpe, estamos fechados no momento.</p></div></div></div></div>;
-    }
+    if (isLoading) return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">Carregando Cardápio...</div>;
+    if (!restaurantIsOpen) return <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4"><div className="text-center max-w-md mx-auto"><div className="bg-gray-800 rounded-2xl shadow-2xl border border-yellow-500/30 p-8"><div className="mb-6"><h2 className="text-2xl font-bold text-yellow-500 mb-3">Estabelecimento Fechado</h2></div></div></div></div>;
 
     return (
         <div className="min-h-screen bg-gray-900">
             <div className="max-w-7xl mx-auto">
                 <div className="sticky top-0 z-30 bg-gray-900/80 backdrop-blur-lg border-b border-gray-700/50 sticky-header">
                     <div className="p-4"><input type="search" placeholder="Buscar no cardápio..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700 focus:ring-2 focus:ring-yellow-500 outline-none" /></div>
-                    <div className="relative px-4 pb-3">
-                        <div ref={categoryBarRef} className="flex space-x-2 overflow-x-auto scrollbar-hide">
-                            {displayCategories.map(cat => (
-                                <button key={cat._id} ref={(el) => { categoryButtonRefs.current[cat._id] = el; }} onClick={() => handleCategoryClick(cat._id)} className={`relative px-4 py-2 rounded-full text-sm font-semibold transition-colors duration-300 whitespace-nowrap ${selectedCategory === cat._id ? 'text-gray-900' : 'text-gray-300 hover:text-white'}`}>
-                                    {selectedCategory === cat._id && (<motion.div layoutId="category-pill" className="absolute inset-0 bg-yellow-500 rounded-full" style={{ zIndex: -1 }} transition={{ type: 'spring', stiffness: 350, damping: 30 }} />)}
-                                    <span className="relative z-10">{cat.name}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                    <div className="relative px-4 pb-3"><div ref={categoryBarRef} className="flex space-x-2 overflow-x-auto scrollbar-hide">{displayCategories.map(cat => (<button key={cat._id} ref={(el) => { categoryButtonRefs.current[cat._id] = el; }} onClick={() => handleCategoryClick(cat._id)} className={`relative px-4 py-2 rounded-full text-sm font-semibold transition-colors duration-300 whitespace-nowrap ${selectedCategory === cat._id ? 'text-gray-900' : 'text-gray-300 hover:text-white'}`}>{selectedCategory === cat._id && (<motion.div layoutId="category-pill" className="absolute inset-0 bg-yellow-500 rounded-full" style={{ zIndex: -1 }} transition={{ type: 'spring', stiffness: 350, damping: 30 }} />)}<span className="relative z-10">{cat.name}</span></button>))}</div></div>
                 </div>
                 <main className="p-4">
                     <div className="space-y-12">
@@ -170,7 +170,9 @@ export default function MenuDisplay() {
                                 <section key={cat._id} id={`category-${cat._id}`} ref={(el) => { categorySectionRefs.current[cat._id] = el; }}>
                                     <h2 className="text-2xl font-bold text-white mb-4 border-l-4 border-yellow-500 pl-3">{cat.name}</h2>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                        {items.map(item => (<OptimizedMenuItem key={item._id} item={item} onClick={handleItemClick} />))}
+                                        {items.map(item => (
+                                            <OptimizedMenuItem key={item._id} item={item} onClick={handleItemClick} />
+                                        ))}
                                     </div>
                                 </section>
                             );
