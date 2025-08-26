@@ -97,14 +97,22 @@ export default function MenuDisplay() {
     const handleCheckout = async (details: any) => {
         setIsCartOpen(false);
         try {
+            // Estrutura do endereço corrigida aqui
             const pedidoParaAPI = {
                 itens: details.items.map((item: any) => ({ 
                     nome: item.name, quantidade: item.quantity, preco: item.price,
                     observacao: item.observation, size: item.size, border: item.border, extras: item.extras 
                 })),
-                total: details.total, tipoEntrega: details.tipoEntrega, 
-                endereco: details.tipoEntrega === 'entrega' ? details.address : undefined, 
-                cliente: details.cliente, observacoes: details.observacoes, 
+                total: details.total, 
+                tipoEntrega: details.tipoEntrega, 
+                // A estrutura do 'endereco' agora é aninhada e inclui a taxa de entrega
+                endereco: details.tipoEntrega === 'entrega' ? {
+                    address: details.address,
+                    deliveryFee: details.deliveryFee,
+                    estimatedTime: "30-45 min" // Você pode ajustar isso se necessário
+                } : undefined, 
+                cliente: details.cliente, 
+                observacoes: details.observacoes, 
                 formaPagamento: details.formaPagamento, 
                 troco: details.formaPagamento === 'dinheiro' ? details.troco : undefined
             };
@@ -141,13 +149,83 @@ export default function MenuDisplay() {
     useEffect(() => { if (!selectedCategory || !categoryBarRef.current) return; const btn = categoryButtonRefs.current[selectedCategory]; const cont = categoryBarRef.current; if (btn && cont) { const contWidth = cont.offsetWidth; const btnWidth = btn.offsetWidth; const btnLeft = btn.offsetLeft; const scroll = btnLeft - (contWidth / 2) + (btnWidth / 2); cont.scrollTo({ left: scroll, behavior: 'smooth' }); } }, [selectedCategory]);
 
     const handleWhatsAppClick = () => {
-        if (!orderDetails || !settings) return alert("Erro: Detalhes do pedido ou configurações não encontrados.");
+        if (!orderDetails || !settings) {
+            alert("Erro: Detalhes do pedido ou configurações não encontrados.");
+            return;
+        }
+        
         const whatsappNumber = settings.establishmentInfo?.contact?.whatsapp?.replace(/\D/g, '');
-        if (!whatsappNumber) return alert("O número de WhatsApp não foi configurado.");
-        const { cliente, address, tipoEntrega, items, total, formaPagamento, troco, observacoes } = orderDetails;
-        const itemsText = items.map((item: any) => `${item.quantity}x ${item.name} ${item.size ? `(${item.size})` : ''}`).join('\n');
-        const addressText = tipoEntrega === 'entrega' ? `\n*Endereço:* ${address.street}, ${address.number} - ${address.neighborhood}` : `\n*Tipo:* Retirada`;
-        const message = `*Novo Pedido*\n\n*Cliente:* ${cliente.nome}\n${addressText}\n\n*Itens:*\n${itemsText}\n\n*Pagamento:* ${formaPagamento}\n${troco ? `*Troco para:* ${troco}\n` : ''}${observacoes ? `*Observações:* ${observacoes}\n` : ''}*Total:* R$ ${total.toFixed(2)}`;
+        if (!whatsappNumber) {
+            alert("O número de WhatsApp não foi configurado no painel de configurações.");
+            return;
+        }
+
+        const { 
+            cliente, 
+            address, 
+            tipoEntrega, 
+            items, 
+            total, 
+            formaPagamento, 
+            troco, 
+            observacoes,
+            deliveryFee 
+        } = orderDetails;
+
+        // --- Construção dos Itens ---
+        const itemsText = items.map((item: any) => {
+            let itemDetails = `*${item.quantity}x ${item.name}*`;
+            if (item.size) itemDetails += ` (${item.size})`;
+            if (item.border) itemDetails += `\n  - _Borda: ${item.border}_`;
+            if (item.extras && item.extras.length > 0) itemDetails += `\n  - _Extras: ${item.extras.join(', ')}_`;
+            if (item.observation) itemDetails += `\n  - _Obs: ${item.observation}_`;
+            return itemDetails;
+        }).join('\n\n');
+
+        // --- Construção da Entrega ---
+        let deliveryText = `*Tipo:* ${tipoEntrega === 'entrega' ? 'ENTREGA' : 'RETIRADA'}`;
+        if (tipoEntrega === 'entrega' && address) {
+            deliveryText += `\n*Bairro:* ${address.neighborhood || 'Não informado'}`;
+            deliveryText += `\n*Endereço:* ${address.street}, ${address.number}`;
+            if (address.complement) deliveryText += `\n*Complemento:* ${address.complement}`;
+            if (address.referencePoint) deliveryText += `\n*Ponto de Ref.:* ${address.referencePoint}`;
+        }
+        
+        // --- Construção do Pagamento ---
+        const subtotal = total - (deliveryFee || 0);
+        let paymentText = `*Subtotal:* R$ ${subtotal.toFixed(2)}`;
+        if (deliveryFee > 0) {
+            paymentText += `\n*Taxa de Entrega:* R$ ${deliveryFee.toFixed(2)}`;
+        }
+        paymentText += `\n*TOTAL A PAGAR: R$ ${total.toFixed(2)}*`;
+        paymentText += `\n\n*Forma de Pagamento:* ${formaPagamento.toUpperCase()}`;
+        
+        if (formaPagamento === 'dinheiro' && troco) {
+            paymentText += `\n*Troco para:* R$ ${troco}`;
+        }
+
+        const pixKey = settings.establishmentInfo?.pixKey;
+        if (formaPagamento === 'pix' && pixKey) {
+            paymentText += `\n🔑 *CHAVE PIX:* ${pixKey}\n_Por favor, envie o comprovante._`;
+        }
+
+        // --- Montagem da Mensagem Final ---
+        const message = `*🍔 NOVO PEDIDO - REI DOS SALGADOS 🍔*\n\n` +
+                        `-----------------------------------\n` +
+                        `*👤 DADOS DO CLIENTE*\n` +
+                        `*Nome:* ${cliente.nome}\n` +
+                        `*Telefone:* ${cliente.telefone}\n\n` +
+                        `-----------------------------------\n` +
+                        `*🛵 DADOS DA ENTREGA*\n` +
+                        `${deliveryText}\n\n` +
+                        `-----------------------------------\n` +
+                        `*📋 ITENS DO PEDIDO*\n\n` +
+                        `${itemsText}\n\n` +
+                        `-----------------------------------\n` +
+                        `${observacoes ? `*📝 OBSERVAÇÕES GERAIS*\n_${observacoes}_\n\n-----------------------------------\n` : ''}` +
+                        `*💰 PAGAMENTO E TOTAIS*\n` +
+                        `${paymentText}`;
+
         window.open(`https://wa.me/55${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
         setShowWhatsAppModal(false);
     };
