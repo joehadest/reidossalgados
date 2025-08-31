@@ -89,7 +89,7 @@ export default function PrintOrder() {
                                     {item.nome}
                                     {item.size && <div className="item-detail">Tamanho: {item.size}</div>}
                                     {item.border && <div className="item-detail">Borda: {item.border}</div>}
-                                    {item.extras && item.extras.length > 0 && <div className="item-detail">Extras: {item.extras.join(', ')}</div>}
+                                    {item.extras && item.extras.length > 0 && <div className="item-detail">Sabores: {item.extras.join(', ')}</div>}
                                     {item.observacao && <div className="item-detail">Obs: {item.observacao}</div>}
                                 </td>
                                 <td className="right">R$ {(item.preco * item.quantidade).toFixed(2)}</td>
@@ -121,12 +121,21 @@ export default function PrintOrder() {
             </div>
             <div className="footer"><p>Obrigado pela preferência!</p></div>
             <style jsx>{`
-                .print-container { font-family: 'Courier New', monospace; width: 80mm; padding: 3mm; box-sizing: border-box; font-size: 10px; background: white; color: black; }
+                .print-container { 
+                    font-family: 'Courier New', monospace; 
+                    width: 80mm; 
+                    padding: 3mm; 
+                    box-sizing: border-box; 
+                    font-size: 10px; 
+                    background: white; 
+                    color: black; 
+                    font-weight: bold; 
+                }
                 .header, .footer, .order-info { text-align: center; } h1 { font-size: 14px; font-weight: bold; margin: 0; } h2 { font-size: 11px; font-weight: bold; margin: 5px 0; border-top: 1px dashed black; border-bottom: 1px dashed black; padding: 2px 0; }
                 h3 { font-size: 11px; font-weight: bold; margin: 8px 0 4px 0; } p { margin: 1px 0; } .divider { border-top: 1px solid black; margin: 5px 0; }
                 .divider.dashed { border-top-style: dashed; } .info-grid { display: grid; grid-template-columns: 60px 1fr; gap: 1px 5px; } .info-grid span { font-weight: bold; }
                 .info-grid p { margin: 0; word-break: break-word; } table { width: 100%; border-collapse: collapse; margin-top: 5px; } th, td { padding: 2px 0; vertical-align: top; }
-                th { text-align: left; border-bottom: 1px dashed black; } .item-detail { font-size: 9px; color: #333; padding-left: 5px; } .totals { margin-top: 10px; }
+                th { text-align: left; border-bottom: 1px dashed black; } .item-detail { font-size: 9px; color: #333; padding-left: 5px; font-weight: bold; } .totals { margin-top: 10px; }
                 .total-grid { display: grid; grid-template-columns: 1fr auto; gap: 2px; } .total-label, .total-value { font-size: 12px; margin-top: 5px; }
                 .center { text-align: center; vertical-align: middle; } .right { text-align: right; } .error { color: red; text-align: center; padding: 20px; }
             `}</style>

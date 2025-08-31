@@ -177,7 +177,7 @@ export default function MenuDisplay() {
             let itemDetails = `*${item.quantity}x ${item.name}*`;
             if (item.size) itemDetails += ` (${item.size})`;
             if (item.border) itemDetails += `\n  - _Borda: ${item.border}_`;
-            if (item.extras && item.extras.length > 0) itemDetails += `\n  - _Extras: ${item.extras.join(', ')}_`;
+            if (item.extras && item.extras.length > 0) itemDetails += `\n  - _Sabores: ${item.extras.join(', ')}_`;
             if (item.observation) itemDetails += `\n  - _Obs: ${item.observation}_`;
             return itemDetails;
         }).join('\n\n');

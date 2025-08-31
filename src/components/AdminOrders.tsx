@@ -115,10 +115,11 @@ export default function AdminOrders() {
     const addr = getAddressObject(pedidoSelecionado?.endereco);
 
     return (
-        <div className="p-1 sm:p-4">
+        <div className="p-1 sm:p-4 min-h-screen">
             <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">Painel de Pedidos</h2>
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
-                <div className="xl:col-span-1 bg-gray-800 p-2 sm:p-4 rounded-lg max-h-[80vh] overflow-y-auto border border-yellow-500/20">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                {/* Coluna da Fila de Pedidos */}
+                <div className="lg:col-span-1 bg-gray-800 p-2 sm:p-4 rounded-lg max-h-[50vh] sm:max-h-[60vh] overflow-y-auto overflow-x-hidden border border-yellow-500/20 scrollbar-thin scrollbar-thumb-yellow-500 scrollbar-track-gray-800">
                     <h3 className="text-lg font-semibold text-white mb-3 text-center sm:text-left">Fila de Pedidos</h3>
                     {pedidos.length > 0 ? pedidos.map(pedido => {
                         const status = StatusInfo[pedido.status] || StatusInfo.pendente;
@@ -138,10 +139,11 @@ export default function AdminOrders() {
                     )}) : <p className="text-gray-500 text-center">Nenhum pedido no momento.</p>}
                 </div>
 
-                <div className="xl:col-span-2 bg-gray-800 p-3 sm:p-6 rounded-lg border border-yellow-500/20">
+                {/* Coluna de Detalhes do Pedido */}
+                <div className="lg:col-span-2 bg-gray-800 p-3 sm:p-6 rounded-lg border border-yellow-500/20 max-h-[70vh] sm:max-h-[80vh] overflow-y-auto scrollbar-thin scrollbar-thumb-yellow-500 scrollbar-track-gray-800">
                     <AnimatePresence>
                         {pedidoSelecionado ? (
-                            <motion.div key={pedidoSelecionado._id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="max-h-[80vh] overflow-y-auto">
+                            <motion.div key={pedidoSelecionado._id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                                 <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                                     <h3 className="text-lg sm:text-xl font-bold text-white">Detalhes do Pedido #{pedidoSelecionado._id.slice(-6)}</h3>
                                     <div className="flex gap-2 self-end sm:self-center">
@@ -152,13 +154,15 @@ export default function AdminOrders() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Informações do Cliente */}
                                     <div className="bg-gray-900/50 p-4 rounded-lg">
                                         <h4 className="font-semibold text-white mb-3 flex items-center gap-2"><FaUser className="text-yellow-500" /> Cliente</h4>
                                         <p className="text-white"><strong>Nome:</strong> {pedidoSelecionado.cliente.nome}</p>
                                         <p className="text-gray-300"><strong>Telefone:</strong> {pedidoSelecionado.cliente.telefone}</p>
                                     </div>
 
+                                    {/* Informações de Entrega */}
                                     <div className="bg-gray-900/50 p-4 rounded-lg">
                                         <h4 className="font-semibold text-white mb-3 flex items-center gap-2"><FaMapMarkerAlt className="text-yellow-500" /> Entrega</h4>
                                         <p className="text-white"><strong>Tipo:</strong> {pedidoSelecionado.tipoEntrega === 'entrega' ? 'Entrega' : 'Retirada'}</p>
@@ -171,6 +175,7 @@ export default function AdminOrders() {
                                         )}
                                     </div>
 
+                                    {/* Informações de Pagamento */}
                                     <div className="bg-gray-900/50 p-4 rounded-lg">
                                         <h4 className="font-semibold text-white mb-3 flex items-center gap-2"><FaMoneyBillWave className="text-yellow-500" /> Pagamento</h4>
                                         <p className="text-white"><strong>Forma:</strong> {pedidoSelecionado.formaPagamento}</p>
@@ -178,6 +183,7 @@ export default function AdminOrders() {
                                         <p className="font-bold text-xl text-yellow-400 mt-2">Total: R$ {pedidoSelecionado.total.toFixed(2)}</p>
                                     </div>
                                     
+                                    {/* Observações */}
                                     {pedidoSelecionado.observacoes && (
                                         <div className="bg-gray-900/50 p-4 rounded-lg">
                                             <h4 className="font-semibold text-white mb-3 flex items-center gap-2"><FaStickyNote className="text-yellow-500" /> Observações</h4>
@@ -186,14 +192,15 @@ export default function AdminOrders() {
                                     )}
                                 </div>
                                 
-                                <div className="bg-gray-900/50 p-4 rounded-lg mt-4">
+                                {/* Itens do Pedido */}
+                                <div className="bg-gray-900/50 p-4 rounded-lg">
                                     <h4 className="font-semibold text-white mb-3 flex items-center gap-2"><FaBoxOpen className="text-yellow-500" /> Itens do Pedido</h4>
-                                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    <div className="space-y-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-yellow-500 scrollbar-track-gray-800">
                                         {pedidoSelecionado.itens.map((item, index) => (
                                             <div key={index} className="bg-gray-800 p-2 rounded-md text-sm">
                                                 <p className="font-bold text-white">{item.quantidade}x {item.nome}</p>
                                                 <div className="text-xs text-gray-400 mt-1">
-                                                    {item.extras && item.extras.length > 0 && <p>Extras: {item.extras.join(', ')}</p>}
+                                                    {item.extras && item.extras.length > 0 && <p>Sabores: {item.extras.join(', ')}</p>}
                                                     {item.observacao && <p>Obs: {item.observacao}</p>}
                                                 </div>
                                             </div>
@@ -201,7 +208,8 @@ export default function AdminOrders() {
                                     </div>
                                 </div>
 
-                                <div className="mt-6 flex flex-col sm:flex-row justify-end items-center gap-2">
+                                {/* Ações do Pedido */}
+                                <div className="flex flex-col sm:flex-row justify-end items-center gap-2">
                                     <span className="text-gray-400 text-sm">Status Atual: <strong className="text-white">{StatusInfo[pedidoSelecionado.status].text}</strong></span>
                                     {getNextStatus(pedidoSelecionado.status) && (
                                         <button onClick={() => updateOrderStatus(pedidoSelecionado._id, getNextStatus(pedidoSelecionado.status)!)} disabled={updatingStatus === pedidoSelecionado._id} className="w-full sm:w-auto bg-yellow-500 text-black font-bold py-2 px-4 rounded hover:bg-yellow-600 disabled:opacity-50">
@@ -216,7 +224,7 @@ export default function AdminOrders() {
                                 </div>
                             </motion.div>
                         ) : (
-                           <div className="text-center text-gray-500 h-full flex flex-col items-center justify-center">
+                           <div className="text-center text-gray-500 h-full flex flex-col items-center justify-center py-8">
                                 <FaClock size={40} className="mb-4" />
                                 <p>Selecione um pedido na fila para ver os detalhes.</p>
                            </div>
