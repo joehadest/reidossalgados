@@ -1,12 +1,12 @@
 // src/components/AdminOrders.tsx
 
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     FaTrash, FaUser, FaMapMarkerAlt, FaMoneyBillWave, 
     FaStickyNote, FaBoxOpen, FaClock, FaUtensils, FaMotorcycle, 
-    FaCheckCircle, FaTimesCircle, FaShoppingBag 
+    FaCheckCircle, FaTimesCircle, FaShoppingBag, FaBell, FaTimes 
 } from 'react-icons/fa';
 import PrintButton from './PrintButton';
 import { Pedido, Address } from '../types/cart';
@@ -21,24 +21,93 @@ export default function AdminOrders() {
     const [deletingOrder, setDeletingOrder] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [orderToDelete, setOrderToDelete] = useState<Pedido | null>(null);
+    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+    const [previousPedidos, setPreviousPedidos] = useState<Pedido[]>([]);
+    // Ref para sempre ter acesso à lista anterior dentro do setInterval (evita closure desatualizada)
+    const previousPedidosRef = useRef<Pedido[]>([]);
+    const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+    const [showNotification, setShowNotification] = useState(false);
+    const [newPedido, setNewPedido] = useState<Pedido | null>(null);
+
+    const playSound = () => {
+        if (!notificationsEnabled) {
+            console.log('Som não tocado: notificações desabilitadas');
+            return;
+        }
+        console.log('Tocando som de notificação');
+        const audio = new Audio('/sound/bell-notification-337658.mp3');
+        audio.loop = true;
+        audio.play().catch(err => console.error('Erro ao tocar som:', err));
+        setCurrentAudio(audio);
+    };
+
+    const stopSound = () => {
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+            setCurrentAudio(null);
+        }
+    };
+
+    const closeNotification = () => {
+        setShowNotification(false);
+        setNewPedido(null);
+        stopSound();
+    };
 
     const fetchPedidos = async () => {
         try {
-            const res = await fetch('/api/pedidos');
+            const res = await fetch('/api/pedidos', { cache: 'no-store' });
             const data = await res.json();
-            if (data.success) {
-                const sortedPedidos = data.data.sort((a: Pedido, b: Pedido) => new Date(b.data).getTime() - new Date(a.data).getTime());
-                setPedidos(sortedPedidos);
+            if (!data.success) return;
+
+            const sortedPedidos: Pedido[] = data.data.sort((a: Pedido, b: Pedido) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+            // Conjunto de IDs anteriores (sempre atualizado via ref)
+            const prevList = previousPedidosRef.current;
+            const prevIds = new Set(prevList.map(p => p._id));
+            const novos = sortedPedidos.filter(p => !prevIds.has(p._id));
+
+            console.log('[Pedidos] Fetch:', {
+                qtdNovaResposta: sortedPedidos.length,
+                qtdAnterior: prevList.length,
+                novosDetectados: novos.map(n => n._id),
+                notificacoesAtivas: notificationsEnabled,
+                loadingInicial: loading
+            });
+
+            if (notificationsEnabled && prevList.length > 0 && novos.length > 0) {
+                // Pega o mais recente entre os novos (já estão ordenados por data)
+                const novoPedido = novos[0];
+                console.log('🚨 NOVO PEDIDO DETECTADO:', novoPedido);
+                setNewPedido(novoPedido);
+                setShowNotification(true);
+                playSound();
             }
-        } catch (error) { console.error("Erro ao buscar pedidos:", error); }
-        finally { setLoading(false); }
+
+            setPedidos(sortedPedidos);
+            setPreviousPedidos(sortedPedidos);
+        } catch (error) {
+            console.error('Erro ao buscar pedidos:', error);
+        } finally {
+            if (loading) setLoading(false);
+        }
     };
+
+    // Mantém o ref sincronizado com o estado sempre que previousPedidos mudar
+    useEffect(() => {
+        previousPedidosRef.current = previousPedidos;
+    }, [previousPedidos]);
 
     useEffect(() => {
         fetchPedidos();
-        const interval = setInterval(fetchPedidos, 15000);
+        const interval = setInterval(() => {
+            fetchPedidos();
+        }, 10000); // 10s para um pouco mais de responsividade
         return () => clearInterval(interval);
-    }, []);
+        // fetchPedidos não entra nas deps para não recriar loop; usamos ref para dados atuais
+        // notificationsEnabled entra para evitar notificação se o usuário desativar no meio
+    }, [notificationsEnabled]);
 
     const updateOrderStatus = async (orderId: string, newStatus: PedidoStatus) => {
         setUpdatingStatus(orderId);
@@ -84,6 +153,11 @@ export default function AdminOrders() {
         setShowDeleteConfirm(true);
     };
 
+    const handlePedidoClick = (pedido: Pedido) => {
+        setPedidoSelecionado(pedido);
+        stopSound(); // Parar som ao visualizar pedido
+    };
+
     const StatusInfo: Record<PedidoStatus, { text: string; color: string; icon: React.ElementType }> = {
         pendente: { text: 'Pendente', color: 'bg-yellow-500', icon: FaClock },
         preparando: { text: 'Preparando', color: 'bg-blue-500', icon: FaUtensils },
@@ -114,9 +188,99 @@ export default function AdminOrders() {
     
     const addr = getAddressObject(pedidoSelecionado?.endereco);
 
+    const handleNotificationsToggle = () => {
+        const newState = !notificationsEnabled;
+        setNotificationsEnabled(newState);
+        if (!newState) {
+            stopSound();
+            setShowNotification(false);
+            setNewPedido(null);
+        }
+    };
+
+    const viewPedido = (pedido: Pedido) => {
+        setPedidoSelecionado(pedido);
+        closeNotification();
+    };
+
+    // (Removido: função de teste de notificação)
+
     return (
         <div className="p-1 sm:p-4 min-h-screen">
-            <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">Painel de Pedidos</h2>
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl sm:text-2xl font-bold text-white">Painel de Pedidos</h2>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={handleNotificationsToggle} 
+                        className={`p-2 rounded-full ${notificationsEnabled ? 'bg-yellow-500 text-black' : 'bg-gray-600 text-white'} hover:bg-yellow-600 transition-colors`}
+                        title={notificationsEnabled ? 'Desativar notificações' : 'Ativar notificações'}
+                    >
+                        <FaBell />
+                    </button>
+                </div>
+            </div>
+
+            {/* Card de Notificação Flutuante */}
+            <AnimatePresence>
+                {showNotification && newPedido && (() => {
+                    const itemCount = newPedido.itens.reduce((acc, it) => acc + it.quantidade, 0);
+                    const minutos = Math.max(0, Math.floor((Date.now() - new Date(newPedido.data).getTime()) / 60000));
+                    return (
+                        <motion.div
+                            initial={{ opacity: 0, y: -40, x: '-50%' }}
+                            animate={{ opacity: 1, y: 0, x: '-50%' }}
+                            exit={{ opacity: 0, y: -40, x: '-50%' }}
+                            role="alert"
+                            aria-live="assertive"
+                            className="fixed top-4 left-1/2 z-50 max-w-sm w-full mx-4"
+                        >
+                <div className="relative overflow-hidden rounded-xl shadow-xl ring-2 ring-yellow-500/40 bg-gray-900 text-white">
+                <div className="p-4 relative flex gap-3">
+                                    <div className="flex flex-col items-center">
+                    <div className="w-10 h-10 rounded-full bg-yellow-500/20 border border-yellow-400/30 flex items-center justify-center text-xl animate-bounce">🔔</div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                    <h3 className="font-extrabold text-base tracking-tight text-yellow-300 drop-shadow-sm">Novo Pedido Recebido</h3>
+                    <p className="text-sm mt-1 font-semibold truncate text-white">#{newPedido._id.slice(-6)} · {newPedido.cliente.nome}</p>
+                    <p className="text-xs mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-gray-300">
+                                            <span>{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
+                                            <span>• {newPedido.formaPagamento}</span>
+                                            <span>• {newPedido.tipoEntrega === 'entrega' ? 'Entrega' : 'Retirada'}</span>
+                                            <span>• há {minutos} min</span>
+                                        </p>
+                    <p className="text-sm font-bold mt-2 text-gray-200">Total: <span className="text-yellow-300">R$ {newPedido.total.toFixed(2)}</span></p>
+                                        <div className="mt-3 flex gap-2">
+                                            <button
+                                                onClick={() => viewPedido(newPedido)}
+                        className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-extrabold py-2 px-3 rounded-lg text-xs tracking-wide transition-colors shadow focus:outline-none focus:ring-2 focus:ring-yellow-300/80 focus:ring-offset-2 focus:ring-offset-gray-900"
+                                            >
+                                                Ver Detalhes
+                                            </button>
+                                            <button
+                                                onClick={closeNotification}
+                        className="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-semibold text-xs transition-colors shadow focus:outline-none focus:ring-2 focus:ring-yellow-300/60 focus:ring-offset-2 focus:ring-offset-gray-900"
+                                            >
+                                                Fechar
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={closeNotification}
+                    className="absolute top-2 right-2 p-1 rounded-md bg-gray-700/70 hover:bg-gray-600 text-yellow-300 hover:text-white transition-colors shadow focus:outline-none focus:ring-2 focus:ring-yellow-400/70"
+                                        aria-label="Fechar notificação"
+                                    >
+                                        <FaTimes />
+                                    </button>
+                                </div>
+                <div className="h-1 w-full bg-gray-700">
+                    <div className="h-full bg-yellow-400 animate-[shrink_12s_linear_forwards] origin-left" />
+                                </div>
+                            </div>
+                        </motion.div>
+                    );
+                })()}
+            </AnimatePresence>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Coluna da Fila de Pedidos */}
                 <div className="lg:col-span-1 bg-gray-800 p-2 sm:p-4 rounded-lg max-h-[50vh] sm:max-h-[60vh] overflow-y-auto overflow-x-hidden border border-yellow-500/20 scrollbar-thin scrollbar-thumb-yellow-500 scrollbar-track-gray-800">
@@ -124,7 +288,7 @@ export default function AdminOrders() {
                     {pedidos.length > 0 ? pedidos.map(pedido => {
                         const status = StatusInfo[pedido.status] || StatusInfo.pendente;
                         return (
-                        <div key={pedido._id} onClick={() => setPedidoSelecionado(pedido)} className={`p-3 rounded-lg mb-2 transition-all duration-200 cursor-pointer ${pedidoSelecionado?._id === pedido._id ? 'bg-yellow-500/20 border-l-4 border-yellow-500' : 'bg-gray-900/50 hover:bg-gray-700/80'}`}>
+                        <div key={pedido._id} onClick={() => handlePedidoClick(pedido)} className={`p-3 rounded-lg mb-2 transition-all duration-200 cursor-pointer ${pedidoSelecionado?._id === pedido._id ? 'bg-yellow-500/20 border-l-4 border-yellow-500' : 'bg-gray-900/50 hover:bg-gray-700/80'}`}>
                             <div className="flex justify-between items-start">
                                 <div className="flex-1">
                                     <p className="font-bold text-white truncate">#{pedido._id.slice(-6)} - {pedido.cliente.nome}</p>
