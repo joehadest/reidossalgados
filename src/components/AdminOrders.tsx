@@ -1,12 +1,12 @@
 // src/components/AdminOrders.tsx
 
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    FaTrash, FaUser, FaMapMarkerAlt, FaMoneyBillWave, 
-    FaStickyNote, FaBoxOpen, FaClock, FaUtensils, FaMotorcycle, 
-    FaCheckCircle, FaTimesCircle, FaShoppingBag, FaBell, FaTimes 
+import {
+    FaTrash, FaUser, FaMapMarkerAlt, FaMoneyBillWave,
+    FaStickyNote, FaBoxOpen, FaClock, FaUtensils, FaMotorcycle,
+    FaCheckCircle, FaTimesCircle, FaShoppingBag, FaBell, FaTimes
 } from 'react-icons/fa';
 import PrintButton from './PrintButton';
 import { Pedido, Address } from '../types/cart';
@@ -121,13 +121,13 @@ export default function AdminOrders() {
             if (data.success) {
                 await fetchPedidos();
                 if (pedidoSelecionado?._id === orderId) {
-                   setPedidoSelecionado(prev => prev ? { ...prev, status: newStatus } : null);
+                    setPedidoSelecionado(prev => prev ? { ...prev, status: newStatus } : null);
                 }
             }
         } catch (err) { console.error('Erro ao atualizar status:', err); }
         finally { setUpdatingStatus(null); }
     };
-    
+
     const deleteOrder = async (orderId: string) => {
         setDeletingOrder(orderId);
         try {
@@ -141,7 +141,7 @@ export default function AdminOrders() {
             } else {
                 alert('Erro ao deletar pedido: ' + (data.message || 'Erro desconhecido'));
             }
-        } catch (err) { 
+        } catch (err) {
             console.error('Erro ao deletar pedido:', err);
             alert('Erro ao deletar pedido. Tente novamente.');
         }
@@ -175,8 +175,37 @@ export default function AdminOrders() {
         }
         return null;
     };
-    
+
     const formatDate = (dateString: string) => new Date(dateString).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    // Calcular estatísticas do dia usando useMemo para otimização
+    const estatisticasDoDia = useMemo(() => {
+        const hoje = new Date();
+        const hojeString = hoje.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+
+        const pedidosDoDia = pedidos.filter(pedido => {
+            const pedidoData = new Date(pedido.data).toISOString().split('T')[0];
+            return pedidoData === hojeString;
+        });
+
+        const pedidosEntregues = pedidosDoDia.filter(p => p.status === 'entregue');
+        const pedidosPendentes = pedidosDoDia.filter(p => p.status === 'pendente');
+        const pedidosEmAndamento = pedidosDoDia.filter(p => ['preparando', 'pronto', 'em_entrega'].includes(p.status));
+        const pedidosCancelados = pedidosDoDia.filter(p => p.status === 'cancelado');
+
+        const lucroDoDia = pedidosEntregues.reduce((total, pedido) => total + pedido.total, 0);
+
+        return {
+            totalPedidos: pedidosDoDia.length,
+            pedidosEntregues: pedidosEntregues.length,
+            pedidosPendentes: pedidosPendentes.length,
+            pedidosEmAndamento: pedidosEmAndamento.length,
+            pedidosCancelados: pedidosCancelados.length,
+            lucroDoDia
+        };
+    }, [pedidos]);
+
+    const { totalPedidos, pedidosEntregues, pedidosPendentes, pedidosEmAndamento, pedidosCancelados, lucroDoDia } = estatisticasDoDia;
 
     const getAddressObject = (endereco: any): Address | null => {
         if (!endereco) return null;
@@ -185,7 +214,7 @@ export default function AdminOrders() {
     };
 
     if (loading) return <div className="text-center py-8 text-white">Carregando pedidos...</div>;
-    
+
     const addr = getAddressObject(pedidoSelecionado?.endereco);
 
     const handleNotificationsToggle = () => {
@@ -210,13 +239,72 @@ export default function AdminOrders() {
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl sm:text-2xl font-bold text-white">Painel de Pedidos</h2>
                 <div className="flex gap-2">
-                    <button 
-                        onClick={handleNotificationsToggle} 
+                    <button
+                        onClick={handleNotificationsToggle}
                         className={`p-2 rounded-full ${notificationsEnabled ? 'bg-yellow-500 text-black' : 'bg-gray-600 text-white'} hover:bg-yellow-600 transition-colors`}
                         title={notificationsEnabled ? 'Desativar notificações' : 'Ativar notificações'}
                     >
                         <FaBell />
                     </button>
+                </div>
+            </div>
+
+            {/* Card do Lucro do Dia */}
+            <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-lg p-4 mb-4 border border-green-500/30">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <FaMoneyBillWave className="text-white text-2xl" />
+                        <div>
+                            <h3 className="text-lg font-bold text-white">Lucro do Dia</h3>
+                            <p className="text-green-100 text-sm">Pedidos entregues hoje</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-2xl font-bold text-white">R$ {lucroDoDia.toFixed(2).replace('.', ',')}</p>
+                        <p className="text-green-100 text-xs">
+                            {pedidosEntregues} de {totalPedidos} pedidos entregues
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Card de Estatísticas do Dia */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-3 border border-blue-500/30">
+                    <div className="flex items-center gap-2">
+                        <FaClock className="text-white text-lg" />
+                        <div>
+                            <p className="text-blue-100 text-xs">Pendentes</p>
+                            <p className="text-white font-bold text-lg">{pedidosPendentes}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-gradient-to-r from-yellow-600 to-yellow-700 rounded-lg p-3 border border-yellow-500/30">
+                    <div className="flex items-center gap-2">
+                        <FaUtensils className="text-white text-lg" />
+                        <div>
+                            <p className="text-yellow-100 text-xs">Em Andamento</p>
+                            <p className="text-white font-bold text-lg">{pedidosEmAndamento}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-lg p-3 border border-green-500/30">
+                    <div className="flex items-center gap-2">
+                        <FaCheckCircle className="text-white text-lg" />
+                        <div>
+                            <p className="text-green-100 text-xs">Entregues</p>
+                            <p className="text-white font-bold text-lg">{pedidosEntregues}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-lg p-3 border border-red-500/30">
+                    <div className="flex items-center gap-2">
+                        <FaTimesCircle className="text-white text-lg" />
+                        <div>
+                            <p className="text-red-100 text-xs">Cancelados</p>
+                            <p className="text-white font-bold text-lg">{pedidosCancelados}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -234,31 +322,31 @@ export default function AdminOrders() {
                             aria-live="assertive"
                             className="fixed top-4 left-1/2 z-50 max-w-sm w-full mx-4"
                         >
-                <div className="relative overflow-hidden rounded-xl shadow-xl ring-2 ring-yellow-500/40 bg-gray-900 text-white">
-                <div className="p-4 relative flex gap-3">
+                            <div className="relative overflow-hidden rounded-xl shadow-xl ring-2 ring-yellow-500/40 bg-gray-900 text-white">
+                                <div className="p-4 relative flex gap-3">
                                     <div className="flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-full bg-yellow-500/20 border border-yellow-400/30 flex items-center justify-center text-xl animate-bounce">🔔</div>
+                                        <div className="w-10 h-10 rounded-full bg-yellow-500/20 border border-yellow-400/30 flex items-center justify-center text-xl animate-bounce">🔔</div>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                    <h3 className="font-extrabold text-base tracking-tight text-yellow-300 drop-shadow-sm">Novo Pedido Recebido</h3>
-                    <p className="text-sm mt-1 font-semibold truncate text-white">#{newPedido._id.slice(-6)} · {newPedido.cliente.nome}</p>
-                    <p className="text-xs mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-gray-300">
+                                        <h3 className="font-extrabold text-base tracking-tight text-yellow-300 drop-shadow-sm">Novo Pedido Recebido</h3>
+                                        <p className="text-sm mt-1 font-semibold truncate text-white">#{newPedido._id.slice(-6)} · {newPedido.cliente.nome}</p>
+                                        <p className="text-xs mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-gray-300">
                                             <span>{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
                                             <span>• {newPedido.formaPagamento}</span>
                                             <span>• {newPedido.tipoEntrega === 'entrega' ? 'Entrega' : 'Retirada'}</span>
                                             <span>• há {minutos} min</span>
                                         </p>
-                    <p className="text-sm font-bold mt-2 text-gray-200">Total: <span className="text-yellow-300">R$ {newPedido.total.toFixed(2)}</span></p>
+                                        <p className="text-sm font-bold mt-2 text-gray-200">Total: <span className="text-yellow-300">R$ {newPedido.total.toFixed(2)}</span></p>
                                         <div className="mt-3 flex gap-2">
                                             <button
                                                 onClick={() => viewPedido(newPedido)}
-                        className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-extrabold py-2 px-3 rounded-lg text-xs tracking-wide transition-colors shadow focus:outline-none focus:ring-2 focus:ring-yellow-300/80 focus:ring-offset-2 focus:ring-offset-gray-900"
+                                                className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-extrabold py-2 px-3 rounded-lg text-xs tracking-wide transition-colors shadow focus:outline-none focus:ring-2 focus:ring-yellow-300/80 focus:ring-offset-2 focus:ring-offset-gray-900"
                                             >
                                                 Ver Detalhes
                                             </button>
                                             <button
                                                 onClick={closeNotification}
-                        className="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-semibold text-xs transition-colors shadow focus:outline-none focus:ring-2 focus:ring-yellow-300/60 focus:ring-offset-2 focus:ring-offset-gray-900"
+                                                className="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-semibold text-xs transition-colors shadow focus:outline-none focus:ring-2 focus:ring-yellow-300/60 focus:ring-offset-2 focus:ring-offset-gray-900"
                                             >
                                                 Fechar
                                             </button>
@@ -266,14 +354,14 @@ export default function AdminOrders() {
                                     </div>
                                     <button
                                         onClick={closeNotification}
-                    className="absolute top-2 right-2 p-1 rounded-md bg-gray-700/70 hover:bg-gray-600 text-yellow-300 hover:text-white transition-colors shadow focus:outline-none focus:ring-2 focus:ring-yellow-400/70"
+                                        className="absolute top-2 right-2 p-1 rounded-md bg-gray-700/70 hover:bg-gray-600 text-yellow-300 hover:text-white transition-colors shadow focus:outline-none focus:ring-2 focus:ring-yellow-400/70"
                                         aria-label="Fechar notificação"
                                     >
                                         <FaTimes />
                                     </button>
                                 </div>
-                <div className="h-1 w-full bg-gray-700">
-                    <div className="h-full bg-yellow-400 animate-[shrink_12s_linear_forwards] origin-left" />
+                                <div className="h-1 w-full bg-gray-700">
+                                    <div className="h-full bg-yellow-400 animate-[shrink_12s_linear_forwards] origin-left" />
                                 </div>
                             </div>
                         </motion.div>
@@ -288,19 +376,20 @@ export default function AdminOrders() {
                     {pedidos.length > 0 ? pedidos.map(pedido => {
                         const status = StatusInfo[pedido.status] || StatusInfo.pendente;
                         return (
-                        <div key={pedido._id} onClick={() => handlePedidoClick(pedido)} className={`p-3 rounded-lg mb-2 transition-all duration-200 cursor-pointer ${pedidoSelecionado?._id === pedido._id ? 'bg-yellow-500/20 border-l-4 border-yellow-500' : 'bg-gray-900/50 hover:bg-gray-700/80'}`}>
-                            <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                    <p className="font-bold text-white truncate">#{pedido._id.slice(-6)} - {pedido.cliente.nome}</p>
-                                    <p className="text-xs text-gray-400">{formatDate(pedido.data)}</p>
-                                </div>
-                                <div className={`text-xs px-2 py-1 rounded-full text-white font-semibold flex items-center gap-1 ${status.color}`}>
-                                    <status.icon />
-                                    <span>{status.text}</span>
+                            <div key={pedido._id} onClick={() => handlePedidoClick(pedido)} className={`p-3 rounded-lg mb-2 transition-all duration-200 cursor-pointer ${pedidoSelecionado?._id === pedido._id ? 'bg-yellow-500/20 border-l-4 border-yellow-500' : 'bg-gray-900/50 hover:bg-gray-700/80'}`}>
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                        <p className="font-bold text-white truncate">#{pedido._id.slice(-6)} - {pedido.cliente.nome}</p>
+                                        <p className="text-xs text-gray-400">{formatDate(pedido.data)}</p>
+                                    </div>
+                                    <div className={`text-xs px-2 py-1 rounded-full text-white font-semibold flex items-center gap-1 ${status.color}`}>
+                                        <status.icon />
+                                        <span>{status.text}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}) : <p className="text-gray-500 text-center">Nenhum pedido no momento.</p>}
+                        )
+                    }) : <p className="text-gray-500 text-center">Nenhum pedido no momento.</p>}
                 </div>
 
                 {/* Coluna de Detalhes do Pedido */}
@@ -346,7 +435,7 @@ export default function AdminOrders() {
                                         {pedidoSelecionado.troco && <p className="text-gray-300"><strong>Troco para:</strong> R$ {pedidoSelecionado.troco}</p>}
                                         <p className="font-bold text-xl text-yellow-400 mt-2">Total: R$ {pedidoSelecionado.total.toFixed(2)}</p>
                                     </div>
-                                    
+
                                     {/* Observações */}
                                     {pedidoSelecionado.observacoes && (
                                         <div className="bg-gray-900/50 p-4 rounded-lg">
@@ -355,7 +444,7 @@ export default function AdminOrders() {
                                         </div>
                                     )}
                                 </div>
-                                
+
                                 {/* Itens do Pedido */}
                                 <div className="bg-gray-900/50 p-4 rounded-lg">
                                     <h4 className="font-semibold text-white mb-3 flex items-center gap-2"><FaBoxOpen className="text-yellow-500" /> Itens do Pedido</h4>
@@ -388,10 +477,10 @@ export default function AdminOrders() {
                                 </div>
                             </motion.div>
                         ) : (
-                           <div className="text-center text-gray-500 h-full flex flex-col items-center justify-center py-8">
+                            <div className="text-center text-gray-500 h-full flex flex-col items-center justify-center py-8">
                                 <FaClock size={40} className="mb-4" />
                                 <p>Selecione um pedido na fila para ver os detalhes.</p>
-                           </div>
+                            </div>
                         )}
                     </AnimatePresence>
                 </div>
