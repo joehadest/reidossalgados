@@ -29,6 +29,9 @@ export default function AdminOrders() {
     const [showNotification, setShowNotification] = useState(false);
     const [newPedido, setNewPedido] = useState<Pedido | null>(null);
 
+    // Ref para o container dos detalhes do pedido (para scroll automático)
+    const detalhesPedidoRef = useRef<HTMLDivElement>(null);
+
     const playSound = () => {
         if (!notificationsEnabled) {
             console.log('Som não tocado: notificações desabilitadas');
@@ -156,6 +159,21 @@ export default function AdminOrders() {
     const handlePedidoClick = (pedido: Pedido) => {
         setPedidoSelecionado(pedido);
         stopSound(); // Parar som ao visualizar pedido
+
+        // Scroll automático para os detalhes do pedido (útil em mobile)
+        setTimeout(() => {
+            if (detalhesPedidoRef.current) {
+                const element = detalhesPedidoRef.current;
+                const headerOffset = 100; // Offset para compensar o header fixo
+                const elementPosition = element.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            }
+        }, 100); // Pequeno delay para garantir que o componente seja renderizado
     };
 
     const StatusInfo: Record<PedidoStatus, { text: string; color: string; icon: React.ElementType }> = {
@@ -393,7 +411,7 @@ export default function AdminOrders() {
                 </div>
 
                 {/* Coluna de Detalhes do Pedido */}
-                <div className="lg:col-span-2 bg-gray-800 p-3 sm:p-6 rounded-lg border border-yellow-500/20 max-h-[70vh] sm:max-h-[80vh] overflow-y-auto scrollbar-thin scrollbar-thumb-yellow-500 scrollbar-track-gray-800">
+                <div ref={detalhesPedidoRef} className="lg:col-span-2 bg-gray-800 p-3 sm:p-6 rounded-lg border border-yellow-500/20 max-h-[70vh] sm:max-h-[80vh] overflow-y-auto scrollbar-thin scrollbar-thumb-yellow-500 scrollbar-track-gray-800">
                     <AnimatePresence>
                         {pedidoSelecionado ? (
                             <motion.div key={pedidoSelecionado._id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
