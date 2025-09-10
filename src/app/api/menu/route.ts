@@ -53,12 +53,11 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
     try {
-        const { searchParams } = new URL(request.url);
-        const id = searchParams.get('id');
-        const updates = await request.json();
+        const data = await request.json();
+        const { _id, ...updates } = data;
 
-        if (!id) {
-        return NextResponse.json(
+        if (!_id) {
+            return NextResponse.json(
                 { success: false, message: 'ID do item não fornecido' },
                 { status: 400 }
             );
@@ -68,7 +67,7 @@ export async function PUT(request: Request) {
         const collection = db.collection('menu');
 
         const result = await collection.updateOne(
-            { _id: new ObjectId(id) },
+            { _id: new ObjectId(_id) },
             { $set: updates }
         );
 
@@ -76,7 +75,7 @@ export async function PUT(request: Request) {
             return NextResponse.json(
                 { success: false, message: 'Item não encontrado' },
                 { status: 404 }
-        );
+            );
         }
 
         return NextResponse.json({ success: true });
@@ -91,10 +90,9 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
     try {
-        const { searchParams } = new URL(request.url);
-        const id = searchParams.get('id');
+        const { _id } = await request.json();
 
-        if (!id) {
+        if (!_id) {
             return NextResponse.json(
                 { success: false, message: 'ID do item não fornecido' },
                 { status: 400 }
@@ -104,13 +102,13 @@ export async function DELETE(request: Request) {
         const { db } = await connectToDatabase();
         const collection = db.collection('menu');
 
-        const result = await collection.deleteOne({ _id: new ObjectId(id) });
+        const result = await collection.deleteOne({ _id: new ObjectId(_id) });
 
         if (result.deletedCount === 0) {
-        return NextResponse.json(
+            return NextResponse.json(
                 { success: false, message: 'Item não encontrado' },
                 { status: 404 }
-        );
+            );
         }
 
         return NextResponse.json({ success: true });

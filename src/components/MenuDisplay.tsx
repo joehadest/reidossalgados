@@ -41,12 +41,15 @@ const OptimizedMenuItem = React.memo(({ item, onClick }: { item: MenuItem; onCli
             )}
         </div>
         <div className="p-4">
-            <h3 className="font-bold text-white text-lg mb-1 truncate">{item.name}</h3>
+            <h3 className="font-bold text-white text-lg mb-1 line-clamp-2">{item.name || 'Nome não disponível'}</h3>
             {item.description && <p className="text-gray-400 text-sm mb-2 line-clamp-2">{item.description}</p>}
             <div className="flex justify-between items-center mt-3">
-                <span className="text-yellow-500 font-bold text-lg">
-                    R$ {(item.price || 0).toFixed(2).replace('.', ',')}
-                </span>
+                <div className="text-yellow-500 font-bold text-lg whitespace-nowrap shrink-0 min-w-0">
+                    R$ {(() => {
+                        const price = parseFloat(String(item.price || 0));
+                        return price.toFixed(2).replace('.', ',');
+                    })()}
+                </div>
             </div>
         </div>
     </motion.div>
@@ -81,7 +84,16 @@ export default function MenuDisplay() {
                 const menuData = await menuRes.json();
                 const catData = await catRes.json();
                 const settingsData = await settingsRes.json();
-                if (menuData.success) setMenuItems(menuData.data);
+                
+                if (menuData.success) {
+                    // Filtrar itens com dados válidos
+                    const validItems = menuData.data.filter((item: any) => 
+                        item.name && 
+                        typeof item.price === 'number' && 
+                        !isNaN(item.price)
+                    );
+                    setMenuItems(validItems);
+                }
                 if (catData.success && catData.data.length > 0) {
                     const sorted = catData.data.sort((a: any, b: any) => (a.orderIndex || 0) - (b.orderIndex || 0));
                     setCategories(sorted);
@@ -131,7 +143,19 @@ export default function MenuDisplay() {
     };
     
     const isSearching = useMemo(() => searchQuery.trim().length > 0, [searchQuery]);
-    const itemsByCategory = useMemo(() => menuItems.reduce((acc, item) => { const catId = item.category.toString(); if (!acc[catId]) acc[catId] = []; acc[catId].push(item); return acc; }, {} as Record<string, MenuItem[]>), [menuItems]);
+    const itemsByCategory = useMemo(() => {
+        // Remover duplicatas baseado no nome do item
+        const uniqueItems = menuItems.filter((item, index, self) => 
+            index === self.findIndex(i => i.name === item.name)
+        );
+        
+        return uniqueItems.reduce((acc, item) => { 
+            const catId = item.category.toString(); 
+            if (!acc[catId]) acc[catId] = []; 
+            acc[catId].push(item); 
+            return acc; 
+        }, {} as Record<string, MenuItem[]>);
+    }, [menuItems]);
     const filteredItemsByCategory = useMemo(() => { if (!isSearching) return itemsByCategory; const q = searchQuery.trim().toLowerCase(); const filtered: Record<string, MenuItem[]> = {}; Object.keys(itemsByCategory).forEach(catId => { const matches = itemsByCategory[catId].filter(it => it.name?.toLowerCase().includes(q) || it.description?.toLowerCase().includes(q)); if (matches.length > 0) filtered[catId] = matches; }); return filtered; }, [isSearching, searchQuery, itemsByCategory]);
     const displayCategories = useMemo(() => { const source = isSearching ? filteredItemsByCategory : itemsByCategory; return categories.filter(cat => source[cat._id] && source[cat._id].length > 0); }, [categories, itemsByCategory, filteredItemsByCategory, isSearching]);
     
@@ -249,7 +273,7 @@ export default function MenuDisplay() {
                                     <h2 className="text-2xl font-bold text-white mb-4 border-l-4 border-yellow-500 pl-3">{cat.name}</h2>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                         {items.map(item => (
-                                            <OptimizedMenuItem key={item._id} item={item} onClick={handleItemClick} />
+                                            <OptimizedMenuItem key={item._id || item.name} item={item} onClick={handleItemClick} />
                                         ))}
                                     </div>
                                 </section>

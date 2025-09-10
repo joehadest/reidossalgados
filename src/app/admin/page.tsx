@@ -4,13 +4,14 @@ import AdminOrders from '@/components/AdminOrders';
 import AdminSettings from '@/components/AdminSettings';
 import AdminAddItem from '@/components/AdminAddItem';
 import AdminAddCategory from '@/components/AdminAddCategory';
+import AdminEditMenu from '@/components/AdminEditMenu';
 import AuthGuard from '@/components/AuthGuard';
 import LogoutButton from '@/components/LogoutButton';
 
 export default function AdminPanel() {
-    const [activeTab, setActiveTab] = useState<'config' | 'orders' | 'addItem' | 'addCategory'>(() => {
+    const [activeTab, setActiveTab] = useState<'config' | 'orders' | 'addItem' | 'addCategory' | 'editMenu'>(() => {
         if (typeof window !== 'undefined') {
-            return (localStorage.getItem('adminActiveTab') as 'config' | 'orders' | 'addItem' | 'addCategory') || 'config';
+            return (localStorage.getItem('adminActiveTab') as 'config' | 'orders' | 'addItem' | 'addCategory' | 'editMenu') || 'config';
         }
         return 'config';
     });
@@ -52,6 +53,16 @@ export default function AdminPanel() {
                             📋 Pedidos
                         </button>
                         <button
+                            onClick={() => setActiveTab('editMenu')}
+                            className={`py-3 px-3 sm:px-4 font-medium text-sm sm:text-base rounded-lg transition-all duration-200 ${
+                                activeTab === 'editMenu'
+                                    ? 'bg-yellow-500 text-gray-900 shadow-lg'
+                                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700'
+                            }`}
+                        >
+                            ✏️ Editar Menu
+                        </button>
+                        <button
                             onClick={() => setActiveTab('addItem')}
                             className={`py-3 px-3 sm:px-4 font-medium text-sm sm:text-base rounded-lg transition-all duration-200 ${
                                 activeTab === 'addItem'
@@ -61,6 +72,8 @@ export default function AdminPanel() {
                         >
                             ➕ Adicionar Item
                         </button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:gap-3 mt-2">
                         <button
                             onClick={() => setActiveTab('addCategory')}
                             className={`py-3 px-3 sm:px-4 font-medium text-sm sm:text-base rounded-lg transition-all duration-200 ${
@@ -98,6 +111,16 @@ export default function AdminPanel() {
                             Pedidos
                         </button>
                         <button
+                            onClick={() => setActiveTab('editMenu')}
+                            className={`py-3 px-6 font-medium text-base transition-colors ${
+                                activeTab === 'editMenu'
+                                    ? 'border-b-2 border-yellow-500 text-yellow-500'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            Editar Menu
+                        </button>
+                        <button
                             onClick={() => setActiveTab('addItem')}
                             className={`py-3 px-6 font-medium text-base transition-colors ${
                                 activeTab === 'addItem'
@@ -123,6 +146,7 @@ export default function AdminPanel() {
                 <div>
                     {activeTab === 'config' && <AdminSettings />}
                     {activeTab === 'orders' && <AdminOrders />}
+                    {activeTab === 'editMenu' && <AdminEditMenu />}
                     {activeTab === 'addItem' && <AdminAddItem />}
                     {activeTab === 'addCategory' && <AdminAddCategory />}
                 </div>
