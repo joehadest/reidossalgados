@@ -5,20 +5,19 @@ import AdminSettings from '@/components/AdminSettings';
 import AdminAddItem from '@/components/AdminAddItem';
 import AdminAddCategory from '@/components/AdminAddCategory';
 import AdminEditMenu from '@/components/AdminEditMenu';
+import AdminEarnings from '@/components/AdminEarnings';
 import AuthGuard from '@/components/AuthGuard';
 import LogoutButton from '@/components/LogoutButton';
 
 export default function AdminPanel() {
-    const [activeTab, setActiveTab] = useState<'config' | 'orders' | 'addItem' | 'addCategory' | 'editMenu'>(() => {
+    const [activeTab, setActiveTab] = useState<'config' | 'orders' | 'addItem' | 'addCategory' | 'editMenu' | 'earnings'>(() => {
         if (typeof window !== 'undefined') {
-            return (localStorage.getItem('adminActiveTab') as 'config' | 'orders' | 'addItem' | 'addCategory' | 'editMenu') || 'config';
+            return (localStorage.getItem('adminActiveTab') as any) || 'config';
         }
         return 'config';
     });
 
-    useEffect(() => {
-        localStorage.setItem('adminActiveTab', activeTab);
-    }, [activeTab]);
+    useEffect(() => { localStorage.setItem('adminActiveTab', activeTab); }, [activeTab]);
 
     return (
         <AuthGuard>
@@ -84,6 +83,16 @@ export default function AdminPanel() {
                         >
                             📂 Adicionar Categoria
                         </button>
+                        <button
+                            onClick={() => setActiveTab('earnings')}
+                            className={`py-3 px-3 sm:px-4 font-medium text-sm sm:text-base rounded-lg transition-all duration-200 ${
+                                activeTab === 'earnings'
+                                    ? 'bg-yellow-500 text-gray-900 shadow-lg'
+                                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700'
+                            }`}
+                        >
+                            💰 Ganhos
+                        </button>
                     </div>
                 </div>
 
@@ -140,6 +149,16 @@ export default function AdminPanel() {
                         >
                             Adicionar Categoria
                         </button>
+                        <button
+                            onClick={() => setActiveTab('earnings')}
+                            className={`py-3 px-6 font-medium text-base transition-colors ${
+                                activeTab === 'earnings'
+                                    ? 'border-b-2 border-yellow-500 text-yellow-500'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            Ganhos
+                        </button>
                     </div>
                 </div>
 
@@ -149,9 +168,10 @@ export default function AdminPanel() {
                     {activeTab === 'editMenu' && <AdminEditMenu />}
                     {activeTab === 'addItem' && <AdminAddItem />}
                     {activeTab === 'addCategory' && <AdminAddCategory />}
+                    {activeTab === 'earnings' && <AdminEarnings />}
                 </div>
             </div>
         </div>
         </AuthGuard>
     );
-} 
+}
