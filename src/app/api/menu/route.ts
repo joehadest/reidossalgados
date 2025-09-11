@@ -16,9 +16,9 @@ export async function GET() {
             menuItems = staticMenu as any;
         }
 
-        return NextResponse.json({ 
-            success: true, 
-            data: menuItems 
+        return NextResponse.json({
+            success: true,
+            data: menuItems
         });
     } catch (error) {
         console.error('Erro ao buscar menu:', error);
@@ -38,9 +38,9 @@ export async function POST(request: Request) {
 
         const result = await collection.insertOne(item);
 
-        return NextResponse.json({ 
-            success: true, 
-            data: { ...item, _id: result.insertedId } 
+        return NextResponse.json({
+            success: true,
+            data: { ...item, _id: result.insertedId }
         });
     } catch (error) {
         console.error('Erro ao criar item do menu:', error);
@@ -53,21 +53,34 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
     try {
-        const data = await request.json();
-        const { _id, ...updates } = data;
+        const url = new URL(request.url);
+        const idFromQuery = url.searchParams.get('id');
 
-        if (!_id) {
+        // Tenta parsear o corpo; se vier vazio, continua com objeto vazio
+        let data: any = {};
+        try {
+            data = await request.json();
+        } catch (_) { /* corpo possivelmente vazio */ }
+
+        const bodyId = data?._id;
+        const finalId = bodyId || idFromQuery;
+
+        if (!finalId) {
             return NextResponse.json(
                 { success: false, message: 'ID do item não fornecido' },
                 { status: 400 }
             );
         }
 
+        // Remove _id de dentro do objeto de atualização para não tentar sobrescrever
+        if (data._id) delete data._id;
+        const updates = data;
+
         const { db } = await connectToDatabase();
         const collection = db.collection('menu');
 
         const result = await collection.updateOne(
-            { _id: new ObjectId(_id) },
+            { _id: new ObjectId(finalId) },
             { $set: updates }
         );
 
