@@ -379,7 +379,7 @@ export default function MenuDisplay() {
                         {/* Gradientes laterais */}
                         <div className="pointer-events-none absolute left-0 top-0 h-full w-6 bg-gradient-to-r from-gray-900 to-transparent" />
                         <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-gray-900 to-transparent" />
-                        <div ref={categoryBarRef} className="flex space-x-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-pl-4">
+                        <div ref={categoryBarRef} className="flex space-x-2 snap-x snap-mandatory">
                             {displayCategories.map(cat => (
                                 <button
                                     key={cat._id}
@@ -401,14 +401,14 @@ export default function MenuDisplay() {
                         </div>
                     </div>
                 </div>
-                <main className="p-4">
+                <main className="px-4 pb-4">
                     <div className="space-y-12">
                         {showHighlights && highlights.length > 0 && (
                             <section>
                                 <h2 className="text-2xl font-bold text-yellow-400 mb-4 flex items-center gap-2">
                                     <span className="inline-block w-2 h-8 bg-yellow-500 rounded" /> Destaques
                                 </h2>
-                                <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                                <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 w-full">
                                     {highlights.map(item => (
                                         <OptimizedMenuItem key={item._id || item.name} item={item} onClick={handleItemClick} />
                                     ))}
@@ -420,7 +420,7 @@ export default function MenuDisplay() {
                             return (
                                 <section key={cat._id} id={`category-${cat._id}`} ref={(el) => { categorySectionRefs.current[cat._id] = el; }}>
                                     <h2 className="text-2xl font-bold text-white mb-4 border-l-4 border-yellow-500 pl-3">{cat.name}</h2>
-                                    <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                                    <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 w-full">
                                         {items.map(item => (
                                             <OptimizedMenuItem key={item._id || item.name} item={item} onClick={handleItemClick} />
                                         ))}
