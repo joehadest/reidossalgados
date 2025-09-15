@@ -13,47 +13,71 @@ import { useCart } from '../contexts/CartContext';
 import PastaModal from './PastaModal';
 import MiniItemModal from './MiniItemModal';
 
-const OptimizedMenuItem = React.memo(({ item, onClick }: { item: MenuItem; onClick: (item: MenuItem) => void }) => (
-    <motion.div
-        className="bg-gray-800 rounded-xl shadow-lg overflow-hidden cursor-pointer border border-transparent hover:border-yellow-500 transition-colors group"
-        onClick={() => onClick(item)}
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.2 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-    >
-        <div className="relative h-40 overflow-hidden">
-            {item.image && (
-                <Image
-                    src={item.image}
-                    alt={item.name}
-                    fill
-                    sizes="(max-width: 640px) 100vw, 50vw"
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
-                    quality={75}
-                />
-            )}
-            {!item.available && (
-                <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-                    <span className="text-red-400 font-bold text-sm bg-red-900/80 px-2 py-1 rounded">Indisponível</span>
-                </div>
-            )}
-        </div>
-        <div className="p-4">
-            <h3 className="font-bold text-white text-lg mb-1 line-clamp-2">{item.name || 'Nome não disponível'}</h3>
-            {item.description && <p className="text-gray-400 text-sm mb-2 line-clamp-2">{item.description}</p>}
-            <div className="flex justify-between items-center mt-3">
-                <div className="text-yellow-500 font-bold text-lg whitespace-nowrap shrink-0 min-w-0">
-                    R$ {(() => {
-                        const price = parseFloat(String(item.price || 0));
-                        return price.toFixed(2).replace('.', ',');
-                    })()}
+const OptimizedMenuItem = React.memo(({ item, onClick }: { item: MenuItem; onClick: (item: MenuItem) => void }) => {
+    const hasDiscount = item.originalPrice && item.originalPrice > item.price;
+    const discountPercent = hasDiscount ? Math.round(((item.originalPrice! - item.price) / item.originalPrice!) * 100) : 0;
+    return (
+        <motion.div
+            className="relative bg-gradient-to-br from-gray-800 to-gray-850/70 rounded-xl shadow-lg overflow-hidden cursor-pointer border border-gray-700/40 hover:border-yellow-500/80 hover:shadow-glow transition-colors group"
+            onClick={() => onClick(item)}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+        >
+            <div className="relative h-36 xs:h-40 md:h-44 overflow-hidden">
+                {item.image && (
+                    <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        sizes="(max-width: 640px) 100vw, 50vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                        quality={75}
+                    />
+                )}
+                {hasDiscount && (
+                    <div className="absolute top-2 left-2 bg-green-500 text-gray-900 text-xs font-extrabold px-2 py-1 rounded shadow">
+                        -{discountPercent}%
+                    </div>
+                )}
+                {item.destaque && (
+                    <div className="absolute top-2 right-2 bg-yellow-500/90 text-gray-900 text-[10px] font-bold px-2 py-1 rounded-full tracking-wide shadow-glow">
+                        DESTAQUE
+                    </div>
+                )}
+                {!item.available && (
+                    <div className="absolute inset-0 backdrop-blur-[2px] bg-black/60 flex items-center justify-center">
+                        <span className="text-red-300 font-bold text-sm bg-red-900/70 px-3 py-1 rounded-full border border-red-500/40">Indisponível</span>
+                    </div>
+                )}
+                <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-yellow-500/0 via-yellow-500/60 to-yellow-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <div className="p-3 md:p-4">
+                <h3 className="font-semibold text-white text-sm md:text-base mb-1 line-clamp-2 group-hover:text-yellow-400 transition-colors">
+                    {item.name || 'Nome não disponível'}
+                </h3>
+                {item.description && (
+                    <p className="text-gray-400 text-[11px] md:text-xs mb-2 line-clamp-2">{item.description}</p>
+                )}
+                <div className="flex items-end gap-2 mt-2 md:mt-3">
+                    <div className="text-yellow-400 font-bold text-base md:text-lg">
+                        R$ {(() => {
+                            const price = parseFloat(String(item.price || 0));
+                            return price.toFixed(2).replace('.', ',');
+                        })()}
+                    </div>
+                    {hasDiscount && (
+                        <div className="text-gray-400 line-through text-xs font-medium">
+                            R$ {item.originalPrice!.toFixed(2).replace('.', ',')}
+                        </div>
+                    )}
                 </div>
             </div>
-        </div>
-    </motion.div>
-));
+        </motion.div>
+    );
+});
 OptimizedMenuItem.displayName = 'OptimizedMenuItem';
 
 export default function MenuDisplay() {
@@ -72,6 +96,10 @@ export default function MenuDisplay() {
     const [searchQuery, setSearchQuery] = useState('');
     const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
     const [orderDetails, setOrderDetails] = useState<any>(null);
+    const [sortOption, setSortOption] = useState<'nome' | 'preco-asc' | 'preco-desc'>('nome');
+    const [showOnlyAvailable, setShowOnlyAvailable] = useState(false);
+    const [showHighlights, setShowHighlights] = useState(true);
+    const [showFilterSheet, setShowFilterSheet] = useState(false);
     const categorySectionRefs = useRef<Record<string, HTMLElement | null>>({});
     const categoryButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
     const categoryBarRef = useRef<HTMLDivElement | null>(null);
@@ -143,19 +171,37 @@ export default function MenuDisplay() {
     };
     
     const isSearching = useMemo(() => searchQuery.trim().length > 0, [searchQuery]);
+    const processedItems = useMemo(() => {
+        let items = [...menuItems];
+        // Filtrar apenas disponíveis se marcado
+        if (showOnlyAvailable) items = items.filter(i => i.available !== false);
+        // Ordenação
+        items.sort((a, b) => {
+            switch (sortOption) {
+                case 'preco-asc': return (a.price || 0) - (b.price || 0);
+                case 'preco-desc': return (b.price || 0) - (a.price || 0);
+                case 'nome':
+                default:
+                    return (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' });
+            }
+        });
+        return items;
+    }, [menuItems, sortOption, showOnlyAvailable]);
+
+    const highlights = useMemo(() => processedItems.filter(i => i.destaque), [processedItems]);
+
     const itemsByCategory = useMemo(() => {
         // Remover duplicatas baseado no nome do item
-        const uniqueItems = menuItems.filter((item, index, self) => 
+        const uniqueItems = processedItems.filter((item, index, self) =>
             index === self.findIndex(i => i.name === item.name)
         );
-        
-        return uniqueItems.reduce((acc, item) => { 
-            const catId = item.category.toString(); 
-            if (!acc[catId]) acc[catId] = []; 
-            acc[catId].push(item); 
-            return acc; 
+        return uniqueItems.reduce((acc, item) => {
+            const catId = item.category.toString();
+            if (!acc[catId]) acc[catId] = [];
+            acc[catId].push(item);
+            return acc;
         }, {} as Record<string, MenuItem[]>);
-    }, [menuItems]);
+    }, [processedItems]);
     const filteredItemsByCategory = useMemo(() => { if (!isSearching) return itemsByCategory; const q = searchQuery.trim().toLowerCase(); const filtered: Record<string, MenuItem[]> = {}; Object.keys(itemsByCategory).forEach(catId => { const matches = itemsByCategory[catId].filter(it => it.name?.toLowerCase().includes(q) || it.description?.toLowerCase().includes(q)); if (matches.length > 0) filtered[catId] = matches; }); return filtered; }, [isSearching, searchQuery, itemsByCategory]);
     const displayCategories = useMemo(() => { const source = isSearching ? filteredItemsByCategory : itemsByCategory; return categories.filter(cat => source[cat._id] && source[cat._id].length > 0); }, [categories, itemsByCategory, filteredItemsByCategory, isSearching]);
     
@@ -254,24 +300,133 @@ export default function MenuDisplay() {
         setShowWhatsAppModal(false);
     };
 
-    if (isLoading) return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">Carregando Cardápio...</div>;
+    if (isLoading) return (
+        <div className="min-h-screen bg-gray-900">
+            <div className="max-w-7xl mx-auto p-4 animate-pulse">
+                <div className="h-10 bg-gray-800 rounded w-full mb-6" />
+                <div className="flex gap-3 overflow-x-hidden mb-8">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-9 w-28 bg-gray-800 rounded-full" />
+                    ))}
+                </div>
+                <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700/40">
+                            <div className="h-40 bg-gray-700/40" />
+                            <div className="p-4 space-y-3">
+                                <div className="h-4 bg-gray-700 rounded w-3/4" />
+                                <div className="h-3 bg-gray-700/70 rounded w-full" />
+                                <div className="h-3 bg-gray-700/50 rounded w-2/3" />
+                                <div className="h-6 bg-gray-700 rounded w-24 mt-4" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
     if (!restaurantIsOpen) return <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4"><div className="text-center max-w-md mx-auto"><div className="bg-gray-800 rounded-2xl shadow-2xl border border-yellow-500/30 p-8"><div className="mb-6"><h2 className="text-2xl font-bold text-yellow-500 mb-3">Estabelecimento Fechado</h2></div></div></div></div>;
 
     return (
         <div className="min-h-screen bg-gray-900">
             <div className="max-w-7xl mx-auto">
                 <div className="sticky top-0 z-30 bg-gray-900/80 backdrop-blur-lg border-b border-gray-700/50 sticky-header">
-                    <div className="p-4"><input type="search" placeholder="Buscar no cardápio..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-gray-800 text-white rounded-lg px-4 py-2 border border-gray-700 focus:ring-2 focus:ring-yellow-500 outline-none" /></div>
-                    <div className="relative px-4 pb-3"><div ref={categoryBarRef} className="flex space-x-2 overflow-x-auto scrollbar-hide">{displayCategories.map(cat => (<button key={cat._id} ref={(el) => { categoryButtonRefs.current[cat._id] = el; }} onClick={() => handleCategoryClick(cat._id)} className={`relative px-4 py-2 rounded-full text-sm font-semibold transition-colors duration-300 whitespace-nowrap ${selectedCategory === cat._id ? 'text-gray-900' : 'text-gray-300 hover:text-white'}`}>{selectedCategory === cat._id && (<motion.div layoutId="category-pill" className="absolute inset-0 bg-yellow-500 rounded-full" style={{ zIndex: -1 }} transition={{ type: 'spring', stiffness: 350, damping: 30 }} />)}<span className="relative z-10">{cat.name}</span></button>))}</div></div>
+                    <div className="p-4 space-y-3">
+                        <div className="relative">
+                            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                            <input
+                                type="search"
+                                placeholder="Buscar no cardápio..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-gray-800 text-white rounded-lg pl-10 pr-4 py-2 border border-gray-700 focus:ring-2 focus:ring-yellow-500 outline-none"
+                            />
+                            <button
+                                onClick={() => setShowFilterSheet(true)}
+                                className="sm:hidden absolute right-2 top-1/2 -translate-y-1/2 text-xs bg-yellow-500 text-gray-900 font-semibold px-3 py-1 rounded-md shadow focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                            >Filtros</button>
+                        </div>
+                        <div className="hidden sm:flex flex-wrap gap-3 items-center text-xs sm:text-sm">
+                            <div className="flex items-center gap-2 bg-gray-800/70 px-3 py-2 rounded-lg border border-gray-700">
+                                <label className="font-medium text-gray-300">Ordenar:</label>
+                                <select
+                                    value={sortOption}
+                                    onChange={e => setSortOption(e.target.value as any)}
+                                    className="bg-gray-900 text-white rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                >
+                                    <option value="nome">Nome (A-Z)</option>
+                                    <option value="preco-asc">Preço (Menor)</option>
+                                    <option value="preco-desc">Preço (Maior)</option>
+                                </select>
+                            </div>
+                            <label className="flex items-center gap-2 bg-gray-800/70 px-3 py-2 rounded-lg border border-gray-700 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={showOnlyAvailable}
+                                    onChange={e => setShowOnlyAvailable(e.target.checked)}
+                                    className="form-checkbox h-4 w-4 text-yellow-500 rounded border-gray-600"
+                                />
+                                <span className="text-gray-300">Só disponíveis</span>
+                            </label>
+                            {highlights.length > 0 && (
+                                <label className="flex items-center gap-2 bg-gray-800/70 px-3 py-2 rounded-lg border border-gray-700 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={showHighlights}
+                                        onChange={e => setShowHighlights(e.target.checked)}
+                                        className="form-checkbox h-4 w-4 text-yellow-500 rounded border-gray-600"
+                                    />
+                                    <span className="text-gray-300">Ver destaques</span>
+                                </label>
+                            )}
+                        </div>
+                    </div>
+                    <div className="relative px-4 pb-3">
+                        {/* Gradientes laterais */}
+                        <div className="pointer-events-none absolute left-0 top-0 h-full w-6 bg-gradient-to-r from-gray-900 to-transparent" />
+                        <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-gray-900 to-transparent" />
+                        <div ref={categoryBarRef} className="flex space-x-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-pl-4">
+                            {displayCategories.map(cat => (
+                                <button
+                                    key={cat._id}
+                                    ref={(el) => { categoryButtonRefs.current[cat._id] = el; }}
+                                    onClick={() => handleCategoryClick(cat._id)}
+                                    className={`relative px-4 py-2 rounded-full text-sm font-semibold transition-colors duration-300 whitespace-nowrap flex items-center gap-2 border border-gray-700/60 snap-start ${selectedCategory === cat._id ? 'text-gray-900' : 'text-gray-300 hover:text-white'}`}
+                                >
+                                    {selectedCategory === cat._id && (
+                                        <motion.div
+                                            layoutId="category-pill"
+                                            className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 shadow-glow"
+                                            style={{ zIndex: -1 }}
+                                            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                                        />
+                                    )}
+                                    <span className="relative z-10">{cat.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
                 <main className="p-4">
                     <div className="space-y-12">
+                        {showHighlights && highlights.length > 0 && (
+                            <section>
+                                <h2 className="text-2xl font-bold text-yellow-400 mb-4 flex items-center gap-2">
+                                    <span className="inline-block w-2 h-8 bg-yellow-500 rounded" /> Destaques
+                                </h2>
+                                <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                                    {highlights.map(item => (
+                                        <OptimizedMenuItem key={item._id || item.name} item={item} onClick={handleItemClick} />
+                                    ))}
+                                </div>
+                            </section>
+                        )}
                         {displayCategories.map(cat => {
                             const items = filteredItemsByCategory[cat._id] || [];
                             return (
                                 <section key={cat._id} id={`category-${cat._id}`} ref={(el) => { categorySectionRefs.current[cat._id] = el; }}>
                                     <h2 className="text-2xl font-bold text-white mb-4 border-l-4 border-yellow-500 pl-3">{cat.name}</h2>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                                         {items.map(item => (
                                             <OptimizedMenuItem key={item._id || item.name} item={item} onClick={handleItemClick} />
                                         ))}
@@ -288,6 +443,70 @@ export default function MenuDisplay() {
             {cartItems.length > 0 && (<div className="fixed bottom-6 right-6 z-40"><motion.button onClick={() => setIsCartOpen(true)} className="w-16 h-16 bg-yellow-500 text-gray-900 rounded-full flex items-center justify-center shadow-lg" initial={{ scale: 0 }} animate={{ scale: 1 }}><FaShoppingCart size={24} /><span className="absolute -top-1 -right-1 bg-gray-900 text-yellow-500 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-yellow-500">{cartItems.reduce((t, i) => t + i.quantity, 0)}</span></motion.button></div>)}
             <AnimatePresence>{isCartOpen && <Cart onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />}</AnimatePresence>
             <AnimatePresence>{showWhatsAppModal && (<motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70"><motion.div className="bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm w-full mx-4"><h2 className="text-xl font-bold text-yellow-500 mb-4">Pedido Enviado!</h2><p className="text-gray-300 mb-6">Seu pedido foi registrado. Clique abaixo para confirmar via WhatsApp.</p><button onClick={handleWhatsAppClick} className="w-full flex items-center justify-center gap-2 bg-green-500 text-white font-bold py-3 rounded-lg hover:bg-green-600"><FaWhatsapp /> Enviar para WhatsApp</button><button onClick={() => setShowWhatsAppModal(false)} className="w-full mt-2 bg-gray-700 text-gray-300 font-bold py-3 rounded-lg hover:bg-gray-600">Fechar</button></motion.div></motion.div>)}</AnimatePresence>
+            {/* Bottom Sheet Filtros Mobile */}
+            <AnimatePresence>
+                {showFilterSheet && (
+                    <motion.div
+                        className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40 backdrop-blur-[2px] sm:hidden"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setShowFilterSheet(false)}
+                    >
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+                            className="bg-gray-800 rounded-t-2xl p-5 pb-8 shadow-2xl border-t border-gray-700"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="w-12 h-1.5 bg-gray-600 rounded-full mx-auto mb-4" />
+                            <h3 className="text-yellow-400 font-semibold text-sm mb-4 tracking-wide">Filtros e Ordenação</h3>
+                            <div className="space-y-5 text-xs">
+                                <div className="space-y-2">
+                                    <label className="block text-gray-300 font-medium">Ordenar por</label>
+                                    <select
+                                        value={sortOption}
+                                        onChange={e => setSortOption(e.target.value as any)}
+                                        className="w-full bg-gray-900 text-white rounded-md px-3 py-2 border border-gray-700 focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                    >
+                                        <option value="nome">Nome (A-Z)</option>
+                                        <option value="preco-asc">Preço (Menor)</option>
+                                        <option value="preco-desc">Preço (Maior)</option>
+                                    </select>
+                                </div>
+                                <div className="flex flex-col gap-3">
+                                    <label className="flex items-center gap-3 bg-gray-900 px-3 py-2 rounded-lg border border-gray-700 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={showOnlyAvailable}
+                                            onChange={e => setShowOnlyAvailable(e.target.checked)}
+                                            className="form-checkbox h-4 w-4 text-yellow-500 rounded border-gray-600"
+                                        />
+                                        <span className="text-gray-300 text-sm">Só disponíveis</span>
+                                    </label>
+                                    {highlights.length > 0 && (
+                                        <label className="flex items-center gap-3 bg-gray-900 px-3 py-2 rounded-lg border border-gray-700 cursor-pointer select-none">
+                                            <input
+                                                type="checkbox"
+                                                checked={showHighlights}
+                                                onChange={e => setShowHighlights(e.target.checked)}
+                                                className="form-checkbox h-4 w-4 text-yellow-500 rounded border-gray-600"
+                                            />
+                                            <span className="text-gray-300 text-sm">Mostrar destaques</span>
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowFilterSheet(false)}
+                                className="mt-6 w-full bg-yellow-500 text-gray-900 font-bold py-3 rounded-lg shadow hover:bg-yellow-400 active:scale-[0.98] transition"
+                            >Aplicar</button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
