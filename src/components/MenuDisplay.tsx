@@ -10,16 +10,14 @@ import { MenuItem } from '@/types/menu';
 import Image from 'next/image';
 import { FaShoppingCart, FaWhatsapp, FaSearch } from 'react-icons/fa';
 import { useCart } from '../contexts/CartContext';
-import PastaModal from './PastaModal';
-import MiniItemModal from './MiniItemModal';
 
 const OptimizedMenuItem = React.memo(({ item, onClick }: { item: MenuItem; onClick: (item: MenuItem) => void }) => {
     const hasDiscount = item.originalPrice && item.originalPrice > item.price;
     const discountPercent = hasDiscount ? Math.round(((item.originalPrice! - item.price) / item.originalPrice!) * 100) : 0;
     return (
         <motion.div
-            className="relative bg-gradient-to-br from-gray-800 to-gray-850/70 rounded-xl shadow-lg overflow-hidden cursor-pointer border border-gray-700/40 hover:border-yellow-500/80 hover:shadow-glow transition-colors group"
-            onClick={() => onClick(item)}
+            className={`relative bg-gradient-to-br from-gray-800 to-gray-850/70 rounded-xl shadow-lg overflow-hidden border border-gray-700/40 transition-colors group ${item.available ? 'cursor-pointer hover:border-yellow-500/80 hover:shadow-glow' : 'opacity-60 cursor-not-allowed'}`}
+            onClick={() => { if (item.available) onClick(item); }}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
@@ -49,7 +47,7 @@ const OptimizedMenuItem = React.memo(({ item, onClick }: { item: MenuItem; onCli
                 )}
                 {!item.available && (
                     <div className="absolute inset-0 backdrop-blur-[2px] bg-black/60 flex items-center justify-center">
-                        <span className="text-red-300 font-bold text-sm bg-red-900/70 px-3 py-1 rounded-full border border-red-500/40">Indisponível</span>
+                        <span className="text-red-300 font-bold text-xs md:text-sm bg-red-900/70 px-3 py-1 rounded-full border border-red-500/40 select-none">Indisponível</span>
                     </div>
                 )}
                 <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-yellow-500/0 via-yellow-500/60 to-yellow-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -87,9 +85,7 @@ export default function MenuDisplay() {
     const [categories, setCategories] = useState<{ _id: string, name: string, emoji?: string, orderIndex?: number }[]>([]);
     const [settings, setSettings] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
-    const [selectedPasta, setSelectedPasta] = useState<MenuItem | null>(null);
-    const [miniModalItem, setMiniModalItem] = useState<MenuItem | null>(null);
+    const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null); // Unificação: um único modal para todos os itens
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [isManualScrolling, setIsManualScrolling] = useState(false);
@@ -206,11 +202,9 @@ export default function MenuDisplay() {
     const displayCategories = useMemo(() => { const source = isSearching ? filteredItemsByCategory : itemsByCategory; return categories.filter(cat => source[cat._id] && source[cat._id].length > 0); }, [categories, itemsByCategory, filteredItemsByCategory, isSearching]);
     
     const handleItemClick = useCallback((item: MenuItem) => {
-        const categoryName = categories.find(c => c._id === item.category.toString())?.name.toLowerCase() || '';
-        if (categoryName.includes('pizza')) setSelectedItem(item);
-        else if (categoryName.includes('massa')) setSelectedPasta(item);
-        else setMiniModalItem(item);
-    }, [categories]);
+        // Agora qualquer item abre o mesmo modal moderno
+        setSelectedItem(item);
+    }, []);
     
     const handleCategoryClick = useCallback((catId: string) => { setIsManualScrolling(true); setSelectedCategory(catId); const el = categorySectionRefs.current[catId]; if (el) { const headerHeight = (document.querySelector('.sticky-header') as HTMLElement)?.offsetHeight || 120; const elPos = el.getBoundingClientRect().top + window.scrollY; const offset = elPos - headerHeight - 16; window.scrollTo({ top: offset, behavior: 'smooth' }); if (manualScrollTimeoutRef.current) clearTimeout(manualScrollTimeoutRef.current); manualScrollTimeoutRef.current = setTimeout(() => setIsManualScrolling(false), 1000); } }, []);
     
@@ -238,9 +232,9 @@ export default function MenuDisplay() {
             total, 
             formaPagamento, 
             troco, 
-            observacoes,
-            deliveryFee 
-        } = orderDetails;
+            deliveryFee,
+            observacoes
+        } = orderDetails || {};
 
         // --- Construção dos Itens ---
         const itemsText = items.map((item: any) => {
@@ -437,9 +431,20 @@ export default function MenuDisplay() {
                     </div>
                 </main>
             </div>
-            <AnimatePresence>{selectedItem && <ItemModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={(q, o, s, b, e) => { addToCart(selectedItem, q, o, s, b, e); setSelectedItem(null); }} allPizzas={menuItems.filter(i => i.category.toString().includes('pizza'))} />}</AnimatePresence>
-            <AnimatePresence>{selectedPasta && <PastaModal item={selectedPasta} onClose={() => setSelectedPasta(null)} onAddToCart={(q, o, s) => { addToCart(selectedPasta, q, o, s); setSelectedPasta(null); }} />}</AnimatePresence>
-            <AnimatePresence>{miniModalItem && <MiniItemModal item={miniModalItem} onClose={() => setMiniModalItem(null)} onAdd={(q, o, e) => { addToCart(miniModalItem, q, o, undefined, undefined, e); setMiniModalItem(null); }} categories={categories} />}</AnimatePresence>
+            <AnimatePresence>
+                {selectedItem && (
+                    <ItemModal
+                        item={selectedItem}
+                        onClose={() => setSelectedItem(null)}
+                        onAddToCart={(q, o, s, b, e) => {
+                            addToCart(selectedItem, q, o, s, b, e);
+                            setSelectedItem(null);
+                        }}
+                        allPizzas={menuItems.filter(i => i.category.toString().includes('pizza'))}
+                    />
+                )}
+            </AnimatePresence>
+            {/* Modais antigos (MiniItemModal, PastaModal) removidos após unificação */}
             {cartItems.length > 0 && (<div className="fixed bottom-6 right-6 z-40"><motion.button onClick={() => setIsCartOpen(true)} className="w-16 h-16 bg-yellow-500 text-gray-900 rounded-full flex items-center justify-center shadow-lg" initial={{ scale: 0 }} animate={{ scale: 1 }}><FaShoppingCart size={24} /><span className="absolute -top-1 -right-1 bg-gray-900 text-yellow-500 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-yellow-500">{cartItems.reduce((t, i) => t + i.quantity, 0)}</span></motion.button></div>)}
             <AnimatePresence>{isCartOpen && <Cart onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />}</AnimatePresence>
             <AnimatePresence>{showWhatsAppModal && (<motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70"><motion.div className="bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm w-full mx-4"><h2 className="text-xl font-bold text-yellow-500 mb-4">Pedido Enviado!</h2><p className="text-gray-300 mb-6">Seu pedido foi registrado. Clique abaixo para confirmar via WhatsApp.</p><button onClick={handleWhatsAppClick} className="w-full flex items-center justify-center gap-2 bg-green-500 text-white font-bold py-3 rounded-lg hover:bg-green-600"><FaWhatsapp /> Enviar para WhatsApp</button><button onClick={() => setShowWhatsAppModal(false)} className="w-full mt-2 bg-gray-700 text-gray-300 font-bold py-3 rounded-lg hover:bg-gray-600">Fechar</button></motion.div></motion.div>)}</AnimatePresence>
