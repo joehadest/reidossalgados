@@ -125,13 +125,18 @@ const ItemModal: React.FC<ItemModalProps> = ({ item, onClose, onAddToCart, allPi
                 animate="visible"
                 exit="exit"
                 variants={backdropVariants}
-                style={{ backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+                style={{
+                    backdropFilter: 'blur(6px)',
+                    WebkitBackdropFilter: 'blur(6px)',
+                    // Adiciona padding para a safe area do iOS
+                    paddingBottom: 'env(safe-area-inset-bottom)'
+                }}
             >
                 <motion.div
                     role="dialog"
                     aria-modal="true"
                     aria-label={`Adicionar ${item.name}`}
-                    className="relative w-full md:max-w-xl md:rounded-2xl rounded-t-3xl bg-gradient-to-b from-gray-900 to-gray-950 shadow-2xl border border-gray-800/70 flex flex-col max-h-[100vh] md:max-h-[90vh] overflow-hidden"
+                    className="relative w-full md:max-w-xl md:rounded-2xl rounded-t-3xl bg-gradient-to-b from-gray-900 to-gray-950 shadow-2xl border border-gray-800/70 flex flex-col max-h-[95vh] md:max-h-[90vh] overflow-hidden"
                     onClick={(e) => e.stopPropagation()}
                     variants={modalVariants}
                 >
