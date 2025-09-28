@@ -116,7 +116,7 @@ export default function Home() {
                                     Rei dos Salgados
                                 </span>
                                 <button
-                                    className="bg-transparent text-white p-1.5 rounded-full hover:bg-white/10 transition-colors flex items-center justify-center ml-2 mt-1 sm:mt-3"
+                                    className="bg-transparent text-white p-1.5 rounded-full hover:bg-white/10 transition-colors flex items-center justify-center ml-2 mt-0,5 sm:mt-3"
                                     onClick={() => setShowInfo(true)}
                                     aria-label="Informações do restaurante"
                                 >

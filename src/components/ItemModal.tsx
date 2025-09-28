@@ -135,8 +135,18 @@ const ItemModal: React.FC<ItemModalProps> = ({ item, onClose, onAddToCart, allPi
                     onClick={(e) => e.stopPropagation()}
                     variants={modalVariants}
                 >
+                    {/* Botão de fechar agora é fixo em relação ao modal */}
+                    <button
+                        ref={closeBtnRef}
+                        onClick={onClose}
+                        className="absolute top-3 right-3 z-20 bg-gray-900/70 backdrop-blur px-2.5 py-2 rounded-full text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        aria-label="Fechar modal"
+                    >
+                        <X size={18} />
+                    </button>
+
                     {/* Header / Imagem */}
-                    <div className="relative w-full h-52 md:h-60 overflow-hidden">
+                    <div className="relative w-full h-52 md:h-60 overflow-hidden flex-shrink-0">
                         <Image
                             src={item.image}
                             alt={item.name}
@@ -147,21 +157,13 @@ const ItemModal: React.FC<ItemModalProps> = ({ item, onClose, onAddToCart, allPi
                             quality={75}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-black/40" />
-                        <button
-                            ref={closeBtnRef}
-                            onClick={onClose}
-                            className="absolute top-3 right-3 bg-gray-900/70 backdrop-blur px-2.5 py-2 rounded-full text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                            aria-label="Fechar modal"
-                        >
-                            <X size={18} />
-                        </button>
                         <div className="absolute bottom-3 left-4 right-4">
                             <h2 className="text-xl md:text-2xl font-bold text-white drop-shadow-md leading-tight">{item.name}</h2>
                         </div>
                     </div>
 
-                    {/* Conteúdo scrollável */}
-                    <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6 scrollbar-hide">
+                    {/* Conteúdo scrollável com rolagem suave para iOS */}
+                    <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6 scrollbar-hide ios-scroll-smooth">
                         {item.description && (
                             <p className="text-sm text-gray-300 leading-relaxed">{item.description}</p>
                         )}
