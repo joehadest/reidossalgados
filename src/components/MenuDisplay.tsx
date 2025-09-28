@@ -206,9 +206,37 @@ export default function MenuDisplay() {
         setSelectedItem(item);
     }, []);
     
-    const handleCategoryClick = useCallback((catId: string) => { setIsManualScrolling(true); setSelectedCategory(catId); const el = categorySectionRefs.current[catId]; if (el) { const headerHeight = (document.querySelector('.sticky-header') as HTMLElement)?.offsetHeight || 120; const elPos = el.getBoundingClientRect().top + window.scrollY; const offset = elPos - headerHeight - 16; window.scrollTo({ top: offset, behavior: 'smooth' }); if (manualScrollTimeoutRef.current) clearTimeout(manualScrollTimeoutRef.current); manualScrollTimeoutRef.current = setTimeout(() => setIsManualScrolling(false), 1000); } }, []);
+    const handleCategoryClick = useCallback((catId: string) => {
+        setIsManualScrolling(true);
+        setSelectedCategory(catId);
+        const el = categorySectionRefs.current[catId];
+        if (el) {
+            const headerHeight = (document.querySelector('.sticky-category-bar') as HTMLElement)?.offsetHeight || 70;
+            const elPos = el.getBoundingClientRect().top + window.scrollY;
+            const offset = elPos - headerHeight - 16;
+            window.scrollTo({ top: offset, behavior: 'smooth' });
+            if (manualScrollTimeoutRef.current) clearTimeout(manualScrollTimeoutRef.current);
+            manualScrollTimeoutRef.current = setTimeout(() => setIsManualScrolling(false), 1000);
+        }
+    }, []);
     
-    useEffect(() => { if (isManualScrolling || displayCategories.length === 0) return; const obs = new IntersectionObserver((entries) => { if (isManualScrolling) return; const visible = entries.filter(e => e.isIntersecting); if (visible.length > 0) { visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top); const catId = visible[0].target.id.replace('category-', ''); setSelectedCategory(catId); } }, { rootMargin: '-140px 0px -40% 0px', threshold: 0.1 }); displayCategories.forEach(cat => { const el = document.getElementById(`category-${cat._id}`); if (el) obs.observe(el); }); return () => obs.disconnect(); }, [displayCategories, isManualScrolling]);
+    useEffect(() => {
+        if (isManualScrolling || displayCategories.length === 0) return;
+        const obs = new IntersectionObserver((entries) => {
+            if (isManualScrolling) return;
+            const visible = entries.filter(e => e.isIntersecting);
+            if (visible.length > 0) {
+                visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+                const catId = visible[0].target.id.replace('category-', '');
+                setSelectedCategory(catId);
+            }
+        }, { rootMargin: '-80px 0px -40% 0px', threshold: 0.1 });
+        displayCategories.forEach(cat => {
+            const el = document.getElementById(`category-${cat._id}`);
+            if (el) obs.observe(el);
+        });
+        return () => obs.disconnect();
+    }, [displayCategories, isManualScrolling]);
     
     useEffect(() => { if (!selectedCategory || !categoryBarRef.current) return; const btn = categoryButtonRefs.current[selectedCategory]; const cont = categoryBarRef.current; if (btn && cont) { const contWidth = cont.offsetWidth; const btnWidth = btn.offsetWidth; const btnLeft = btn.offsetLeft; const scroll = btnLeft - (contWidth / 2) + (btnWidth / 2); cont.scrollTo({ left: scroll, behavior: 'smooth' }); } }, [selectedCategory]);
 
@@ -324,62 +352,64 @@ export default function MenuDisplay() {
     return (
         <div className="min-h-screen bg-gray-900">
             <div className="max-w-7xl mx-auto">
-                <div className="sticky top-0 z-30 bg-gray-900/80 backdrop-blur-lg border-b border-gray-700/50 sticky-header">
-                    <div className="p-4 space-y-3">
-                        <div className="relative">
-                            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                            <input
-                                type="search"
-                                placeholder="Buscar no cardápio..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-gray-800 text-white rounded-lg pl-10 pr-4 py-2 border border-gray-700 focus:ring-2 focus:ring-yellow-500 outline-none"
-                            />
-                            <button
-                                onClick={() => setShowFilterSheet(true)}
-                                className="sm:hidden absolute right-2 top-1/2 -translate-y-1/2 text-xs bg-yellow-500 text-gray-900 font-semibold px-3 py-1 rounded-md shadow focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                            >Filtros</button>
+                {/* Cabeçalho Não-Fixo */}
+                <div className="p-4 space-y-3">
+                    <div className="relative">
+                        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                        <input
+                            type="search"
+                            placeholder="Buscar no cardápio..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-gray-800 text-white rounded-lg pl-10 pr-4 py-2 border border-gray-700 focus:ring-2 focus:ring-yellow-500 outline-none"
+                        />
+                        <button
+                            onClick={() => setShowFilterSheet(true)}
+                            className="sm:hidden absolute right-2 top-1/2 -translate-y-1/2 text-xs bg-yellow-500 text-gray-900 font-semibold px-3 py-1 rounded-md shadow focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        >Filtros</button>
+                    </div>
+                    <div className="hidden sm:flex flex-wrap gap-3 items-center text-xs sm:text-sm">
+                        <div className="flex items-center gap-2 bg-gray-800/70 px-3 py-2 rounded-lg border border-gray-700">
+                            <label className="font-medium text-gray-300">Ordenar:</label>
+                            <select
+                                value={sortOption}
+                                onChange={e => setSortOption(e.target.value as any)}
+                                className="bg-gray-900 text-white rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                            >
+                                <option value="nome">Nome (A-Z)</option>
+                                <option value="preco-asc">Preço (Menor)</option>
+                                <option value="preco-desc">Preço (Maior)</option>
+                            </select>
                         </div>
-                        <div className="hidden sm:flex flex-wrap gap-3 items-center text-xs sm:text-sm">
-                            <div className="flex items-center gap-2 bg-gray-800/70 px-3 py-2 rounded-lg border border-gray-700">
-                                <label className="font-medium text-gray-300">Ordenar:</label>
-                                <select
-                                    value={sortOption}
-                                    onChange={e => setSortOption(e.target.value as any)}
-                                    className="bg-gray-900 text-white rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                >
-                                    <option value="nome">Nome (A-Z)</option>
-                                    <option value="preco-asc">Preço (Menor)</option>
-                                    <option value="preco-desc">Preço (Maior)</option>
-                                </select>
-                            </div>
+                        <label className="flex items-center gap-2 bg-gray-800/70 px-3 py-2 rounded-lg border border-gray-700 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={showOnlyAvailable}
+                                onChange={e => setShowOnlyAvailable(e.target.checked)}
+                                className="form-checkbox h-4 w-4 text-yellow-500 rounded border-gray-600"
+                            />
+                            <span className="text-gray-300">Só disponíveis</span>
+                        </label>
+                        {highlights.length > 0 && (
                             <label className="flex items-center gap-2 bg-gray-800/70 px-3 py-2 rounded-lg border border-gray-700 cursor-pointer select-none">
                                 <input
                                     type="checkbox"
-                                    checked={showOnlyAvailable}
-                                    onChange={e => setShowOnlyAvailable(e.target.checked)}
+                                    checked={showHighlights}
+                                    onChange={e => setShowHighlights(e.target.checked)}
                                     className="form-checkbox h-4 w-4 text-yellow-500 rounded border-gray-600"
                                 />
-                                <span className="text-gray-300">Só disponíveis</span>
+                                <span className="text-gray-300">Ver destaques</span>
                             </label>
-                            {highlights.length > 0 && (
-                                <label className="flex items-center gap-2 bg-gray-800/70 px-3 py-2 rounded-lg border border-gray-700 cursor-pointer select-none">
-                                    <input
-                                        type="checkbox"
-                                        checked={showHighlights}
-                                        onChange={e => setShowHighlights(e.target.checked)}
-                                        className="form-checkbox h-4 w-4 text-yellow-500 rounded border-gray-600"
-                                    />
-                                    <span className="text-gray-300">Ver destaques</span>
-                                </label>
-                            )}
-                        </div>
+                        )}
                     </div>
-                    <div className="relative px-4 pb-3">
-                        {/* Gradientes laterais */}
+                </div>
+
+                {/* Barra de Categoria Fixa */}
+                <div className="sticky top-0 z-30 bg-gray-900/80 backdrop-blur-lg border-b border-t border-gray-700/50 sticky-category-bar">
+                    <div className="relative px-4 py-3">
                         <div className="pointer-events-none absolute left-0 top-0 h-full w-6 bg-gradient-to-r from-gray-900 to-transparent" />
                         <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-gray-900 to-transparent" />
-                        <div ref={categoryBarRef} className="flex space-x-2 snap-x snap-mandatory">
+                        <div ref={categoryBarRef} className="flex space-x-2 snap-x snap-mandatory overflow-x-auto scrollbar-hide category-bar-container">
                             {displayCategories.map(cat => (
                                 <button
                                     key={cat._id}
@@ -401,7 +431,8 @@ export default function MenuDisplay() {
                         </div>
                     </div>
                 </div>
-                <main className="px-4 pb-4">
+                
+                <main className="px-4 pb-4 pt-6">
                     <div className="space-y-12">
                         {showHighlights && highlights.length > 0 && (
                             <section>

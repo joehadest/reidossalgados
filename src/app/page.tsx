@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRestaurantStatus } from '@/contexts/RestaurantStatusContext';
-import { FaExclamationCircle, FaSearch } from 'react-icons/fa';
+import { FaInfoCircle, FaSearch } from 'react-icons/fa';
 import Image from 'next/image';
 import MenuDisplay from '@/components/MenuDisplay';
 import OrderTracker from '@/components/OrderTracker';
@@ -116,11 +116,11 @@ export default function Home() {
                                     Rei dos Salgados
                                 </span>
                                 <button
-                                    className="bg-yellow-500 text-black p-1.5 rounded-full shadow hover:bg-yellow-400 transition-colors flex items-center justify-center ml-2 self-center"
+                                    className="bg-transparent text-white p-1.5 rounded-full hover:bg-white/10 transition-colors flex items-center justify-center ml-2 mt-1 sm:mt-3"
                                     onClick={() => setShowInfo(true)}
                                     aria-label="Informações do restaurante"
                                 >
-                                    <FaExclamationCircle className="text-sm sm:text-lg" />
+                                    <FaInfoCircle className="text-lg sm:text-xl" />
                                 </button>
                             </div>
                             <div className="flex items-center gap-2 sm:gap-4 mt-1 sm:mt-2 text-white/90 text-xs sm:text-sm">
@@ -183,7 +183,7 @@ export default function Home() {
                                     className="absolute top-3 right-3 w-8 h-8 bg-gray-900/80 backdrop-blur-sm rounded-full flex items-center justify-center text-yellow-500 hover:text-yellow-400 transition-colors"
                                     aria-label="Fechar informações"
                                 >
-                                    <FaExclamationCircle className="text-base" />
+                                    <FaInfoCircle className="text-base" />
                                 </motion.button>
                             </div>
                             {/* Conteúdo */}
@@ -301,4 +301,4 @@ export default function Home() {
             </AnimatePresence>
         </div>
     );
-} 
+}
