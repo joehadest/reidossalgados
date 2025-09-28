@@ -50,7 +50,9 @@ const ItemModal: React.FC<ItemModalProps> = ({ item, onClose, onAddToCart, allPi
         document.body.style.overflow = 'hidden';
         const keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
         window.addEventListener('keydown', keyHandler);
-        setTimeout(() => closeBtnRef.current?.focus(), 50);
+        // Focar o modal ou um elemento dentro dele para acessibilidade
+        const modalElement = document.querySelector('[role="dialog"]');
+        (modalElement as HTMLElement)?.focus();
         return () => { document.body.style.overflow = 'auto'; window.removeEventListener('keydown', keyHandler); };
     }, [onClose]);
 
@@ -128,7 +130,6 @@ const ItemModal: React.FC<ItemModalProps> = ({ item, onClose, onAddToCart, allPi
                 style={{
                     backdropFilter: 'blur(6px)',
                     WebkitBackdropFilter: 'blur(6px)',
-                    // Adiciona padding para a safe area do iOS
                     paddingBottom: 'env(safe-area-inset-bottom)'
                 }}
             >
@@ -139,17 +140,8 @@ const ItemModal: React.FC<ItemModalProps> = ({ item, onClose, onAddToCart, allPi
                     className="relative w-full md:max-w-xl md:rounded-2xl rounded-t-3xl bg-gradient-to-b from-gray-900 to-gray-950 shadow-2xl border border-gray-800/70 flex flex-col max-h-[95vh] md:max-h-[90vh] overflow-hidden"
                     onClick={(e) => e.stopPropagation()}
                     variants={modalVariants}
+                    tabIndex={-1} // Permite focar o modal
                 >
-                    {/* Botão de fechar agora é fixo em relação ao modal */}
-                    <button
-                        ref={closeBtnRef}
-                        onClick={onClose}
-                        className="absolute top-3 right-3 z-20 bg-gray-900/70 backdrop-blur px-2.5 py-2 rounded-full text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                        aria-label="Fechar modal"
-                    >
-                        <X size={18} />
-                    </button>
-
                     {/* Header / Imagem */}
                     <div className="relative w-full h-52 md:h-60 overflow-hidden flex-shrink-0">
                         <Image
@@ -311,17 +303,26 @@ const ItemModal: React.FC<ItemModalProps> = ({ item, onClose, onAddToCart, allPi
                             )}
                         </div>
                         {item.available ? (
-                            <button
-                                onClick={handleAddToCartClick}
-                                className="w-full relative bg-yellow-500 text-gray-900 font-bold py-4 rounded-lg hover:bg-yellow-400 active:scale-[0.985] transition shadow-lg shadow-yellow-500/20 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                            >
-                                Adicionar ao Carrinho
-                                <span className="absolute inset-y-0 left-0 w-1 bg-yellow-400/70 rounded-l" />
-                            </button>
+                            <div className="flex gap-3">
+                                <button
+                                    ref={closeBtnRef}
+                                    onClick={onClose}
+                                    className="w-14 h-14 flex items-center justify-center bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                                    aria-label="Fechar modal"
+                                >
+                                    <X size={20} />
+                                </button>
+                                <button
+                                    onClick={handleAddToCartClick}
+                                    className="flex-1 relative bg-yellow-500 text-gray-900 font-bold py-4 rounded-lg hover:bg-yellow-400 active:scale-[0.985] transition shadow-lg shadow-yellow-500/20 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                >
+                                    Adicionar ao Carrinho
+                                    <span className="absolute inset-y-0 left-0 w-1 bg-yellow-400/70 rounded-l" />
+                                </button>
+                            </div>
                         ) : (
                             <div className="w-full relative bg-gray-700 text-gray-400 font-bold py-4 rounded-lg cursor-not-allowed text-center border border-gray-600">
                                 Indisponível
-                                <span className="absolute inset-y-0 left-0 w-1 bg-gray-600 rounded-l" />
                             </div>
                         )}
                     </div>
