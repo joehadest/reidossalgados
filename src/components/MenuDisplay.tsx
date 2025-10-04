@@ -85,7 +85,7 @@ export default function MenuDisplay() {
     const [categories, setCategories] = useState<{ _id: string, name: string, emoji?: string, orderIndex?: number }[]>([]);
     const [settings, setSettings] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null); // Unificação: um único modal para todos os itens
+    const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [isManualScrolling, setIsManualScrolling] = useState(false);
@@ -99,7 +99,7 @@ export default function MenuDisplay() {
     const categorySectionRefs = useRef<Record<string, HTMLElement | null>>({});
     const categoryButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
     const categoryBarRef = useRef<HTMLDivElement | null>(null);
-    const manualScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         async function fetchData() {
@@ -108,12 +108,11 @@ export default function MenuDisplay() {
                 const menuData = await menuRes.json();
                 const catData = await catRes.json();
                 const settingsData = await settingsRes.json();
-                
+
                 if (menuData.success) {
-                    // Filtrar itens com dados válidos
-                    const validItems = menuData.data.filter((item: any) => 
-                        item.name && 
-                        typeof item.price === 'number' && 
+                    const validItems = menuData.data.filter((item: any) =>
+                        item.name &&
+                        typeof item.price === 'number' &&
                         !isNaN(item.price)
                     );
                     setMenuItems(validItems);
@@ -133,45 +132,41 @@ export default function MenuDisplay() {
     const handleCheckout = async (details: any) => {
         setIsCartOpen(false);
         try {
-            // Estrutura do endereço corrigida aqui
             const pedidoParaAPI = {
-                itens: details.items.map((item: any) => ({ 
+                itens: details.items.map((item: any) => ({
                     nome: item.name, quantidade: item.quantity, preco: item.price,
-                    observacao: item.observation, size: item.size, border: item.border, extras: item.extras 
+                    observacao: item.observation, size: item.size, border: item.border, extras: item.extras
                 })),
-                total: details.total, 
-                tipoEntrega: details.tipoEntrega, 
-                // A estrutura do 'endereco' agora é aninhada e inclui a taxa de entrega
+                total: details.total,
+                tipoEntrega: details.tipoEntrega,
                 endereco: details.tipoEntrega === 'entrega' ? {
                     address: details.address,
                     deliveryFee: details.deliveryFee,
-                    estimatedTime: "30-45 min" // Você pode ajustar isso se necessário
-                } : undefined, 
-                cliente: details.cliente, 
-                observacoes: details.observacoes, 
-                formaPagamento: details.formaPagamento, 
+                    estimatedTime: "30-45 min"
+                } : undefined,
+                cliente: details.cliente,
+                observacoes: details.observacoes,
+                formaPagamento: details.formaPagamento,
                 troco: details.formaPagamento === 'dinheiro' ? details.troco : undefined
             };
 
             const response = await fetch('/api/pedidos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pedidoParaAPI) });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Falha ao registrar o pedido.');
-            
+
             setOrderDetails(details);
             setShowWhatsAppModal(true);
             clearCart();
-        } catch (error) { 
-            console.error("Erro no checkout:", error); 
-            alert("Houve um erro ao enviar seu pedido."); 
+        } catch (error) {
+            console.error("Erro no checkout:", error);
+            alert("Houve um erro ao enviar seu pedido.");
         }
     };
-    
+
     const isSearching = useMemo(() => searchQuery.trim().length > 0, [searchQuery]);
     const processedItems = useMemo(() => {
         let items = [...menuItems];
-        // Filtrar apenas disponíveis se marcado
         if (showOnlyAvailable) items = items.filter(i => i.available !== false);
-        // Ordenação
         items.sort((a, b) => {
             switch (sortOption) {
                 case 'preco-asc': return (a.price || 0) - (b.price || 0);
@@ -187,7 +182,6 @@ export default function MenuDisplay() {
     const highlights = useMemo(() => processedItems.filter(i => i.destaque), [processedItems]);
 
     const itemsByCategory = useMemo(() => {
-        // Remover duplicatas baseado no nome do item
         const uniqueItems = processedItems.filter((item, index, self) =>
             index === self.findIndex(i => i.name === item.name)
         );
@@ -200,12 +194,11 @@ export default function MenuDisplay() {
     }, [processedItems]);
     const filteredItemsByCategory = useMemo(() => { if (!isSearching) return itemsByCategory; const q = searchQuery.trim().toLowerCase(); const filtered: Record<string, MenuItem[]> = {}; Object.keys(itemsByCategory).forEach(catId => { const matches = itemsByCategory[catId].filter(it => it.name?.toLowerCase().includes(q) || it.description?.toLowerCase().includes(q)); if (matches.length > 0) filtered[catId] = matches; }); return filtered; }, [isSearching, searchQuery, itemsByCategory]);
     const displayCategories = useMemo(() => { const source = isSearching ? filteredItemsByCategory : itemsByCategory; return categories.filter(cat => source[cat._id] && source[cat._id].length > 0); }, [categories, itemsByCategory, filteredItemsByCategory, isSearching]);
-    
+
     const handleItemClick = useCallback((item: MenuItem) => {
-        // Agora qualquer item abre o mesmo modal moderno
         setSelectedItem(item);
     }, []);
-    
+
     const handleCategoryClick = useCallback((catId: string) => {
         setIsManualScrolling(true);
         setSelectedCategory(catId);
@@ -215,18 +208,42 @@ export default function MenuDisplay() {
             const elPos = el.getBoundingClientRect().top + window.scrollY;
             const offset = elPos - headerHeight - 16;
             window.scrollTo({ top: offset, behavior: 'smooth' });
-            if (manualScrollTimeoutRef.current) clearTimeout(manualScrollTimeoutRef.current);
-            manualScrollTimeoutRef.current = setTimeout(() => setIsManualScrolling(false), 1000);
         }
     }, []);
-    
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+            }
+            scrollTimeoutRef.current = setTimeout(() => {
+                setIsManualScrolling(false);
+            }, 150);
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+            }
+        };
+    }, []);
+
+
     useEffect(() => {
         if (isManualScrolling || displayCategories.length === 0) return;
+
         const obs = new IntersectionObserver((entries) => {
             if (isManualScrolling) return;
+
             const visible = entries.filter(e => e.isIntersecting);
+
             if (visible.length > 0) {
+                // Ordena as seções visíveis pela sua posição na tela
                 visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+
+                // A categoria ativa é a primeira da lista ordenada
                 const catId = visible[0].target.id.replace('category-', '');
                 setSelectedCategory(catId);
             }
@@ -237,7 +254,7 @@ export default function MenuDisplay() {
         });
         return () => obs.disconnect();
     }, [displayCategories, isManualScrolling]);
-    
+
     useEffect(() => { if (!selectedCategory || !categoryBarRef.current) return; const btn = categoryButtonRefs.current[selectedCategory]; const cont = categoryBarRef.current; if (btn && cont) { const contWidth = cont.offsetWidth; const btnWidth = btn.offsetWidth; const btnLeft = btn.offsetLeft; const scroll = btnLeft - (contWidth / 2) + (btnWidth / 2); cont.scrollTo({ left: scroll, behavior: 'smooth' }); } }, [selectedCategory]);
 
     const handleWhatsAppClick = () => {
@@ -245,26 +262,25 @@ export default function MenuDisplay() {
             alert("Erro: Detalhes do pedido ou configurações não encontrados.");
             return;
         }
-        
+
         const whatsappNumber = settings.establishmentInfo?.contact?.whatsapp?.replace(/\D/g, '');
         if (!whatsappNumber) {
             alert("O número de WhatsApp não foi configurado no painel de configurações.");
             return;
         }
 
-        const { 
-            cliente, 
-            address, 
-            tipoEntrega, 
-            items, 
-            total, 
-            formaPagamento, 
-            troco, 
+        const {
+            cliente,
+            address,
+            tipoEntrega,
+            items,
+            total,
+            formaPagamento,
+            troco,
             deliveryFee,
             observacoes
         } = orderDetails || {};
 
-        // --- Construção dos Itens ---
         const itemsText = items.map((item: any) => {
             let itemDetails = `*${item.quantity}x ${item.name}*`;
             if (item.size) itemDetails += ` (${item.size})`;
@@ -274,7 +290,6 @@ export default function MenuDisplay() {
             return itemDetails;
         }).join('\n\n');
 
-        // --- Construção da Entrega ---
         let deliveryText = `*Tipo:* ${tipoEntrega === 'entrega' ? 'ENTREGA' : 'RETIRADA'}`;
         if (tipoEntrega === 'entrega' && address) {
             deliveryText += `\n*Bairro:* ${address.neighborhood || 'Não informado'}`;
@@ -282,8 +297,7 @@ export default function MenuDisplay() {
             if (address.complement) deliveryText += `\n*Complemento:* ${address.complement}`;
             if (address.referencePoint) deliveryText += `\n*Ponto de Ref.:* ${address.referencePoint}`;
         }
-        
-        // --- Construção do Pagamento ---
+
         const subtotal = total - (deliveryFee || 0);
         let paymentText = `*Subtotal:* R$ ${subtotal.toFixed(2)}`;
         if (deliveryFee > 0) {
@@ -291,7 +305,7 @@ export default function MenuDisplay() {
         }
         paymentText += `\n*TOTAL A PAGAR: R$ ${total.toFixed(2)}*`;
         paymentText += `\n\n*Forma de Pagamento:* ${formaPagamento.toUpperCase()}`;
-        
+
         if (formaPagamento === 'dinheiro' && troco) {
             paymentText += `\n*Troco para:* R$ ${troco}`;
         }
@@ -301,22 +315,21 @@ export default function MenuDisplay() {
             paymentText += `\n🔑 *CHAVE PIX:* ${pixKey}\n_Por favor, envie o comprovante._`;
         }
 
-        // --- Montagem da Mensagem Final ---
         const message = `*🍔 NOVO PEDIDO - REI DOS SALGADOS 🍔*\n\n` +
-                        `-----------------------------------\n` +
-                        `*👤 DADOS DO CLIENTE*\n` +
-                        `*Nome:* ${cliente.nome}\n` +
-                        `*Telefone:* ${cliente.telefone}\n\n` +
-                        `-----------------------------------\n` +
-                        `*🛵 DADOS DA ENTREGA*\n` +
-                        `${deliveryText}\n\n` +
-                        `-----------------------------------\n` +
-                        `*📋 ITENS DO PEDIDO*\n\n` +
-                        `${itemsText}\n\n` +
-                        `-----------------------------------\n` +
-                        `${observacoes ? `*📝 OBSERVAÇÕES GERAIS*\n_${observacoes}_\n\n-----------------------------------\n` : ''}` +
-                        `*💰 PAGAMENTO E TOTAIS*\n` +
-                        `${paymentText}`;
+            `-----------------------------------\n` +
+            `*👤 DADOS DO CLIENTE*\n` +
+            `*Nome:* ${cliente.nome}\n` +
+            `*Telefone:* ${cliente.telefone}\n\n` +
+            `-----------------------------------\n` +
+            `*🛵 DADOS DA ENTREGA*\n` +
+            `${deliveryText}\n\n` +
+            `-----------------------------------\n` +
+            `*📋 ITENS DO PEDIDO*\n\n` +
+            `${itemsText}\n\n` +
+            `-----------------------------------\n` +
+            `${observacoes ? `*📝 OBSERVAÇÕES GERAIS*\n_${observacoes}_\n\n-----------------------------------\n` : ''}` +
+            `*💰 PAGAMENTO E TOTAIS*\n` +
+            `${paymentText}`;
 
         window.open(`https://wa.me/55${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
         setShowWhatsAppModal(false);
@@ -431,7 +444,7 @@ export default function MenuDisplay() {
                         </div>
                     </div>
                 </div>
-                
+
                 <main className="px-4 pb-4 pt-6">
                     <div className="space-y-12">
                         {showHighlights && highlights.length > 0 && (
@@ -475,7 +488,6 @@ export default function MenuDisplay() {
                     />
                 )}
             </AnimatePresence>
-            {/* Modais antigos (MiniItemModal, PastaModal) removidos após unificação */}
             {cartItems.length > 0 && (<div className="fixed bottom-6 right-6 z-40"><motion.button onClick={() => setIsCartOpen(true)} className="w-16 h-16 bg-yellow-500 text-gray-900 rounded-full flex items-center justify-center shadow-lg" initial={{ scale: 0 }} animate={{ scale: 1 }}><FaShoppingCart size={24} /><span className="absolute -top-1 -right-1 bg-gray-900 text-yellow-500 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-yellow-500">{cartItems.reduce((t, i) => t + i.quantity, 0)}</span></motion.button></div>)}
             <AnimatePresence>{isCartOpen && <Cart onClose={() => setIsCartOpen(false)} onCheckout={handleCheckout} />}</AnimatePresence>
             <AnimatePresence>{showWhatsAppModal && (<motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70"><motion.div className="bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm w-full mx-4"><h2 className="text-xl font-bold text-yellow-500 mb-4">Pedido Enviado!</h2><p className="text-gray-300 mb-6">Seu pedido foi registrado. Clique abaixo para confirmar via WhatsApp.</p><button onClick={handleWhatsAppClick} className="w-full flex items-center justify-center gap-2 bg-green-500 text-white font-bold py-3 rounded-lg hover:bg-green-600"><FaWhatsapp /> Enviar para WhatsApp</button><button onClick={() => setShowWhatsAppModal(false)} className="w-full mt-2 bg-gray-700 text-gray-300 font-bold py-3 rounded-lg hover:bg-gray-600">Fechar</button></motion.div></motion.div>)}</AnimatePresence>

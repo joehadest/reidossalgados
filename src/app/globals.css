@@ -76,7 +76,7 @@ button[data-category][aria-selected="true"] {
 .category-bar-container {
     padding: 0.5rem 0.25rem;
     position: relative;
-    scroll-behavior: smooth;
+    scroll-behavior: smooth; /* Adicione esta linha */
     -webkit-overflow-scrolling: touch;
     padding-right: 1rem;
 }
