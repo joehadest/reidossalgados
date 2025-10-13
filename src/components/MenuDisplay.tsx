@@ -2,7 +2,7 @@
 
 'use client';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useRestaurantStatus } from '@/contexts/RestaurantStatusContext';
 import ItemModal from './ItemModal';
 import Cart from './Cart';
@@ -98,8 +98,42 @@ export default function MenuDisplay() {
     const [showFilterSheet, setShowFilterSheet] = useState(false);
     const categorySectionRefs = useRef<Record<string, HTMLElement | null>>({});
     const categoryButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+    const categoryLabelRefs = useRef<Record<string, HTMLSpanElement | null>>({});
     const categoryBarRef = useRef<HTMLDivElement | null>(null);
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const scrollRafRef = useRef<number | null>(null);
+    const prefersReducedMotion = useReducedMotion();
+
+    // Indicador sublinhado animado (acompanha o botão ativo)
+    const [indicator, setIndicator] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
+    const [indicatorReady, setIndicatorReady] = useState(false);
+    const [showLeftFade, setShowLeftFade] = useState(false);
+    const [showRightFade, setShowRightFade] = useState(false);
+
+    const updateScrollFades = useCallback(() => {
+        const cont = categoryBarRef.current;
+        if (!cont) return;
+        const atStart = cont.scrollLeft <= 2;
+        const atEnd = cont.scrollLeft + cont.clientWidth >= cont.scrollWidth - 2;
+        setShowLeftFade(!atStart);
+        setShowRightFade(!atEnd);
+    }, []);
+
+    const measureIndicator = useCallback(() => {
+        if (!selectedCategory) return;
+        const cont = categoryBarRef.current;
+        const btn = categoryButtonRefs.current[selectedCategory];
+        const label = categoryLabelRefs.current[selectedCategory];
+        if (!cont || !btn) return;
+        // Preferir a largura/posição do texto (label) para maior precisão visual
+        let left = btn.offsetLeft - cont.scrollLeft;
+        let width = Math.max(btn.offsetWidth, 16);
+        if (label) {
+            left = btn.offsetLeft + label.offsetLeft - cont.scrollLeft;
+            width = Math.max(label.offsetWidth + 10, 16); // acolchoar 10px no total
+        }
+        setIndicator({ left, width });
+    }, [selectedCategory]);
 
     useEffect(() => {
         async function fetchData() {
@@ -128,6 +162,8 @@ export default function MenuDisplay() {
         }
         fetchData();
     }, []);
+
+    
 
     const handleCheckout = async (details: any) => {
         setIsCartOpen(false);
@@ -195,6 +231,19 @@ export default function MenuDisplay() {
     const filteredItemsByCategory = useMemo(() => { if (!isSearching) return itemsByCategory; const q = searchQuery.trim().toLowerCase(); const filtered: Record<string, MenuItem[]> = {}; Object.keys(itemsByCategory).forEach(catId => { const matches = itemsByCategory[catId].filter(it => it.name?.toLowerCase().includes(q) || it.description?.toLowerCase().includes(q)); if (matches.length > 0) filtered[catId] = matches; }); return filtered; }, [isSearching, searchQuery, itemsByCategory]);
     const displayCategories = useMemo(() => { const source = isSearching ? filteredItemsByCategory : itemsByCategory; return categories.filter(cat => source[cat._id] && source[cat._id].length > 0); }, [categories, itemsByCategory, filteredItemsByCategory, isSearching]);
 
+    // Quando categorias exibíveis mudarem, medir indicador e atualizar fades
+    useEffect(() => {
+        let raf1 = 0;
+        let t: any;
+        setIndicatorReady(false);
+        raf1 = requestAnimationFrame(() => {
+            measureIndicator();
+            updateScrollFades();
+            t = setTimeout(() => setIndicatorReady(true), 60); // pequeno atraso para estabilizar layout
+        });
+        return () => { cancelAnimationFrame(raf1); if (t) clearTimeout(t); };
+    }, [displayCategories, measureIndicator, updateScrollFades]);
+
     const handleItemClick = useCallback((item: MenuItem) => {
         setSelectedItem(item);
     }, []);
@@ -231,31 +280,111 @@ export default function MenuDisplay() {
     }, []);
 
 
-    useEffect(() => {
-        if (isManualScrolling || displayCategories.length === 0) return;
+    // Scroll spy preciso com base nas posições das seções
+    const sectionPositionsRef = useRef<Array<{ id: string; top: number }>>([]);
 
-        const obs = new IntersectionObserver((entries) => {
-            if (isManualScrolling) return;
+    const recomputeSectionPositions = useCallback(() => {
+        sectionPositionsRef.current = displayCategories
+            .map(cat => {
+                const el = document.getElementById(`category-${cat._id}`);
+                const top = el ? el.getBoundingClientRect().top + window.scrollY : Infinity;
+                return { id: cat._id, top };
+            })
+            .filter(p => Number.isFinite(p.top))
+            .sort((a, b) => a.top - b.top);
+    }, [displayCategories]);
 
-            const visible = entries.filter(e => e.isIntersecting);
+    const updateActiveCategoryOnScroll = useCallback(() => {
+        if (isManualScrolling) return;
+        const bar = document.querySelector('.sticky-category-bar') as HTMLElement | null;
+        const barHeight = bar?.offsetHeight ?? 70;
+        const viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
+        const anchorOffset = Math.min(Math.max(Math.round(viewportH * 0.35), 120), 360);
+        const anchorY = window.scrollY + barHeight + 8 + anchorOffset;
+        const positions = sectionPositionsRef.current;
+        if (positions.length === 0) return;
 
-            if (visible.length > 0) {
-                // Ordena as seções visíveis pela sua posição na tela
-                visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-
-                // A categoria ativa é a primeira da lista ordenada
-                const catId = visible[0].target.id.replace('category-', '');
-                setSelectedCategory(catId);
+        // posições já ordenadas; encontrar o intervalo que contém anchorY
+        let idx = 0;
+        for (let i = 0; i < positions.length; i++) {
+            const cur = positions[i];
+            const next = positions[i + 1];
+            if (!next || (cur.top <= anchorY && anchorY < next.top)) {
+                idx = i;
+                break;
             }
-        }, { rootMargin: '-80px 0px -40% 0px', threshold: 0.1 });
-        displayCategories.forEach(cat => {
-            const el = document.getElementById(`category-${cat._id}`);
-            if (el) obs.observe(el);
-        });
-        return () => obs.disconnect();
-    }, [displayCategories, isManualScrolling]);
+        }
+        const activeId = positions[idx].id;
+        if (activeId && activeId !== selectedCategory) {
+            setSelectedCategory(activeId);
+        }
+    }, [isManualScrolling, selectedCategory]);
 
-    useEffect(() => { if (!selectedCategory || !categoryBarRef.current) return; const btn = categoryButtonRefs.current[selectedCategory]; const cont = categoryBarRef.current; if (btn && cont) { const contWidth = cont.offsetWidth; const btnWidth = btn.offsetWidth; const btnLeft = btn.offsetLeft; const scroll = btnLeft - (contWidth / 2) + (btnWidth / 2); cont.scrollTo({ left: scroll, behavior: 'smooth' }); } }, [selectedCategory]);
+    useEffect(() => {
+        // Recalcular quando categorias mudarem
+        const id = requestAnimationFrame(() => {
+            recomputeSectionPositions();
+            updateActiveCategoryOnScroll();
+        });
+        return () => cancelAnimationFrame(id);
+    }, [recomputeSectionPositions, updateActiveCategoryOnScroll]);
+
+    useEffect(() => {
+        const onScroll = () => {
+            if (scrollRafRef.current != null) return;
+            scrollRafRef.current = requestAnimationFrame(() => {
+                updateActiveCategoryOnScroll();
+                scrollRafRef.current && cancelAnimationFrame(scrollRafRef.current);
+                scrollRafRef.current = null;
+            });
+        };
+        const onResize = () => {
+            const id = requestAnimationFrame(() => {
+                recomputeSectionPositions();
+                updateActiveCategoryOnScroll();
+            });
+            return () => cancelAnimationFrame(id);
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onResize);
+        return () => {
+            window.removeEventListener('scroll', onScroll as any);
+            window.removeEventListener('resize', onResize as any);
+            if (scrollRafRef.current != null) {
+                cancelAnimationFrame(scrollRafRef.current);
+                scrollRafRef.current = null;
+            }
+        };
+    }, [recomputeSectionPositions, updateActiveCategoryOnScroll]);
+
+    useEffect(() => {
+        if (!selectedCategory || !categoryBarRef.current) return;
+        const btn = categoryButtonRefs.current[selectedCategory];
+        const cont = categoryBarRef.current;
+        if (btn && cont) {
+            const contWidth = cont.offsetWidth;
+            const btnWidth = btn.offsetWidth;
+            const btnLeft = btn.offsetLeft;
+            const scroll = btnLeft - (contWidth / 2) + (btnWidth / 2);
+            // scroll imediato para reduzir atraso perceptível
+            cont.scrollTo({ left: scroll, behavior: 'auto' });
+            // medir e atualizar o indicador após centragem
+            requestAnimationFrame(() => {
+                measureIndicator();
+                updateScrollFades();
+            });
+        }
+    }, [selectedCategory, measureIndicator, updateScrollFades]);
+
+    // Atualiza indicador em resize
+    useEffect(() => {
+        const onResize = () => {
+            measureIndicator();
+            updateScrollFades();
+        };
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, [measureIndicator, updateScrollFades]);
 
     const handleWhatsAppClick = () => {
         if (!orderDetails || !settings) {
@@ -418,16 +547,57 @@ export default function MenuDisplay() {
                 </div>
 
                 {/* Barra de Categoria Fixa */}
-                <div className="sticky top-0 z-30 bg-gray-900/80 backdrop-blur-lg border-b border-t border-gray-700/50 sticky-category-bar">
+                <motion.div
+                    initial={prefersReducedMotion ? false : { y: -10, opacity: 0 }}
+                    animate={prefersReducedMotion ? {} : { y: 0, opacity: 1 }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    className="sticky top-0 z-30 bg-gray-900/80 backdrop-blur-lg border-b border-t border-gray-700/50 sticky-category-bar"
+                >
                     <div className="relative px-4 py-3">
-                        <div className="pointer-events-none absolute left-0 top-0 h-full w-6 bg-gradient-to-r from-gray-900 to-transparent" />
-                        <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-gray-900 to-transparent" />
-                        <div ref={categoryBarRef} className="flex space-x-2 snap-x snap-mandatory overflow-x-auto scrollbar-hide category-bar-container">
+                        {/* Fades laterais dinâmicos */}
+                        <motion.div
+                            aria-hidden
+                            className="pointer-events-none absolute left-0 top-0 h-full w-6 bg-gradient-to-r from-gray-900 to-transparent"
+                            animate={{ opacity: showLeftFade ? 1 : 0 }}
+                            transition={{ duration: 0.2 }}
+                        />
+                        <motion.div
+                            aria-hidden
+                            className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-gray-900 to-transparent"
+                            animate={{ opacity: showRightFade ? 1 : 0 }}
+                            transition={{ duration: 0.2 }}
+                        />
+                        <div
+                            ref={categoryBarRef}
+                            onScroll={() => {
+                                // throttle com rAF
+                                if (!(categoryBarRef.current as any)?._scrollTicking) {
+                                    (categoryBarRef.current as any)._scrollTicking = true;
+                                    requestAnimationFrame(() => {
+                                        updateScrollFades();
+                                        measureIndicator();
+                                        if (categoryBarRef.current) (categoryBarRef.current as any)._scrollTicking = false;
+                                    });
+                                }
+                            }}
+                            className="relative flex space-x-2 snap-x snap-mandatory overflow-x-auto scrollbar-hide category-bar-container"
+                        >
+                            {/* Indicador sublinhado */}
+                            <motion.div
+                                aria-hidden
+                                className="absolute bottom-0 h-0.5 bg-yellow-500 rounded-full"
+                                initial={false}
+                                animate={{ x: indicator.left, width: indicator.width, opacity: indicatorReady && indicator.width > 0 ? 1 : 0 }}
+                                transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 700, damping: 32 }}
+                                style={{ pointerEvents: 'none', left: 0, willChange: 'transform, width, opacity' }}
+                            />
                             {displayCategories.map(cat => (
-                                <button
+                                <motion.button
                                     key={cat._id}
                                     ref={(el) => { categoryButtonRefs.current[cat._id] = el; }}
                                     onClick={() => handleCategoryClick(cat._id)}
+                                    whileHover={prefersReducedMotion ? {} : { scale: 1.03 }}
+                                    whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
                                     className={`relative px-4 py-2 rounded-full text-sm font-semibold transition-colors duration-300 whitespace-nowrap flex items-center gap-2 border border-gray-700/60 snap-start ${selectedCategory === cat._id ? 'text-gray-900' : 'text-gray-300 hover:text-white'}`}
                                 >
                                     {selectedCategory === cat._id && (
@@ -435,15 +605,20 @@ export default function MenuDisplay() {
                                             layoutId="category-pill"
                                             className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 shadow-glow"
                                             style={{ zIndex: -1 }}
-                                            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                                            transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 900, damping: 40 }}
                                         />
                                     )}
-                                    <span className="relative z-10">{cat.name}</span>
-                                </button>
+                                    <span
+                                        ref={(el) => { categoryLabelRefs.current[cat._id] = el; }}
+                                        className="relative z-10"
+                                    >
+                                        {cat.name}
+                                    </span>
+                                </motion.button>
                             ))}
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
                 <main className="px-4 pb-4 pt-6">
                     <div className="space-y-12">
