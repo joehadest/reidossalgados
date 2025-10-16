@@ -102,6 +102,11 @@ export default function MenuDisplay() {
     const categoryBarRef = useRef<HTMLDivElement | null>(null);
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const scrollRafRef = useRef<number | null>(null);
+    const lastScrollYRef = useRef<number>(0);
+    const lastScrollTsRef = useRef<number>(0);
+    const fastUntilTsRef = useRef<number>(0);
+    const stabilizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pendingCategoryRef = useRef<string | null>(null);
     const prefersReducedMotion = useReducedMotion();
 
     // Indicador sublinhado animado (acompanha o botão ativo)
@@ -257,6 +262,10 @@ export default function MenuDisplay() {
             const elPos = el.getBoundingClientRect().top + window.scrollY;
             const offset = elPos - headerHeight - 16;
             window.scrollTo({ top: offset, behavior: 'smooth' });
+            // reativa o scroll spy após o movimento terminar
+            setTimeout(() => {
+                setIsManualScrolling(false);
+            }, 260);
         }
     }, []);
 
@@ -304,20 +313,79 @@ export default function MenuDisplay() {
         const positions = sectionPositionsRef.current;
         if (positions.length === 0) return;
 
+        // Borda superior: se o âncora está acima da primeira seção, selecionar a primeira
+        if (anchorY < positions[0].top) {
+            const candidateId = positions[0].id;
+            if (candidateId && candidateId !== selectedCategory) {
+                const now = performance.now();
+                const isFast = now < fastUntilTsRef.current;
+                const delay = isFast ? 160 : 90;
+                if (pendingCategoryRef.current !== candidateId) {
+                    pendingCategoryRef.current = candidateId;
+                    if (stabilizeTimerRef.current) clearTimeout(stabilizeTimerRef.current);
+                    stabilizeTimerRef.current = setTimeout(() => {
+                        if (pendingCategoryRef.current) {
+                            setSelectedCategory(pendingCategoryRef.current);
+                            pendingCategoryRef.current = null;
+                        }
+                    }, delay);
+                }
+            }
+            return;
+        }
+
+        // Borda inferior: se o âncora está após a última seção, selecionar a última
+        const lastIdx = positions.length - 1;
+        if (anchorY >= positions[lastIdx].top) {
+            const candidateId = positions[lastIdx].id;
+            if (candidateId && candidateId !== selectedCategory) {
+                const now = performance.now();
+                const isFast = now < fastUntilTsRef.current;
+                const delay = isFast ? 160 : 90;
+                if (pendingCategoryRef.current !== candidateId) {
+                    pendingCategoryRef.current = candidateId;
+                    if (stabilizeTimerRef.current) clearTimeout(stabilizeTimerRef.current);
+                    stabilizeTimerRef.current = setTimeout(() => {
+                        if (pendingCategoryRef.current) {
+                            setSelectedCategory(pendingCategoryRef.current);
+                            pendingCategoryRef.current = null;
+                        }
+                    }, delay);
+                }
+            }
+            return;
+        }
+
         // posições já ordenadas; encontrar o intervalo que contém anchorY
         let idx = 0;
         for (let i = 0; i < positions.length; i++) {
             const cur = positions[i];
             const next = positions[i + 1];
-            if (!next || (cur.top <= anchorY && anchorY < next.top)) {
+            if (next && cur.top <= anchorY && anchorY < next.top) {
                 idx = i;
                 break;
             }
         }
-        const activeId = positions[idx].id;
-        if (activeId && activeId !== selectedCategory) {
-            setSelectedCategory(activeId);
+        const candidateId = positions[idx].id;
+        if (!candidateId || candidateId === selectedCategory) return;
+
+        // Estabilizar a troca de categoria para evitar flicker em rolagem rápida
+        const now = performance.now();
+        const isFast = now < fastUntilTsRef.current;
+        const delay = isFast ? 160 : 90;
+
+        if (pendingCategoryRef.current === candidateId) {
+            // já aguardando esta categoria
+            return;
         }
+        pendingCategoryRef.current = candidateId;
+        if (stabilizeTimerRef.current) clearTimeout(stabilizeTimerRef.current);
+        stabilizeTimerRef.current = setTimeout(() => {
+            if (pendingCategoryRef.current) {
+                setSelectedCategory(pendingCategoryRef.current);
+                pendingCategoryRef.current = null;
+            }
+        }, delay);
     }, [isManualScrolling, selectedCategory]);
 
     useEffect(() => {
@@ -333,6 +401,17 @@ export default function MenuDisplay() {
         const onScroll = () => {
             if (scrollRafRef.current != null) return;
             scrollRafRef.current = requestAnimationFrame(() => {
+                const now = performance.now();
+                const y = window.scrollY;
+                const dy = y - lastScrollYRef.current;
+                const dt = Math.max(now - lastScrollTsRef.current, 1);
+                const velocity = Math.abs(dy) / dt * 1000; // px/s
+                if (velocity > 1400) {
+                    fastUntilTsRef.current = now + 220; // janela de rolagem rápida
+                }
+                lastScrollYRef.current = y;
+                lastScrollTsRef.current = now;
+
                 updateActiveCategoryOnScroll();
                 scrollRafRef.current && cancelAnimationFrame(scrollRafRef.current);
                 scrollRafRef.current = null;
@@ -353,6 +432,10 @@ export default function MenuDisplay() {
             if (scrollRafRef.current != null) {
                 cancelAnimationFrame(scrollRafRef.current);
                 scrollRafRef.current = null;
+            }
+            if (stabilizeTimerRef.current) {
+                clearTimeout(stabilizeTimerRef.current);
+                stabilizeTimerRef.current = null;
             }
         };
     }, [recomputeSectionPositions, updateActiveCategoryOnScroll]);
