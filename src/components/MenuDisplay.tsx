@@ -481,6 +481,10 @@ export default function MenuDisplay() {
             return;
         }
 
+        // Evita conflitos de formatação do WhatsApp (ex.: _itálico_ e *negrito*) inserindo zero-width space
+        const ZWSP = '\u200B';
+        const sanitize = (t: any) => (t ?? '').toString().replace(/([*_~`])/g, `${ZWSP}$1${ZWSP}`);
+
         const {
             cliente,
             address,
@@ -494,20 +498,20 @@ export default function MenuDisplay() {
         } = orderDetails || {};
 
         const itemsText = items.map((item: any) => {
-            let itemDetails = `*${item.quantity}x ${item.name}*`;
-            if (item.size) itemDetails += ` (${item.size})`;
-            if (item.border) itemDetails += `\n  - _Borda: ${item.border}_`;
-            if (item.extras && item.extras.length > 0) itemDetails += `\n  - _Sabores: ${item.extras.join(', ')}_`;
-            if (item.observation) itemDetails += `\n  - _Obs: ${item.observation}_`;
+            let itemDetails = `*${sanitize(item.quantity)}x ${sanitize(item.name)}*`;
+            if (item.size) itemDetails += ` (${sanitize(item.size)})`;
+            if (item.border) itemDetails += `\n  - Borda: ${sanitize(item.border)}`;
+            if (item.extras && item.extras.length > 0) itemDetails += `\n  - Sabores: ${item.extras.map((e: any) => sanitize(e)).join(', ')}`;
+            if (item.observation) itemDetails += `\n  - Obs: ${sanitize(item.observation)}`;
             return itemDetails;
         }).join('\n\n');
 
         let deliveryText = `*Tipo:* ${tipoEntrega === 'entrega' ? 'ENTREGA' : 'RETIRADA'}`;
         if (tipoEntrega === 'entrega' && address) {
-            deliveryText += `\n*Bairro:* ${address.neighborhood || 'Não informado'}`;
-            deliveryText += `\n*Endereço:* ${address.street}, ${address.number}`;
-            if (address.complement) deliveryText += `\n*Complemento:* ${address.complement}`;
-            if (address.referencePoint) deliveryText += `\n*Ponto de Ref.:* ${address.referencePoint}`;
+            deliveryText += `\n*Bairro:* ${sanitize(address.neighborhood) || 'Não informado'}`;
+            deliveryText += `\n*Endereço:* ${sanitize(address.street)}, ${sanitize(address.number)}`;
+            if (address.complement) deliveryText += `\n*Complemento:* ${sanitize(address.complement)}`;
+            if (address.referencePoint) deliveryText += `\n*Ponto de Ref.:* ${sanitize(address.referencePoint)}`;
         }
 
         const subtotal = total - (deliveryFee || 0);
@@ -524,14 +528,14 @@ export default function MenuDisplay() {
 
         const pixKey = settings.establishmentInfo?.pixKey;
         if (formaPagamento === 'pix' && pixKey) {
-            paymentText += `\n🔑 *CHAVE PIX:* ${pixKey}\n_Por favor, envie o comprovante._`;
+            paymentText += `\n🔑 *CHAVE PIX:* ${sanitize(pixKey)}\nPor favor, envie o comprovante.`;
         }
 
         const message = `*🍔 NOVO PEDIDO - REI DOS SALGADOS 🍔*\n\n` +
             `-----------------------------------\n` +
             `*👤 DADOS DO CLIENTE*\n` +
-            `*Nome:* ${cliente.nome}\n` +
-            `*Telefone:* ${cliente.telefone}\n\n` +
+            `*Nome:* ${sanitize(cliente.nome)}\n` +
+            `*Telefone:* ${sanitize(cliente.telefone)}\n\n` +
             `-----------------------------------\n` +
             `*🛵 DADOS DA ENTREGA*\n` +
             `${deliveryText}\n\n` +
@@ -539,7 +543,7 @@ export default function MenuDisplay() {
             `*📋 ITENS DO PEDIDO*\n\n` +
             `${itemsText}\n\n` +
             `-----------------------------------\n` +
-            `${observacoes ? `*📝 OBSERVAÇÕES GERAIS*\n_${observacoes}_\n\n-----------------------------------\n` : ''}` +
+            `${observacoes ? `*📝 OBSERVAÇÕES GERAIS*\n${sanitize(observacoes)}\n\n-----------------------------------\n` : ''}` +
             `*💰 PAGAMENTO E TOTAIS*\n` +
             `${paymentText}`;
 
@@ -681,7 +685,7 @@ export default function MenuDisplay() {
                                     onClick={() => handleCategoryClick(cat._id)}
                                     whileHover={prefersReducedMotion ? {} : { scale: 1.03 }}
                                     whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
-                                    className={`relative px-4 py-2 rounded-full text-sm font-semibold transition-colors duration-300 whitespace-nowrap flex items-center gap-2 border border-gray-700/60 snap-start ${selectedCategory === cat._id ? 'text-gray-900' : 'text-gray-300 hover:text-white'}`}
+                                    className={`relative px-3 sm:px-4 py-2 rounded-full text-xs xs:text-sm font-semibold transition-colors duration-300 whitespace-nowrap flex items-center gap-2 border border-gray-700/60 snap-start overflow-hidden flex-shrink-0 ${selectedCategory === cat._id ? 'text-gray-900' : 'text-gray-300 hover:text-white'}`}
                                 >
                                     {selectedCategory === cat._id && (
                                         <motion.div
@@ -693,7 +697,7 @@ export default function MenuDisplay() {
                                     )}
                                     <span
                                         ref={(el) => { categoryLabelRefs.current[cat._id] = el; }}
-                                        className="relative z-10"
+                                        className="relative z-10 truncate max-w-[60vw] sm:max-w-none"
                                     >
                                         {cat.name}
                                     </span>
