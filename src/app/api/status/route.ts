@@ -39,55 +39,72 @@ function isCurrentlyOpen(businessHours: any): boolean {
     }
 }
 
-export async function GET() {
+interface SettingsDoc {
+    isOpen: boolean;
+    businessHours: Record<string, { open: boolean; start: string; end: string }>;
+}
+
+export async function GET(request: Request) {
     try {
         console.log('🚀 Iniciando busca de status...');
-        
+
         const { db } = await connectToDatabase();
-        console.log('✅ Conexão com banco estabelecida');
-        
-        const settingsCollection = db.collection('settings');
-        console.log('✅ Coleção settings acessada');
+        const settingsCollection = db.collection<SettingsDoc>('settings');
 
-        // Buscar configurações do banco de dados
-        let settings = await settingsCollection.findOne({});
-        console.log('📋 Configurações encontradas:', settings ? 'Sim' : 'Não');
-
-        // Se não existir, criar configurações padrão
+        // Buscar configurações existentes
+        let settings: SettingsDoc | null = await settingsCollection.findOne({});
         if (!settings) {
-            console.log('📝 Criando configurações padrão...');
-            const defaultSettings = {
-    isOpen: false,
+            console.log('📝 Nenhuma configuração encontrada. Criando padrão...');
+            const defaultSettings: SettingsDoc = {
+                isOpen: false,
                 businessHours: {
-                    monday: { open: false, start: '08:00', end: '18:00' },
-                    tuesday: { open: false, start: '08:00', end: '18:00' },
-                    wednesday: { open: false, start: '08:00', end: '18:00' },
-                    thursday: { open: false, start: '08:00', end: '18:00' },
-                    friday: { open: false, start: '08:00', end: '18:00' },
-                    saturday: { open: false, start: '08:00', end: '18:00' },
-                    sunday: { open: false, start: '08:00', end: '18:00' }
+                    monday: { open: false, start: '18:00', end: '23:00' },
+                    tuesday: { open: false, start: '18:00', end: '23:00' },
+                    wednesday: { open: true, start: '18:00', end: '23:00' },
+                    thursday: { open: true, start: '18:00', end: '23:00' },
+                    friday: { open: true, start: '18:00', end: '23:00' },
+                    saturday: { open: true, start: '18:00', end: '23:00' },
+                    sunday: { open: true, start: '18:00', end: '23:00' }
                 }
             };
-
             await settingsCollection.insertOne(defaultSettings);
-            settings = defaultSettings as any;
-            console.log('✅ Configurações padrão criadas');
+            settings = defaultSettings;
         }
 
-        // Calcular se está aberto baseado nos horários
-        const isOpen = isCurrentlyOpen(settings!.businessHours);
-        console.log('🔍 Status calculado:', isOpen);
+        const businessHours = settings.businessHours || {};
+        const englishToPt: Record<string, string> = {
+            monday: 'segunda',
+            tuesday: 'terça',
+            wednesday: 'quarta',
+            thursday: 'quinta',
+            friday: 'sexta',
+            saturday: 'sábado',
+            sunday: 'domingo'
+        };
 
-        // Criar objeto de status compatível
+        const now = new Date();
+        const todayEn = now.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Sao_Paulo' }).toLowerCase();
+        const todayHours = businessHours[todayEn];
+
+        let calculatedOpen = isCurrentlyOpen(businessHours);
+        if (typeof settings.isOpen === 'boolean') {
+            calculatedOpen = settings.isOpen;
+        }
+
+        const horarioAbertura = todayHours?.start || '18:00';
+        const horarioFechamento = todayHours?.end || '23:00';
+        const diasFuncionamento = Object.entries(businessHours)
+            .filter(([_, v]: any) => v && v.open)
+            .map(([k]) => englishToPt[k] || k);
+
         const status: RestaurantStatus = {
-            isOpen,
-    horarioAbertura: '18:00',
-    horarioFechamento: '23:00',
-    diasFuncionamento: ['quarta', 'quinta', 'sexta', 'sabado', 'domingo', 'segunda'],
-    mensagemFechado: 'Estamos fechados. Volte em breve!'
-};
+            isOpen: calculatedOpen,
+            horarioAbertura,
+            horarioFechamento,
+            diasFuncionamento,
+            mensagemFechado: 'Estamos fechados. Volte em breve!'
+        };
 
-        console.log('✅ Status retornado com sucesso:', status);
         return NextResponse.json(status);
     } catch (error) {
         console.error('❌ Erro ao buscar status:', error);

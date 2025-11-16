@@ -8,6 +8,8 @@ interface MenuContextType {
     status: RestaurantStatus | null;
     loading: boolean;
     error: string | null;
+    filter: string;
+    setFilter: (v: string) => void;
 }
 
 const MenuContext = createContext<MenuContextType | undefined>(undefined);
@@ -17,13 +19,14 @@ export function MenuProvider({ children }: { children: ReactNode }) {
     const [status, setStatus] = useState<RestaurantStatus | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [filter, setFilter] = useState<string>('');
 
     const toggleOpen = () => {
         setIsOpen(prev => !prev);
     };
 
     return (
-        <MenuContext.Provider value={{ isOpen, toggleOpen, status, loading, error }}>
+        <MenuContext.Provider value={{ isOpen, toggleOpen, status, loading, error, filter, setFilter }}>
             {children}
         </MenuContext.Provider>
     );

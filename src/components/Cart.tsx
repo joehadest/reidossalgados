@@ -199,7 +199,7 @@ export default function Cart({ onClose, onCheckout }: CartProps) {
                                     className="flex-1 flex flex-col min-h-0"
                                 >
                                     {/* SEÇÃO DE ITENS COM ROLAGEM */}
-                                    <div className="p-5 space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-yellow-500/80 scrollbar-track-gray-800/40 flex-1">
+                                    <div className="p-5 space-y-4 overflow-y-auto custom-scroll flex-1">
                                         {items.map(item => (
                                             <div key={item._id} className="group rounded-xl border border-gray-800/80 bg-gray-900/60 hover:border-yellow-500/50 transition-colors p-3">
                                                 <div className="flex items-center gap-3">
@@ -261,7 +261,7 @@ export default function Cart({ onClose, onCheckout }: CartProps) {
                                     className="flex-1 flex flex-col min-h-0"
                                 >
                                     {/* SEÇÃO DO FORMULÁRIO COM ROLAGEM */}
-                                    <div className="overflow-y-auto p-5 space-y-4 flex-1 scrollbar-thin scrollbar-thumb-yellow-500/80 scrollbar-track-gray-800/40">
+                                    <div className="overflow-y-auto p-5 space-y-4 flex-1 custom-scroll">
                                         <InputField label="Nome" value={cliente.nome} onChange={(e:any) => setCliente({...cliente, nome: e.target.value})} required />
                                         <InputField label="Telefone" type="tel" value={cliente.telefone} onChange={(e:any) => setCliente({...cliente, telefone: e.target.value})} required />
                                         <SelectField label="Tipo de Entrega" value={tipoEntrega} onChange={(e:any) => setTipoEntrega(e.target.value as any)}>

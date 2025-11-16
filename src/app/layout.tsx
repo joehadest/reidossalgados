@@ -5,6 +5,7 @@ import { StoreProvider } from '@/contexts/StoreContext';
 import { MenuProvider } from '@/contexts/MenuContext';
 import { CartProvider } from '@/contexts/CartContext';
 import { RestaurantStatusProvider } from '@/contexts/RestaurantStatusContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import ConnectivityStatus from '@/components/ConnectivityStatus';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -46,8 +47,18 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="pt-BR">
+        <html lang="pt-BR" suppressHydrationWarning>
             <head>
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            (function() {
+                                const theme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                                document.documentElement.classList.add(theme);
+                            })()
+                        `,
+                    }}
+                />
                 <link rel="manifest" href="/favicon/site.webmanifest" />
                 <link rel="icon" type="image/x-icon" href="/favicon/favicon.ico" />
                 <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png" />
@@ -64,19 +75,21 @@ export default function RootLayout({
                 <meta name="mobile-web-app-capable" content="yes" />
                 <meta name="format-detection" content="telephone=no" />
             </head>
-            <body className="bg-gray-900 min-h-screen">
-                <RestaurantStatusProvider>
-                <CartProvider>
-                    <MenuProvider>
-                        <StoreProvider>
-                            <main className="min-h-screen">
-                                {children}
-                            </main>
-                            <ConnectivityStatus />
-                        </StoreProvider>
-                    </MenuProvider>
-                </CartProvider>
-                </RestaurantStatusProvider>
+            <body className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen transition-colors duration-300">
+                <ThemeProvider>
+                    <RestaurantStatusProvider>
+                        <CartProvider>
+                            <MenuProvider>
+                                <StoreProvider>
+                                    <main className="min-h-screen">
+                                        {children}
+                                    </main>
+                                    <ConnectivityStatus />
+                                </StoreProvider>
+                            </MenuProvider>
+                        </CartProvider>
+                    </RestaurantStatusProvider>
+                </ThemeProvider>
             </body>
         </html>
     );

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaSearch, FaTimes, FaClock, FaCheckCircle, FaTruck, FaUtensils } from "react-icons/fa";
+import { FaSearch, FaTimes, FaClock, FaCheckCircle, FaTruck, FaUtensils, FaSync, FaCopy, FaWhatsapp } from "react-icons/fa";
 
 type PedidoStatus = "pendente" | "preparando" | "pronto" | "entregando" | "entregue" | "cancelado" | string;
 
@@ -38,6 +38,7 @@ export default function OrderTracker({ onClose }: OrderTrackerProps) {
     const [loading, setLoading] = useState(false);
     const [order, setOrder] = useState<OrderStatus | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [copied, setCopied] = useState<string | null>(null);
 
     useEffect(() => {
         // Trava o scroll do body (iOS-friendly) enquanto o modal estiver aberto
@@ -90,6 +91,45 @@ export default function OrderTracker({ onClose }: OrderTrackerProps) {
         }
     };
 
+    const refresh = async () => {
+        if (!order) return handleSearch();
+        // Reutiliza o mesmo critério de busca: se veio por telefone, usa telefone; se por id, usa id
+        setLoading(true);
+        setError(null);
+        try {
+            const fromId = order._id ? `/api/pedidos?id=${encodeURIComponent(order._id)}` : null;
+            const fromPhone = order.cliente?.telefone ? `/api/pedidos?telefone=${encodeURIComponent(order.cliente.telefone)}` : null;
+            const url = fromId || fromPhone;
+            if (!url) return;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.success && data.data) {
+                if (Array.isArray(data.data)) setOrder(data.data[0] || null);
+                else setOrder(data.data as OrderStatus);
+            }
+        } catch (e) {
+            // silencioso
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const copyOrderId = async () => {
+        if (!order?._id) return;
+        try {
+            await navigator.clipboard.writeText(order._id);
+            setCopied('Código copiado!');
+            setTimeout(() => setCopied(null), 1200);
+        } catch {}
+    };
+
+    const whatsappShareLink = () => {
+        if (!order) return '#';
+        const msg = `Pedido #${order._id?.slice(-6)}\nStatus: ${getStatus(order.status).label}\nTotal: R$ ${order.total.toFixed(2)}`;
+        const phone = order.cliente?.telefone ? order.cliente.telefone.replace(/\D/g, '') : '';
+        return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+    };
+
     const formatDate = (s: string) =>
         new Date(s).toLocaleString("pt-BR", {
             day: "2-digit",
@@ -126,74 +166,215 @@ export default function OrderTracker({ onClose }: OrderTrackerProps) {
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="relative h-auto min-h-[96px] bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 flex flex-col items-center justify-center px-4 pt-6 pb-4 sm:pt-8 sm:pb-6">
+                    <div className="relative h-auto min-h-[140px] bg-gradient-to-br from-yellow-500/20 via-yellow-600/10 to-transparent flex flex-col items-center justify-center px-4 pt-8 pb-6 sm:pt-10 sm:pb-8 overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/50 to-transparent rounded-t-2xl" />
+                        {/* Decorações de fundo */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/5 rounded-full blur-3xl" />
+                        <div className="absolute bottom-0 left-0 w-24 h-24 bg-yellow-500/5 rounded-full blur-2xl" />
                         <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={onClose}
-                            className="absolute top-2 right-2 w-7 h-7 bg-gray-900/80 backdrop-blur-sm rounded-full flex items-center justify-center text-yellow-500 hover:text-yellow-400 transition-colors z-20"
+                            className="absolute top-3 right-3 w-8 h-8 bg-gray-900/80 backdrop-blur-sm rounded-full flex items-center justify-center text-yellow-500 hover:text-yellow-400 transition-colors z-20 border border-gray-800/50"
                             aria-label="Fechar"
                         >
                             <FaTimes className="text-sm" />
                         </motion.button>
-                        <div className="relative z-10 w-full flex flex-col items-center justify-center mt-8 sm:mt-10">
-                            <h2 className="text-2xl font-bold text-yellow-500 mb-2 text-center">Acompanhar Pedido</h2>
-                            <p className="text-gray-300 text-sm text-center">Digite seu telefone ou ID do pedido</p>
+                        <div className="relative z-10 w-full flex flex-col items-center justify-center">
+                            {/* Ícone ilustrativo */}
+                            <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ duration: 0.4, type: "spring" }}
+                                className="mb-4 relative"
+                            >
+                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border border-yellow-500/30 flex items-center justify-center backdrop-blur-sm">
+                                    <FaSearch className="text-3xl text-yellow-400" />
+                                </div>
+                                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-yellow-500 flex items-center justify-center animate-pulse">
+                                    <div className="w-2 h-2 rounded-full bg-white" />
+                                </div>
+                            </motion.div>
+                            <motion.h2
+                                initial={{ y: 10, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                transition={{ delay: 0.1 }}
+                                className="text-2xl sm:text-3xl font-extrabold text-white mb-2 text-center tracking-tight"
+                            >
+                                Acompanhar Pedido
+                            </motion.h2>
+                            <motion.p
+                                initial={{ y: 10, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                transition={{ delay: 0.2 }}
+                                className="text-gray-400 text-sm text-center max-w-xs"
+                            >
+                                Informe seu telefone ou código do pedido para ver o status em tempo real
+                            </motion.p>
                         </div>
                     </div>
 
                     {/* Content */}
-                    <div className="p-4 sm:p-6 overflow-y-auto">
+                    <div className="p-4 sm:p-6 overflow-y-auto custom-scroll">
                         {/* Search Form */}
-                        <div className="space-y-4 mb-6">
-                            <div className="flex flex-col xs:flex-row gap-2">
-                                <button
-                                    onClick={() => setSearchType("phone")}
-                                    className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                                        searchType === "phone" ? "bg-yellow-500 text-gray-900" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                                    }`}
-                                >
-                                    Telefone
-                                </button>
-                                <button
-                                    onClick={() => setSearchType("id")}
-                                    className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                                        searchType === "id" ? "bg-yellow-500 text-gray-900" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                                    }`}
-                                >
-                                    ID do Pedido
-                                </button>
+                        <motion.div
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ delay: 0.3 }}
+                            className="space-y-4 mb-6"
+                        >
+                            {/* Tipo de busca com estilo card */}
+                            <div className="bg-gray-800/40 rounded-xl p-1 border border-gray-700/50 backdrop-blur-sm">
+                                <div className="flex gap-2">
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setSearchType("phone")}
+                                        className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${
+                                            searchType === "phone"
+                                                ? "bg-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/25"
+                                                : "bg-transparent text-gray-400 hover:text-gray-200"
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-center gap-2">
+                                            <FaSearch className="text-sm" />
+                                            <span className="text-sm">Telefone</span>
+                                        </div>
+                                    </motion.button>
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setSearchType("id")}
+                                        className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${
+                                            searchType === "id"
+                                                ? "bg-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/25"
+                                                : "bg-transparent text-gray-400 hover:text-gray-200"
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-center gap-2">
+                                            <FaSearch className="text-sm" />
+                                            <span className="text-sm">Código</span>
+                                        </div>
+                                    </motion.button>
+                                </div>
                             </div>
-                            <div className="flex flex-col xs:flex-row gap-2">
-                                <input
-                                    type="text"
-                                    value={searchValue}
-                                    onChange={(e) => setSearchValue(e.target.value)}
-                                    placeholder={searchType === "phone" ? "Digite seu telefone" : "Digite o ID do pedido"}
-                                    className="flex-1 p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500/50 min-w-0"
-                                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                                />
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={handleSearch}
-                                    disabled={loading}
-                                    className="bg-yellow-500 text-gray-900 p-3 rounded-lg font-bold hover:bg-yellow-400 transition-colors disabled:bg-gray-600 min-w-[48px]"
-                                >
-                                    {loading ? (
-                                        <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                        <FaSearch />
-                                    )}
-                                </motion.button>
+
+                            {/* Campo de busca aprimorado */}
+                            <div className="relative">
+                                <div className="flex gap-2">
+                                    <div className="flex-1 relative group">
+                                        <input
+                                            type="text"
+                                            value={searchValue}
+                                            onChange={(e) => setSearchValue(e.target.value)}
+                                            placeholder={
+                                                searchType === "phone"
+                                                    ? "Ex: (84) 99999-9999"
+                                                    : "Ex: 507f1f77bcf86cd799439011"
+                                            }
+                                            className="w-full p-4 pr-12 rounded-xl bg-gray-800/60 text-white border border-gray-700/70 focus:outline-none focus:ring-2 focus:ring-yellow-500/60 focus:border-yellow-500/50 transition-all placeholder:text-gray-500 group-hover:border-gray-600"
+                                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                                        />
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
+                                            {searchType === "phone" ? "📱" : "🔖"}
+                                        </div>
+                                    </div>
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={handleSearch}
+                                        disabled={loading}
+                                        className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-gray-900 px-6 rounded-xl font-bold hover:from-yellow-400 hover:to-yellow-500 transition-all disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed shadow-lg shadow-yellow-500/20 min-w-[64px] flex items-center justify-center"
+                                    >
+                                        {loading ? (
+                                            <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                            <FaSearch className="text-lg" />
+                                        )}
+                                    </motion.button>
+                                </div>
                             </div>
-                            {error && <div className="text-red-500 text-sm bg-red-500/10 p-3 rounded-lg">{error}</div>}
-                        </div>
+
+                            {/* Mensagem de erro melhorada */}
+                            <AnimatePresence>
+                                {error && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="flex items-start gap-3 text-sm bg-red-500/10 border border-red-500/30 p-4 rounded-xl"
+                                    >
+                                        <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                            <FaTimes className="text-xs text-red-400" />
+                                        </div>
+                                        <p className="text-red-400 flex-1">{error}</p>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Dica visual quando não há pedido */}
+                            {!order && !error && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.4 }}
+                                    className="mt-8 text-center space-y-4"
+                                >
+                                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gray-800/40 border border-gray-700/50">
+                                        <FaTruck className="text-4xl text-gray-600" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-gray-400 text-sm font-medium">
+                                            Nenhum pedido selecionado
+                                        </p>
+                                        <p className="text-gray-500 text-xs max-w-xs mx-auto leading-relaxed">
+                                            Digite seu número de telefone ou o código do pedido acima para
+                                            acompanhar o status em tempo real
+                                        </p>
+                                    </div>
+                                    {/* Benefícios */}
+                                    <div className="mt-6 grid grid-cols-3 gap-3 text-center">
+                                        <div className="space-y-1">
+                                            <div className="w-10 h-10 mx-auto rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+                                                <FaClock className="text-yellow-500 text-lg" />
+                                            </div>
+                                            <p className="text-[10px] text-gray-500 font-medium">Tempo Real</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="w-10 h-10 mx-auto rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                                                <FaUtensils className="text-blue-400 text-lg" />
+                                            </div>
+                                            <p className="text-[10px] text-gray-500 font-medium">Status Detalhado</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="w-10 h-10 mx-auto rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                                                <FaCheckCircle className="text-green-400 text-lg" />
+                                            </div>
+                                            <p className="text-[10px] text-gray-500 font-medium">Notificações</p>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </motion.div>
 
                         {/* Order Status */}
                         {order && (
                             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                                {/* Ações rápidas */}
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={refresh} disabled={loading} className="px-3 py-1.5 text-xs rounded-lg bg-gray-800 text-gray-200 border border-gray-700 hover:bg-gray-700 disabled:opacity-60 flex items-center gap-2">
+                                            <FaSync className={`text-sm ${loading ? 'animate-spin' : ''}`} /> Atualizar
+                                        </button>
+                                        <button onClick={copyOrderId} className="px-3 py-1.5 text-xs rounded-lg bg-gray-800 text-gray-200 border border-gray-700 hover:bg-gray-700 flex items-center gap-2">
+                                            <FaCopy className="text-sm" /> Copiar código
+                                        </button>
+                                        {copied && <span className="text-xs text-gray-400">{copied}</span>}
+                                    </div>
+                                    <a href={whatsappShareLink()} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 text-xs rounded-lg bg-green-500 text-white hover:bg-green-600 flex items-center gap-2">
+                                        <FaWhatsapp className="text-sm" /> WhatsApp
+                                    </a>
+                                </div>
                                 {/* Order Info */}
                                 <div className="bg-gray-850/60 border border-gray-800/80 rounded-xl p-4">
                                     <div className="flex justify-between items-start mb-3">

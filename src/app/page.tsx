@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRestaurantStatus } from '@/contexts/RestaurantStatusContext';
-import { FaInfoCircle, FaSearch } from 'react-icons/fa';
+import { FaInfoCircle, FaSearch, FaWhatsapp, FaKey } from 'react-icons/fa';
 import Image from 'next/image';
 import MenuDisplay from '@/components/MenuDisplay';
 import OrderTracker from '@/components/OrderTracker';
@@ -13,6 +13,7 @@ export default function Home() {
     const [showOrderTracker, setShowOrderTracker] = useState(false);
     const [establishmentInfo, setEstablishmentInfo] = useState<any>(null);
     const [infoLoading, setInfoLoading] = useState(true);
+    const [copyMsg, setCopyMsg] = useState<string>('');
 
     // Bloquear scroll quando modais estão abertos
     useEffect(() => {
@@ -50,7 +51,6 @@ export default function Home() {
     // Função para formatar horários de funcionamento
     const formatBusinessHours = (hours: any) => {
         if (!hours) return null;
-
         const daysOfWeek = [
             { key: 'monday', label: 'Segunda' },
             { key: 'tuesday', label: 'Terça' },
@@ -60,16 +60,7 @@ export default function Home() {
             { key: 'saturday', label: 'Sábado' },
             { key: 'sunday', label: 'Domingo' }
         ];
-
-        return daysOfWeek.map(({ key, label }) => {
-            const dayHours = hours[key];
-            return {
-                day: label,
-                open: dayHours?.open || false,
-                start: dayHours?.start || '00:00',
-                end: dayHours?.end || '00:00'
-            };
-        });
+        return daysOfWeek.map(({ key, label }) => ({ key, label, ...hours[key] }));
     };
 
     useEffect(() => {
@@ -88,7 +79,7 @@ export default function Home() {
     }, [showInfo]);
 
     return (
-        <div className="min-h-screen bg-gray-900">
+        <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
             {/* Banner + Logo + Info */}
             <div className="relative w-full flex justify-center mb-28 pb-4">
                 <div className="w-full relative">
@@ -112,19 +103,19 @@ export default function Home() {
                         {/* Nome e ícones */}
                         <div className="ml-3 sm:ml-6 flex flex-col justify-center min-w-0 mt-3 flex-1">
                             <div className="flex items-center min-w-0 justify-start">
-                                <span className="text-lg sm:text-4xl md:text-5xl font-bold text-white drop-shadow-lg brand-name whitespace-nowrap leading-normal flex-shrink-0">
+                                <span className="text-lg sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white drop-shadow-lg brand-name whitespace-nowrap leading-normal flex-shrink-0 transition-colors duration-300">
                                     Rei dos Salgados
                                 </span>
                                 <button
-                                    className="bg-transparent text-white p-1.5 rounded-full hover:bg-white/10 transition-colors flex items-center justify-center ml-2 mt-0,5 sm:mt-3"
+                                    className="bg-transparent text-gray-900 dark:text-white p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex items-center justify-center ml-2 mt-0,5 sm:mt-3"
                                     onClick={() => setShowInfo(true)}
                                     aria-label="Informações do restaurante"
                                 >
                                     <FaInfoCircle className="text-lg sm:text-xl" />
                                 </button>
                             </div>
-                            <div className="flex items-center gap-2 sm:gap-4 mt-1 sm:mt-2 text-white/90 text-xs sm:text-sm">
-                                <span className={`flex items-center gap-1 bg-white/20 px-2 py-1 rounded ${loading ? 'opacity-50' : ''}`}>
+                            <div className="flex items-center gap-2 sm:gap-4 mt-1 sm:mt-2 text-gray-900 dark:text-white/90 text-xs sm:text-sm">
+                                <span className={`flex items-center gap-1 bg-black/10 dark:bg-white/20 px-2 py-1 rounded transition-colors ${loading ? 'opacity-50' : ''}`}>
                                     <span className={`w-2 h-2 rounded-full mr-1 ${isOpen ? 'bg-green-400' : 'bg-red-400'}`}></span>
                                     {loading ? 'Carregando...' : isOpen ? 'Aberto' : 'Fechado'}
                                 </span>
@@ -145,7 +136,7 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* Modal de informações do restaurante */}
+            {/* Modal de informações do restaurante (visual refinado) */}
             <AnimatePresence>
                 {showInfo && (
                     <motion.div
@@ -161,7 +152,7 @@ export default function Home() {
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9, y: 30 }}
                             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                            className="bg-gray-900 rounded-2xl shadow-2xl border border-yellow-500/30 overflow-hidden max-h-[90vh] overflow-y-auto w-full max-w-md mx-2"
+                            className="bg-gray-900 rounded-2xl shadow-2xl border border-yellow-500/30 overflow-hidden max-h-[90vh] overflow-y-auto w-full max-w-2xl lg:max-w-3xl mx-2 custom-scroll"
                             onClick={e => e.stopPropagation()}
                         >
                             {/* Header com logo */}
@@ -191,83 +182,164 @@ export default function Home() {
                                 <h2 className="text-lg sm:text-2xl font-bold text-yellow-500 mb-4 text-center">
                                     {establishmentInfo?.name || 'Rei dos Salgados'}
                                 </h2>
-                                <div className="space-y-3 sm:space-y-5">
-                                    {/* Horário */}
-                                    <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
-                                        <h3 className="text-yellow-400 font-semibold text-xs sm:text-base mb-2 flex items-center gap-2">
-                                            <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                                            Horário de Funcionamento
-                                        </h3>
-                                        <div className="text-gray-300 text-xs sm:text-sm space-y-1">
-                                            {infoLoading ? (
-                                                <div className="text-gray-400">Carregando horários...</div>
-                                            ) : establishmentInfo?.businessHours ? (
-                                                formatBusinessHours(establishmentInfo.businessHours)?.map((day, index) => (
-                                                    <div key={index} className="flex justify-between">
-                                                        <span>{day.day}:</span>
-                                                        <span className={day.open ? 'text-white font-medium' : 'text-red-400 font-medium'}>
-                                                            {day.open ? `${day.start} às ${day.end}` : 'Fechado'}
+                                <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
+                                    {/* Coluna Esquerda */}
+                                    <div className="space-y-4 sm:space-y-5">
+                                        {/* Endereço */}
+                                        <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
+                                            <h3 className="text-yellow-400 font-semibold text-xs sm:text-base mb-2 flex items-center gap-2">
+                                                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                                Endereço
+                                            </h3>
+                                            <div className="text-gray-300 text-xs sm:text-sm">
+                                                <p className="text-white">{establishmentInfo?.address?.street || 'Rua Maria Luiza Dantas'}</p>
+                                                <p>{(establishmentInfo?.address?.city || 'Alto Rodrigues')} - {(establishmentInfo?.address?.state || 'RN')}</p>
+                                                <div className="mt-2">
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                const s = establishmentInfo?.address?.street || 'Rua Maria Luiza Dantas';
+                                                                const c = establishmentInfo?.address?.city || 'Alto Rodrigues';
+                                                                const st = establishmentInfo?.address?.state || 'RN';
+                                                                await navigator.clipboard.writeText(`${s}, ${c} - ${st}`);
+                                                                setCopyMsg('Endereço copiado!');
+                                                                setTimeout(() => setCopyMsg(''), 1500);
+                                                            } catch {}
+                                                        }}
+                                                        className="text-xs px-2 py-1 rounded border border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
+                                                    >
+                                                        Copiar endereço
+                                                    </button>
+                                                    {copyMsg && <span className="ml-2 text-xs text-gray-400">{copyMsg}</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {/* Horário */}
+                                        <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
+                                            <h3 className="text-yellow-400 font-semibold text-xs sm:text-base mb-2 flex items-center gap-2">
+                                                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                                Horário de Funcionamento
+                                            </h3>
+                                            <div className="text-gray-300 text-xs sm:text-sm space-y-1">
+                                                {infoLoading ? (
+                                                    <div className="text-gray-400">Carregando horários...</div>
+                                                ) : establishmentInfo?.businessHours ? (
+                                                    (() => {
+                                                        const weekdayIndex = new Date().getDay();
+                                                        const weekdayMap: Record<number, { key: string; label: string }> = {
+                                                            0: { key: 'sunday', label: 'Domingo' },
+                                                            1: { key: 'monday', label: 'Segunda' },
+                                                            2: { key: 'tuesday', label: 'Terça' },
+                                                            3: { key: 'wednesday', label: 'Quarta' },
+                                                            4: { key: 'thursday', label: 'Quinta' },
+                                                            5: { key: 'friday', label: 'Sexta' },
+                                                            6: { key: 'saturday', label: 'Sábado' },
+                                                        };
+                                                        const today = weekdayMap[weekdayIndex];
+                                                        const days = formatBusinessHours(establishmentInfo.businessHours) || [];
+                                                        return days.map((d: any, idx: number) => (
+                                                            <div key={idx} className="flex justify-between items-center">
+                                                                <span className={`${d.key === today.key ? 'text-yellow-300' : ''}`}>{d.label}:</span>
+                                                                <span className={`${d.open ? (d.key === today.key ? 'text-yellow-200 bg-yellow-500/10 border border-yellow-500/30 rounded px-2 py-0.5 font-medium' : 'text-white font-medium') : 'text-red-400 font-medium'}`}>
+                                                                    {d.open ? `${d.start} às ${d.end}` : 'Fechado'}
+                                                                </span>
+                                                            </div>
+                                                        ));
+                                                    })()
+                                                ) : (
+                                                    <div className="text-gray-400">Horários não disponíveis</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {/* Contato */}
+                                        <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
+                                            <h3 className="text-yellow-400 font-semibold text-xs sm:text-base mb-2 flex items-center gap-2">
+                                                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                                Contato
+                                            </h3>
+                                            <div className="text-gray-300 text-xs sm:text-sm">
+                                                <p>Telefone/WhatsApp:</p>
+                                                <a href={`tel:${String(establishmentInfo?.contact?.phone || '+55 84 9872-9126')}`} className="text-white font-medium text-sm sm:text-base hover:underline">
+                                                    {establishmentInfo?.contact?.phone || '+55 84 9872-9126'}
+                                                </a>
+                                                <div className="mt-2">
+                                                    <a
+                                                        href={`https://wa.me/${String(establishmentInfo?.contact?.whatsapp || '').replace(/\D/g, '')}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-2 rounded-lg bg-green-500/90 hover:bg-green-500 text-white text-xs sm:text-sm font-semibold px-3 py-2 transition"
+                                                    >
+                                                        <FaWhatsapp /> Conversar no WhatsApp
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {/* Coluna Direita */}
+                                    <div className="space-y-4 sm:space-y-5">
+                                        {/* Pagamentos */}
+                                        <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
+                                            <h3 className="text-yellow-400 font-semibold text-xs sm:text-base mb-2 flex items-center gap-2">
+                                                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                                Formas de Pagamento
+                                            </h3>
+                                            <div className="text-gray-300 text-xs sm:text-sm">
+                                                <div className="mt-1 sm:mt-2 flex flex-wrap gap-2">
+                                                    {(establishmentInfo?.paymentMethods && establishmentInfo.paymentMethods.length > 0
+                                                        ? establishmentInfo.paymentMethods
+                                                        : ['Cartão de Crédito', 'Cartão de Débito', 'PIX', 'Dinheiro']
+                                                    ).map((m: string) => (
+                                                        <span key={m} className="px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-medium bg-gray-800 border border-gray-700 text-gray-200">
+                                                            {m}
                                                         </span>
+                                                    ))}
+                                                </div>
+                                                {establishmentInfo?.pixKey && (
+                                                    <div className="mt-3 flex items-center gap-2">
+                                                        <span className="inline-flex items-center gap-2 text-yellow-300 text-xs sm:text-sm"><FaKey /> PIX: <span className="text-white break-all">{establishmentInfo.pixKey}</span></span>
+                                                        <button
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await navigator.clipboard.writeText(String(establishmentInfo.pixKey));
+                                                                    setCopyMsg('PIX copiado!');
+                                                                    setTimeout(() => setCopyMsg(''), 1500);
+                                                                } catch {}
+                                                            }}
+                                                            className="text-[11px] sm:text-xs px-2 py-1 rounded border border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
+                                                        >
+                                                            Copiar
+                                                        </button>
+                                                        {copyMsg && <span className="text-[11px] sm:text-xs text-gray-400">{copyMsg}</span>}
                                                     </div>
-                                                ))
-                                            ) : (
-                                                <div className="text-gray-400">Horários não disponíveis</div>
-                                            )}
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                    {/* Endereço */}
-                                    <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
-                                        <h3 className="text-yellow-400 font-semibold text-xs sm:text-base mb-2 flex items-center gap-2">
-                                            <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                                            Endereço
-                                        </h3>
-                                        <div className="text-gray-300 text-xs sm:text-sm">
-                                            <p className="text-white">{establishmentInfo?.address?.street || 'Rua Maria Luiza Dantas'}</p>
-                                            <p>{establishmentInfo?.address?.city || 'Alto Rodrigues'} - {establishmentInfo?.address?.state || 'RN'}</p>
+                                        {/* Redes Sociais */}
+                                        <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
+                                            <h3 className="text-yellow-400 font-semibold text-xs sm:text-base mb-2 flex items-center gap-2">
+                                                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                                Redes Sociais
+                                            </h3>
+                                            <div className="text-gray-300 text-xs sm:text-sm">
+                                                <a
+                                                    href={`https://instagram.com/${String(establishmentInfo?.socialMedia?.instagram || '@reidossalgados').replace('@', '')}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-white font-medium hover:underline"
+                                                >
+                                                    {establishmentInfo?.socialMedia?.instagram || '@reidossalgados'}
+                                                </a>
+                                            </div>
                                         </div>
-                                    </div>
-                                    {/* Contato */}
-                                    <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
-                                        <h3 className="text-yellow-400 font-semibold text-xs sm:text-base mb-2 flex items-center gap-2">
-                                            <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                                            Contato
-                                        </h3>
-                                        <div className="text-gray-300 text-xs sm:text-sm">
-                                            <p>Telefone/WhatsApp:</p>
-                                            <p className="text-white font-medium text-sm sm:text-base">{establishmentInfo?.contact?.phone || '+55 84 9872-9126'}</p>
-                                        </div>
-                                    </div>
-                                    {/* Formas de Pagamento */}
-                                    <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
-                                        <h3 className="text-yellow-400 font-semibold text-xs sm:text-base mb-2 flex items-center gap-2">
-                                            <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                                            Formas de Pagamento
-                                        </h3>
-                                        <div className="text-gray-300 text-xs sm:text-sm">
-                                            <p>{establishmentInfo?.paymentMethods?.length > 0
-                                                ? `Aceitamos ${establishmentInfo.paymentMethods.join(', ').toLowerCase()}`
-                                                : 'Aceitamos cartões de crédito/débito, PIX e dinheiro'
-                                            }</p>
-                                        </div>
-                                    </div>
-                                    {/* Redes Sociais */}
-                                    <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
-                                        <h3 className="text-yellow-400 font-semibold text-xs sm:text-base mb-2 flex items-center gap-2">
-                                            <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                                            Redes Sociais
-                                        </h3>
-                                        <div className="text-gray-300 text-xs sm:text-sm">
-                                            <p>Instagram: <span className="text-white font-medium">{establishmentInfo?.socialMedia?.instagram || '@reidossalgados'}</span></p>
-                                        </div>
-                                    </div>
-                                    {/* Sobre Nós */}
-                                    <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
-                                        <h3 className="text-yellow-400 font-semibold text-xs sm:text-base mb-2 flex items-center gap-2">
-                                            <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                                            Sobre Nós
-                                        </h3>
-                                        <div className="text-gray-300 text-xs sm:text-sm leading-relaxed">
-                                            <p>{establishmentInfo?.about || 'Especialistas em salgados artesanais, oferecendo qualidade e sabor em cada pedido. Nossos produtos são feitos com ingredientes frescos e selecionados.'}</p>
+                                        {/* Sobre Nós */}
+                                        <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 border border-gray-700">
+                                            <h3 className="text-yellow-400 font-semibold text-xs sm:text-base mb-2 flex items-center gap-2">
+                                                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                                Sobre Nós
+                                            </h3>
+                                            <div className="text-gray-300 text-xs sm:text-sm leading-relaxed">
+                                                <p>{establishmentInfo?.about || 'Especialistas em salgados artesanais, oferecendo qualidade e sabor em cada pedido. Nossos produtos são feitos com ingredientes frescos e selecionados.'}</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

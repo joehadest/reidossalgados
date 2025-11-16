@@ -165,9 +165,22 @@ button[data-category] {
     --background-rgb: 17, 24, 39;
 }
 
+/* Tema claro */
+.light {
+    --foreground-rgb: 17, 24, 39;
+    --background-rgb: 255, 255, 255;
+}
+
+/* Tema escuro */
+.dark {
+    --foreground-rgb: 255, 255, 255;
+    --background-rgb: 17, 24, 39;
+}
+
 body {
     color: rgb(var(--foreground-rgb));
     background: rgb(var(--background-rgb));
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Ocultar qualquer toast antigo de categoria gerado por versões anteriores */
@@ -263,7 +276,59 @@ body.low-end-device .hover\:shadow-xl:hover {
     }
 }
 
-/* Estilização da scrollbar */
+/* Estilização global da scrollbar (Chrome/Edge/Safari) */
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: #0b1220; /* bem escuro para combinar com o tema */
+}
+
+*::-webkit-scrollbar-thumb {
+    background: #facc15; /* amarelo da marca */
+    border-radius: 999px;
+    border: 2px solid #0b1220; /* cria efeito "pill" solto do trilho */
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: #fde047; /* amarelo mais claro no hover */
+}
+
+/* Estilização global da scrollbar (Firefox) */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #facc15 #0b1220;
+}
+
+/* Variante mais elegante/compacta para áreas específicas */
+.custom-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #facc15 #0f172a; /* slate-900 */
+}
+
+.custom-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+    background: #0f172a;
+    border-radius: 999px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #fde047, #facc15);
+    border-radius: 999px;
+    border: 2px solid #0f172a;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+    background: #facc15;
+}
+
+/* Classe utilitária existente mantida para retrocompatibilidade */
 .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
 }
