@@ -13,16 +13,74 @@ interface CartProps {
     onCheckout: (orderDetails: any) => void;
 }
 
-// Componentes auxiliares (sem alteração)
-const InputField = (props: any) => (
-    <div>
-        {props.label && <label className="text-xs font-medium text-gray-400 tracking-wide">{props.label}</label>}
-        <input
-            {...props}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 mt-1 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/60 focus:border-yellow-500/50 transition"
-        />
-    </div>
-);
+// Componentes auxiliares melhorados para mobile
+const InputField = React.forwardRef<HTMLInputElement, any & { onInputFocus?: () => void; onInputBlur?: () => void }>((props, ref) => {
+    const inputRef = useRef<HTMLInputElement | null>(null);
+    const combinedRef = (ref || inputRef) as React.MutableRefObject<HTMLInputElement | null>;
+    const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isSamsungDevice = typeof window !== 'undefined' && /Samsung|SM-/i.test(navigator.userAgent);
+    
+    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+        if (props.onInputFocus) props.onInputFocus();
+        
+        // Para dispositivos Samsung, evitar scrollIntoView que causa conflito com teclado
+        if (!isSamsungDevice) {
+            // Scroll suave apenas para outros dispositivos
+            scrollTimeoutRef.current = setTimeout(() => {
+                const input = e.target;
+                if (input && document.activeElement === input) {
+                    // Usar scrollIntoView apenas se o input ainda estiver focado
+                    try {
+                        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } catch (err) {
+                        // Ignorar erros de scroll
+                    }
+                }
+            }, 500); // Aumentar delay para dar tempo do teclado abrir completamente
+        }
+        
+        if (props.onFocus) props.onFocus(e);
+    };
+    
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        // Limpar timeout de scroll se existir
+        if (scrollTimeoutRef.current) {
+            clearTimeout(scrollTimeoutRef.current);
+            scrollTimeoutRef.current = null;
+        }
+        
+        // Delay para permitir que outros inputs recebam foco
+        setTimeout(() => {
+            if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+                if (props.onInputBlur) props.onInputBlur();
+            }
+        }, 150); // Aumentar delay para Samsung
+        if (props.onBlur) props.onBlur(e);
+    };
+
+    // Prevenir eventos de touch que podem interferir com o foco
+    const handleTouchStart = (e: React.TouchEvent<HTMLInputElement>) => {
+        // Garantir que o input receba foco antes do teclado aparecer
+        e.currentTarget.focus();
+    };
+
+    const { onInputFocus, onInputBlur, ...restProps } = props;
+
+    return (
+        <div>
+            {restProps.label && <label className="text-xs font-medium text-gray-400 tracking-wide">{restProps.label}</label>}
+            <input
+                {...restProps}
+                ref={combinedRef}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                onTouchStart={handleTouchStart}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 mt-1 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/60 focus:border-yellow-500/50 transition"
+            />
+        </div>
+    );
+});
+InputField.displayName = 'InputField';
 const SelectField = (props: any) => (
     <div>
         {props.label && <label className="text-xs font-medium text-gray-400 tracking-wide">{props.label}</label>}
@@ -88,39 +146,63 @@ export default function Cart({ onClose, onCheckout }: CartProps) {
 
     const closeButtonRef = useRef<HTMLButtonElement | null>(null);
     const scrollLockRef = useRef<{ prevOverflow?: string; prevPosition?: string; prevTop?: string; prevWidth?: string; scrollY?: number } | null>(null);
+    const modalContentRef = useRef<HTMLDivElement | null>(null);
+    const isInputFocusedRef = useRef(false);
+
+    // Detectar se é dispositivo móvel
+    const isMobile = typeof window !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
     useEffect(() => {
-        // Focar botão de fechar ao abrir para acessibilidade
-        closeButtonRef.current?.focus();
-        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        const handler = (e: KeyboardEvent) => { 
+            // Só fechar com Escape se não estiver digitando
+            if (e.key === 'Escape' && !isInputFocusedRef.current) {
+                onClose();
+            }
+        };
         window.addEventListener('keydown', handler);
-        // Bloquear scroll de fundo (iOS-friendly)
+        
+        // Bloquear scroll de fundo de forma mais suave para mobile
         const body = document.body;
         const scrollY = window.scrollY;
-        scrollLockRef.current = {
-            prevOverflow: body.style.overflow,
-            prevPosition: body.style.position,
-            prevTop: body.style.top,
-            prevWidth: body.style.width,
-            scrollY,
-        };
-        body.style.overflow = 'hidden';
-        body.style.position = 'fixed';
-        body.style.top = `-${scrollY}px`;
-        body.style.width = '100%';
+        
+        if (!isMobile) {
+            // Desktop: usar position fixed
+            scrollLockRef.current = {
+                prevOverflow: body.style.overflow,
+                prevPosition: body.style.position,
+                prevTop: body.style.top,
+                prevWidth: body.style.width,
+                scrollY,
+            };
+            body.style.overflow = 'hidden';
+            body.style.position = 'fixed';
+            body.style.top = `-${scrollY}px`;
+            body.style.width = '100%';
+        } else {
+            // Mobile: apenas overflow hidden para não interferir com teclado
+            scrollLockRef.current = {
+                prevOverflow: body.style.overflow,
+                scrollY,
+            };
+            body.style.overflow = 'hidden';
+        }
 
         return () => {
             window.removeEventListener('keydown', handler);
             const s = scrollLockRef.current;
             if (s) {
-                body.style.overflow = s.prevOverflow || '';
-                body.style.position = s.prevPosition || '';
-                body.style.top = s.prevTop || '';
-                body.style.width = s.prevWidth || '';
-                window.scrollTo(0, s.scrollY || 0);
+                if (!isMobile) {
+                    body.style.overflow = s.prevOverflow || '';
+                    body.style.position = s.prevPosition || '';
+                    body.style.top = s.prevTop || '';
+                    body.style.width = s.prevWidth || '';
+                    window.scrollTo(0, s.scrollY || 0);
+                } else {
+                    body.style.overflow = s.prevOverflow || '';
+                }
             }
         };
-    }, [onClose]);
+    }, [onClose, isMobile]);
 
     return (
         <motion.div
@@ -135,12 +217,29 @@ export default function Cart({ onClose, onCheckout }: CartProps) {
                 className="absolute inset-0 w-full h-full cursor-default bg-black/60 backdrop-blur-[1px] focus:outline-none overscroll-none"
                 variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
                 transition={{ duration: 0.25 }}
-                onClick={onClose}
+                onClick={(e) => {
+                    // Só fechar se não estiver digitando
+                    if (!isInputFocusedRef.current) {
+                        onClose();
+                    }
+                }}
+                onTouchStart={(e) => {
+                    // Prevenir que toques no backdrop fechem o modal quando há input focado
+                    if (isInputFocusedRef.current) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                }}
             />
             <motion.div
+                ref={modalContentRef}
                 className="absolute top-0 right-0 h-full w-full max-w-md bg-gradient-to-b from-gray-900 to-gray-950/95 flex flex-col border-l border-yellow-500/20 shadow-[0_0_40px_-10px_rgba(234,179,8,0.25)] overscroll-contain"
                 variants={{ hidden: { x: '100%' }, visible: { x: '0%' } }}
                 transition={{ type: 'spring', stiffness: 270, damping: 28 }}
+                onClick={(e) => {
+                    // Prevenir fechamento quando clicar dentro do modal
+                    e.stopPropagation();
+                }}
             >
                 {/* Header */}
                 <div className="flex-shrink-0 px-6 pt-6 pb-3 border-b border-gray-800/70 bg-gray-900/60 backdrop-blur supports-[backdrop-filter]:bg-gray-900/40">
@@ -261,9 +360,28 @@ export default function Cart({ onClose, onCheckout }: CartProps) {
                                     className="flex-1 flex flex-col min-h-0"
                                 >
                                     {/* SEÇÃO DO FORMULÁRIO COM ROLAGEM */}
-                                    <div className="overflow-y-auto p-5 space-y-4 flex-1 custom-scroll">
-                                        <InputField label="Nome" value={cliente.nome} onChange={(e:any) => setCliente({...cliente, nome: e.target.value})} required />
-                                        <InputField label="Telefone" type="tel" value={cliente.telefone} onChange={(e:any) => setCliente({...cliente, telefone: e.target.value})} required />
+                                    <div className="overflow-y-auto p-5 space-y-4 flex-1 custom-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
+                                        <InputField 
+                                            label="Nome" 
+                                            value={cliente.nome} 
+                                            onChange={(e:any) => setCliente({...cliente, nome: e.target.value})} 
+                                            required 
+                                            autoComplete="name"
+                                            inputMode="text"
+                                            onInputFocus={() => { isInputFocusedRef.current = true; }}
+                                            onInputBlur={() => { isInputFocusedRef.current = false; }}
+                                        />
+                                        <InputField 
+                                            label="Telefone" 
+                                            type="tel" 
+                                            value={cliente.telefone} 
+                                            onChange={(e:any) => setCliente({...cliente, telefone: e.target.value})} 
+                                            required 
+                                            autoComplete="tel"
+                                            inputMode="tel"
+                                            onInputFocus={() => { isInputFocusedRef.current = true; }}
+                                            onInputBlur={() => { isInputFocusedRef.current = false; }}
+                                        />
                                         <SelectField label="Tipo de Entrega" value={tipoEntrega} onChange={(e:any) => setTipoEntrega(e.target.value as any)}>
                                             <option value="entrega">Entrega</option><option value="retirada">Retirada</option>
                                         </SelectField>
@@ -273,23 +391,95 @@ export default function Cart({ onClose, onCheckout }: CartProps) {
                                                     <option value="">{feesLoading ? 'Carregando...' : 'Selecione...'}</option>
                                                     {deliveryFees.map(f => <option key={f.neighborhood} value={f.neighborhood}>{f.neighborhood} - R$ {f.fee.toFixed(2)}</option>)}
                                                 </SelectField>
-                                                <InputField label="Rua" value={address.street} onChange={(e:any) => setAddress({...address, street: e.target.value})} required />
+                                                <InputField 
+                                                    label="Rua" 
+                                                    value={address.street} 
+                                                    onChange={(e:any) => setAddress({...address, street: e.target.value})} 
+                                                    required 
+                                                    autoComplete="street-address"
+                                                    inputMode="text"
+                                                    onInputFocus={() => { isInputFocusedRef.current = true; }}
+                                                    onInputBlur={() => { isInputFocusedRef.current = false; }}
+                                                />
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    <InputField placeholder="Número" value={address.number} onChange={(e:any) => setAddress({...address, number: e.target.value})} required/>
-                                                    <InputField placeholder="Complemento" value={address.complement} onChange={(e:any) => setAddress({...address, complement: e.target.value})} />
+                                                    <InputField 
+                                                        placeholder="Número" 
+                                                        value={address.number} 
+                                                        onChange={(e:any) => setAddress({...address, number: e.target.value})} 
+                                                        required
+                                                        autoComplete="address-line2"
+                                                        inputMode="numeric"
+                                                        onInputFocus={() => { isInputFocusedRef.current = true; }}
+                                                        onInputBlur={() => { isInputFocusedRef.current = false; }}
+                                                    />
+                                                    <InputField 
+                                                        placeholder="Complemento" 
+                                                        value={address.complement} 
+                                                        onChange={(e:any) => setAddress({...address, complement: e.target.value})}
+                                                        autoComplete="address-line3"
+                                                        inputMode="text"
+                                                        onInputFocus={() => { isInputFocusedRef.current = true; }}
+                                                        onInputBlur={() => { isInputFocusedRef.current = false; }}
+                                                    />
                                                 </div>
-                                                <InputField label="Ponto de Referência" value={address.referencePoint} onChange={(e:any) => setAddress({...address, referencePoint: e.target.value})} />
+                                                <InputField 
+                                                    label="Ponto de Referência" 
+                                                    value={address.referencePoint} 
+                                                    onChange={(e:any) => setAddress({...address, referencePoint: e.target.value})}
+                                                    inputMode="text"
+                                                    onInputFocus={() => { isInputFocusedRef.current = true; }}
+                                                    onInputBlur={() => { isInputFocusedRef.current = false; }}
+                                                />
                                             </>
                                         )}
                                         <SelectField label="Forma de Pagamento" value={formaPagamento} onChange={(e:any) => setFormaPagamento(e.target.value)} required>
                                             <option value="">Selecione...</option><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao">Cartão</option>
                                         </SelectField>
-                                        {formaPagamento === 'dinheiro' && <InputField placeholder="Troco para quanto?" value={troco} onChange={(e:any) => setTroco(e.target.value)} />}
+                                        {formaPagamento === 'dinheiro' && (
+                                            <InputField 
+                                                placeholder="Troco para quanto?" 
+                                                value={troco} 
+                                                onChange={(e:any) => setTroco(e.target.value)}
+                                                type="number"
+                                                inputMode="decimal"
+                                                step="0.01"
+                                                onInputFocus={() => { isInputFocusedRef.current = true; }}
+                                                onInputBlur={() => { isInputFocusedRef.current = false; }}
+                                            />
+                                        )}
                                         <div>
                                             <label className="text-sm text-gray-400">Observações</label>
                                             <textarea
                                                 value={observacoes}
                                                 onChange={(e:any) => setObservacoes(e.target.value)}
+                                                onFocus={() => {
+                                                    isInputFocusedRef.current = true;
+                                                    // Para Samsung, evitar scrollIntoView
+                                                    const isSamsungDevice = typeof window !== 'undefined' && /Samsung|SM-/i.test(navigator.userAgent);
+                                                    if (!isSamsungDevice) {
+                                                        setTimeout(() => {
+                                                            const textarea = document.activeElement as HTMLTextAreaElement;
+                                                            if (textarea && document.activeElement === textarea) {
+                                                                try {
+                                                                    textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                } catch (err) {
+                                                                    // Ignorar erros
+                                                                }
+                                                            }
+                                                        }, 500);
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    setTimeout(() => {
+                                                        if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+                                                            isInputFocusedRef.current = false;
+                                                        }
+                                                    }, 150);
+                                                }}
+                                                onTouchStart={(e) => {
+                                                    // Garantir foco antes do teclado aparecer
+                                                    e.currentTarget.focus();
+                                                }}
                                                 className="w-full bg-gray-800 border border-gray-700 rounded p-2 mt-1 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/60 focus:border-yellow-500/50 transition"
                                                 rows={2}
                                                 placeholder="Alguma observação sobre o pedido?"
