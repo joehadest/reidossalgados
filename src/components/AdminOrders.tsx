@@ -28,6 +28,8 @@ export default function AdminOrders() {
     const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
     const [showNotification, setShowNotification] = useState(false);
     const [newPedido, setNewPedido] = useState<Pedido | null>(null);
+    const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+    const [deletingAll, setDeletingAll] = useState(false);
 
     // Ref para o container dos detalhes do pedido (para scroll automático)
     const detalhesPedidoRef = useRef<HTMLDivElement>(null);
@@ -151,6 +153,28 @@ export default function AdminOrders() {
         finally { setDeletingOrder(null); }
     };
 
+    const deleteAllOrders = async () => {
+        setDeletingAll(true);
+        try {
+            const res = await fetch('/api/pedidos/all', { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                setPedidos([]);
+                setPedidoSelecionado(null);
+                setShowDeleteAllConfirm(false);
+                setPreviousPedidos([]);
+                previousPedidosRef.current = [];
+                alert(`Todos os pedidos foram deletados. Total: ${data.deletedCount || 0} pedidos removidos.`);
+            } else {
+                alert('Erro ao deletar pedidos: ' + (data.message || 'Erro desconhecido'));
+            }
+        } catch (err) {
+            console.error('Erro ao deletar todos os pedidos:', err);
+            alert('Erro ao deletar pedidos. Tente novamente.');
+        }
+        finally { setDeletingAll(false); }
+    };
+
     const handleDeleteClick = (pedido: Pedido) => {
         setOrderToDelete(pedido);
         setShowDeleteConfirm(true);
@@ -257,6 +281,15 @@ export default function AdminOrders() {
             <div className="flex flex-col sm:flex-row justify-between gap-2 sm:items-center mb-4">
                 <h2 className="text-xl sm:text-2xl font-bold text-white">Painel de Pedidos</h2>
                 <div className="flex items-center gap-2">
+                    {pedidos.length > 0 && (
+                        <button
+                            onClick={() => setShowDeleteAllConfirm(true)}
+                            className="px-3 py-2 rounded-lg bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors border border-red-500 shadow-sm flex items-center gap-2"
+                            title="Deletar todos os pedidos"
+                        >
+                            <FaTrash /> Limpar Tudo
+                        </button>
+                    )}
                     <button
                         onClick={() => fetchPedidos()}
                         className="px-3 py-2 rounded-lg bg-yellow-500 text-black font-semibold text-sm hover:bg-yellow-400 transition-colors border border-yellow-300 shadow-sm"
@@ -548,6 +581,53 @@ export default function AdminOrders() {
                                 <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700">Cancelar</button>
                                 <button onClick={() => deleteOrder(orderToDelete._id)} disabled={deletingOrder === orderToDelete._id} className="flex-1 bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50">
                                     {deletingOrder ? 'Removendo...' : 'Sim, Remover'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {showDeleteAllConfirm && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                        <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4 border border-red-500/30">
+                            <h2 className="text-xl font-bold text-red-400 mb-4 flex items-center gap-2">
+                                <FaTrash /> Confirmar Exclusão em Massa
+                            </h2>
+                            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                                <p className="text-red-300 font-semibold mb-2">⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!</p>
+                                <p className="text-gray-300 text-sm">
+                                    Você está prestes a deletar <strong className="text-white">{pedidos.length}</strong> pedido{pedidos.length !== 1 ? 's' : ''} permanentemente.
+                                </p>
+                            </div>
+                            <p className="text-gray-300 mb-6">
+                                Todos os pedidos serão removidos do banco de dados. Esta ação <strong className="text-red-400">não pode ser desfeita</strong>.
+                            </p>
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={() => setShowDeleteAllConfirm(false)} 
+                                    disabled={deletingAll}
+                                    className="flex-1 bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                                >
+                                    Cancelar
+                                </button>
+                                <button 
+                                    onClick={deleteAllOrders} 
+                                    disabled={deletingAll} 
+                                    className="flex-1 bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {deletingAll ? (
+                                        <>
+                                            <span className="animate-spin">⏳</span>
+                                            <span>Deletando...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FaTrash />
+                                            <span>Sim, Deletar Tudo</span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </motion.div>
