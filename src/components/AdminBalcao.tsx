@@ -132,16 +132,6 @@ export default function AdminBalcao() {
             return;
         }
 
-        if (!clienteNome.trim()) {
-            alert('Informe o nome do cliente');
-            return;
-        }
-
-        if (!clienteTelefone.trim()) {
-            alert('Informe o telefone do cliente');
-            return;
-        }
-
         setIsSubmitting(true);
 
         try {
@@ -187,8 +177,8 @@ export default function AdminBalcao() {
                 total: calculateTotal(),
                 tipoEntrega: 'retirada' as const,
                 cliente: {
-                    nome: clienteNome.trim(),
-                    telefone: clienteTelefone.trim()
+                    nome: clienteNome.trim() || 'Cliente Balcão',
+                    telefone: clienteTelefone.trim() || 'Não informado'
                 },
                 formaPagamento,
                 troco: formaPagamento === 'dinheiro' && troco ? troco : undefined,
@@ -421,23 +411,23 @@ export default function AdminBalcao() {
                         
                         <div className="space-y-3">
                             <div>
-                                <label className="block text-sm text-gray-300 mb-1">Nome *</label>
+                                <label className="block text-sm text-gray-300 mb-1">Nome (opcional)</label>
                                 <input
                                     type="text"
                                     value={clienteNome}
                                     onChange={(e) => setClienteNome(e.target.value)}
-                                    placeholder="Nome do cliente"
+                                    placeholder="Nome do cliente (opcional)"
                                     className="w-full px-3 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:border-yellow-500 focus:outline-none"
                                 />
                             </div>
                             
                             <div>
-                                <label className="block text-sm text-gray-300 mb-1">Telefone *</label>
+                                <label className="block text-sm text-gray-300 mb-1">Telefone (opcional)</label>
                                 <input
                                     type="tel"
                                     value={clienteTelefone}
                                     onChange={(e) => setClienteTelefone(e.target.value)}
-                                    placeholder="(00) 00000-0000"
+                                    placeholder="(00) 00000-0000 (opcional)"
                                     className="w-full px-3 py-2 bg-gray-900 text-white rounded-lg border border-gray-700 focus:border-yellow-500 focus:outline-none"
                                 />
                             </div>
