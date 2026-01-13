@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 
+export const dynamic = 'force-dynamic';
+
 interface AggregatedDay { date: string; totalOrders: number; totalRevenue: number; avgTicket: number; }
 
 export async function GET(request: Request) {
