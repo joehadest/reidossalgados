@@ -6,11 +6,12 @@ import AdminAddItem from '@/components/AdminAddItem';
 import AdminAddCategory from '@/components/AdminAddCategory';
 import AdminEditMenu from '@/components/AdminEditMenu';
 import AdminEarnings from '@/components/AdminEarnings';
+import AdminBalcao from '@/components/AdminBalcao';
 import AuthGuard from '@/components/AuthGuard';
 import LogoutButton from '@/components/LogoutButton';
 
 export default function AdminPanel() {
-    const [activeTab, setActiveTab] = useState<'config' | 'orders' | 'addItem' | 'addCategory' | 'editMenu' | 'earnings'>(() => {
+    const [activeTab, setActiveTab] = useState<'config' | 'orders' | 'addItem' | 'addCategory' | 'editMenu' | 'earnings' | 'balcao'>(() => {
         if (typeof window !== 'undefined') {
             return (localStorage.getItem('adminActiveTab') as any) || 'config';
         }
@@ -93,6 +94,16 @@ export default function AdminPanel() {
                         >
                             💰 Ganhos
                         </button>
+                        <button
+                            onClick={() => setActiveTab('balcao')}
+                            className={`py-3 px-3 sm:px-4 font-medium text-sm sm:text-base rounded-lg transition-all duration-200 ${
+                                activeTab === 'balcao'
+                                    ? 'bg-yellow-500 text-gray-900 shadow-lg'
+                                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700'
+                            }`}
+                        >
+                            🏪 Balcão
+                        </button>
                     </div>
                 </div>
 
@@ -159,6 +170,16 @@ export default function AdminPanel() {
                         >
                             Ganhos
                         </button>
+                        <button
+                            onClick={() => setActiveTab('balcao')}
+                            className={`py-3 px-6 font-medium text-base transition-colors ${
+                                activeTab === 'balcao'
+                                    ? 'border-b-2 border-yellow-500 text-yellow-500'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            Balcão
+                        </button>
                     </div>
                 </div>
 
@@ -169,6 +190,7 @@ export default function AdminPanel() {
                     {activeTab === 'addItem' && <AdminAddItem />}
                     {activeTab === 'addCategory' && <AdminAddCategory />}
                     {activeTab === 'earnings' && <AdminEarnings />}
+                    {activeTab === 'balcao' && <AdminBalcao />}
                 </div>
             </div>
         </div>
