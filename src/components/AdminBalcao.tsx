@@ -89,19 +89,28 @@ export default function AdminBalcao() {
             
             // Adicionar preço do tamanho se houver
             if (cartItem.size && cartItem.item.sizes && cartItem.item.sizes[cartItem.size]) {
-                itemPrice = cartItem.item.sizes[cartItem.size];
+                const sizePrice = cartItem.item.sizes[cartItem.size];
+                if (sizePrice !== undefined) {
+                    itemPrice = sizePrice;
+                }
             }
             
             // Adicionar preço da borda se houver
             if (cartItem.border && cartItem.item.borderOptions && cartItem.item.borderOptions[cartItem.border]) {
-                itemPrice += cartItem.item.borderOptions[cartItem.border];
+                const borderPrice = cartItem.item.borderOptions[cartItem.border];
+                if (borderPrice !== undefined) {
+                    itemPrice += borderPrice;
+                }
             }
             
             // Adicionar preços dos extras se houver
             if (cartItem.extras && cartItem.item.extraOptions) {
                 cartItem.extras.forEach(extra => {
                     if (cartItem.item.extraOptions && cartItem.item.extraOptions[extra]) {
-                        itemPrice += cartItem.item.extraOptions[extra];
+                        const extraPrice = cartItem.item.extraOptions[extra];
+                        if (extraPrice !== undefined) {
+                            itemPrice += extraPrice;
+                        }
                     }
                 });
             }
@@ -141,17 +150,26 @@ export default function AdminBalcao() {
                     let itemPrice = cartItem.item.price;
                     
                     if (cartItem.size && cartItem.item.sizes && cartItem.item.sizes[cartItem.size]) {
-                        itemPrice = cartItem.item.sizes[cartItem.size];
+                        const sizePrice = cartItem.item.sizes[cartItem.size];
+                        if (sizePrice !== undefined) {
+                            itemPrice = sizePrice;
+                        }
                     }
                     
                     if (cartItem.border && cartItem.item.borderOptions && cartItem.item.borderOptions[cartItem.border]) {
-                        itemPrice += cartItem.item.borderOptions[cartItem.border];
+                        const borderPrice = cartItem.item.borderOptions[cartItem.border];
+                        if (borderPrice !== undefined) {
+                            itemPrice += borderPrice;
+                        }
                     }
                     
                     if (cartItem.extras && cartItem.item.extraOptions) {
                         cartItem.extras.forEach(extra => {
                             if (cartItem.item.extraOptions && cartItem.item.extraOptions[extra]) {
-                                itemPrice += cartItem.item.extraOptions[extra];
+                                const extraPrice = cartItem.item.extraOptions[extra];
+                                if (extraPrice !== undefined) {
+                                    itemPrice += extraPrice;
+                                }
                             }
                         });
                     }
@@ -327,15 +345,24 @@ export default function AdminBalcao() {
                                 cart.map((cartItem, index) => {
                                     let itemPrice = cartItem.item.price;
                                     if (cartItem.size && cartItem.item.sizes && cartItem.item.sizes[cartItem.size]) {
-                                        itemPrice = cartItem.item.sizes[cartItem.size];
+                                        const sizePrice = cartItem.item.sizes[cartItem.size];
+                                        if (sizePrice !== undefined) {
+                                            itemPrice = sizePrice;
+                                        }
                                     }
                                     if (cartItem.border && cartItem.item.borderOptions && cartItem.item.borderOptions[cartItem.border]) {
-                                        itemPrice += cartItem.item.borderOptions[cartItem.border];
+                                        const borderPrice = cartItem.item.borderOptions[cartItem.border];
+                                        if (borderPrice !== undefined) {
+                                            itemPrice += borderPrice;
+                                        }
                                     }
                                     if (cartItem.extras && cartItem.item.extraOptions) {
                                         cartItem.extras.forEach(extra => {
                                             if (cartItem.item.extraOptions && cartItem.item.extraOptions[extra]) {
-                                                itemPrice += cartItem.item.extraOptions[extra];
+                                                const extraPrice = cartItem.item.extraOptions[extra];
+                                                if (extraPrice !== undefined) {
+                                                    itemPrice += extraPrice;
+                                                }
                                             }
                                         });
                                     }
